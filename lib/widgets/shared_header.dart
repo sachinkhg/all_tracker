@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 class SharedHeader extends StatelessWidget {
   final Color textColor;
   final VoidCallback? onAddPressed;
+  final String title;
 
   const SharedHeader({
     super.key,
     required this.textColor,
+    required this.title,
     this.onAddPressed,
   });
 
@@ -30,7 +32,7 @@ class SharedHeader extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              'Goals',
+              title,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontFamily: 'Manrope',
@@ -40,16 +42,16 @@ class SharedHeader extends StatelessWidget {
                   ),
             ),
           ),
-          SizedBox(
-            width: iconButtonSize,
-            height: iconButtonSize,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: Icon(Icons.add, color: textColor, size: iconSize),
-              onPressed: onAddPressed,
-              tooltip: 'Add Goal',
-            ),
-          ),
+          // SizedBox(
+          //   width: iconButtonSize,
+          //   height: iconButtonSize,
+          //   child: IconButton(
+          //     padding: EdgeInsets.zero,
+          //     icon: Icon(Icons.add, color: textColor, size: iconSize),
+          //     onPressed: onAddPressed,
+          //     tooltip: 'Add Goal',
+          //   ),
+          // ),
         ],
       ),
     );

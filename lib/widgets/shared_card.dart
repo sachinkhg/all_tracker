@@ -32,7 +32,17 @@ class SharedCard extends StatelessWidget {
     return Container(
       margin: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: 4),
       padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.03, vertical: 12),
-      decoration: BoxDecoration(color: backgroundColor),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(16), // Add curve to corners
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,           // Softens shadow
+            offset: Offset(0, 3),    // Moves shadow down
+          ),
+        ],
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -43,7 +53,7 @@ class SharedCard extends StatelessWidget {
               color: iconBackgroundColor,
               borderRadius: BorderRadius.circular(iconContainerSize * 0.25),
             ),
-            child: Icon(icon, color: textColor, size: iconSize),
+            child: Icon(icon, color: backgroundColor, size: iconSize),
           ),
           SizedBox(width: screenWidth * 0.03),
           Expanded(

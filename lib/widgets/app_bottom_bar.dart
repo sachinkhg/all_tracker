@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
-import '../presentation/goal_list.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../core/hive_initializer.dart';
+import '../core/service_locator.dart';
+import '../goal_tracker/domain/usecases/goal_usecases.dart';
+import '../goal_tracker/presentation/bloc/goal_bloc.dart';
+import '../goal_tracker/presentation/bloc/goal_event.dart';
+import '../goal_tracker/presentation/pages/goal_list_page.dart';
 import '../presentation/settings_page.dart';
+//import '../presentation/webapp_screen.dart';
 
 /// A custom bottom navigation bar widget that displays a list of navigation items,
 /// each associated with an icon, label, and page. The selected page is shown above
@@ -29,9 +36,31 @@ AppBottomBar createAppBottomBar() {
         content: Center(child: Text('Welcome to AllTracker Home!')),
       ),
       BottomBarItem(
-        icon: Icons.list,
+        icon: Icons.flag,
         label: 'Goals',
-        content: GoalsListPage(),
+        content: FutureBuilder(
+          future: HiveInitializer.initialize(tracker: TrackerType.goalManagement),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError) {
+              return Center(child: Text('Error loading Goals: ${snapshot.error}'));
+            }
+
+            return BlocProvider(
+              create: (_) => GoalBloc(
+                getGoals: sl<GetGoals>(),
+                getGoalById: sl<GetGoalById>(),
+                addGoal: sl<AddGoal>(),
+                updateGoal: sl<UpdateGoal>(),
+                deleteGoal: sl<DeleteGoal>(),
+                clearAllGoals: sl<ClearAllGoals>(),
+              )..add(LoadGoals()),
+              child: const GoalListPage(),
+            );
+          },
+        ),
       ),
       BottomBarItem(
         icon: Icons.settings,
@@ -96,9 +125,9 @@ class _AppBottomBarState extends State<AppBottomBar> {
         ),
         BottomNavigationBar(
           type: BottomNavigationBarType.fixed,
-          backgroundColor: theme.colorScheme.primary,
-          selectedItemColor: theme.colorScheme.onPrimary,
-          unselectedItemColor:theme.colorScheme.onPrimary.withAlpha(150),
+          backgroundColor: theme.colorScheme.onPrimary,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor:theme.colorScheme.primary.withAlpha(150),
               currentIndex: _currentIndex,
               items: widget.items
               .map((item) => BottomNavigationBarItem(
