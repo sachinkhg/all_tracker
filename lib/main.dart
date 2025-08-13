@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'core/hive_initializer.dart';
 import 'core/theme_notifier.dart';
 import 'presentation/home_page.dart';
 
-void main() {
+void main() async {
+  await HiveInitializer.initialize(tracker: TrackerType.goalManagement);
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
