@@ -8,9 +8,9 @@ class AppTypography {
 
   // Optionally define TextStyle presets for common use cases
   static final TextTheme textTheme = TextTheme(
-    displayLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 96, fontWeight: FontWeight.bold),
-    displayMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 60, fontWeight: FontWeight.bold),
-    displaySmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 48),
+    displayLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 96, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic, ),
+    displayMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 60, fontStyle: FontStyle.italic, ),
+    displaySmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 48, fontStyle: FontStyle.italic, ),
     headlineMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 34),
     headlineSmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 24),
     titleLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 20, fontWeight: FontWeight.w500),

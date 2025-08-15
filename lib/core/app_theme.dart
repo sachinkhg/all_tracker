@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'app_typography.dart';
 class AppTheme {
-  static const Color primaryLight = Colors.white;
-  static const Color primaryDark = Colors.black;
-  static const Color primaryGreen = Colors.green;
+  static const Color primaryLight = Color(0xFFFDFFFC);
+  static const Color primaryDark = Color(0xFF011627);
+  static const Color primaryGreen = Color(0xFF2EC4B6);
+  static const Color primaryRed = Color(0xFFE71D36);
+  static const Color primaryYellow = Color(0xFFFF9F1C);
+  
 
   static final ColorScheme lightColorScheme = ColorScheme(
     brightness: Brightness.light,
@@ -13,9 +16,9 @@ class AppTheme {
     secondary: primaryLight,
     onSecondary: primaryDark, 
     error: primaryLight, 
-    onError: primaryDark, 
+    onError: primaryRed, 
     surface: primaryLight, 
-    onSurface: primaryDark,
+    onSurface: primaryYellow,
   );
 
   static final ColorScheme darkColorScheme = ColorScheme(
@@ -24,22 +27,22 @@ class AppTheme {
     onPrimary: primaryLight,  
     secondary: primaryDark,
     onSecondary: primaryLight, 
-    error: primaryDark, 
-    onError: primaryLight, 
-    surface: primaryDark, 
-    onSurface: primaryLight,
+    error: primaryLight, 
+    onError: primaryRed, 
+    surface: primaryLight, 
+    onSurface: primaryYellow,
   );
 
   static final ColorScheme greenColorScheme = ColorScheme(
     brightness: Brightness.light,
-    primary: primaryGreen,
-    onPrimary: primaryLight,
-    secondary: primaryGreen,
-    onSecondary: primaryLight,
-    error: primaryGreen,
-    onError: primaryLight,
-    surface: primaryGreen,
-    onSurface: primaryLight,
+    primary: primaryLight,
+    onPrimary: primaryGreen,
+    secondary: primaryLight,
+    onSecondary: primaryGreen,
+    error: primaryLight, 
+    onError: primaryRed, 
+    surface: primaryLight, 
+    onSurface: primaryYellow,
   );
 
   static final ThemeData lightTheme = ThemeData(
