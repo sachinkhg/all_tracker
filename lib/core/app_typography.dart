@@ -14,10 +14,10 @@ class AppTypography {
     headlineMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 34),
     headlineSmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 24),
     titleLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 20, fontWeight: FontWeight.w500),
-    bodyLarge: TextStyle(fontFamily: secondaryFontFamily, fontSize: 16),
-    bodyMedium: TextStyle(fontFamily: secondaryFontFamily, fontSize: 14),
+    bodyLarge: TextStyle(fontFamily: secondaryFontFamily, fontSize: 16, fontWeight: FontWeight.w500),
+    bodyMedium: TextStyle(fontFamily: secondaryFontFamily, fontSize: 14,fontStyle: FontStyle.italic, ),
     labelLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 14, fontWeight: FontWeight.bold),
-    bodySmall: TextStyle(fontFamily: secondaryFontFamily, fontSize: 12),
+    bodySmall: TextStyle(fontFamily: secondaryFontFamily, fontSize: 14),
     labelSmall: TextStyle(fontFamily: secondaryFontFamily, fontSize: 10),
   );
 }
