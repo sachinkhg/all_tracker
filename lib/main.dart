@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'app_route.dart';
 import 'core/hive_initializer.dart';
 import 'core/theme_notifier.dart';
 import 'presentation/home_page.dart';
 
+
 void main() async {
   await HiveInitializer.initialize(tracker: TrackerType.goalManagement);
+
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
@@ -25,6 +28,8 @@ class AllTrackerApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: themeProvider.currentTheme,
       home: const HomePage(),
+      //home: const RootScaffold(),
+      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }
