@@ -20,8 +20,8 @@ class SharedHeader extends StatelessWidget {
     final horizontalPadding = screenWidth * 0.04; // 4% of screen width
     final verticalPaddingTop = screenWidth * 0.04;
     final verticalPaddingBottom = screenWidth * 0.02;
-    final iconButtonSize = screenWidth * 0.12; // icon container size (~48 at 400px width)
-    final iconSize = iconButtonSize * 0.5; // icon size relative to container
+    // final iconButtonSize = screenWidth * 0.12; // icon container size (~48 at 400px width)
+    // final iconSize = iconButtonSize * 0.5; // icon size relative to container
     final fontSize = screenWidth * 0.05; // font size (~20 at 400px width)
 
     return Container(

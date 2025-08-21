@@ -6,6 +6,7 @@ class SharedButton extends StatelessWidget {
   final Color? backgroundColor;
   final Color? textColor;
   final IconData? icon;
+  final int styleType; // 1 = regular button, 2 = text button
 
   const SharedButton({
     super.key,
@@ -14,6 +15,7 @@ class SharedButton extends StatelessWidget {
     this.backgroundColor,
     this.textColor,
     this.icon,
+    this.styleType = 1, // Default to existing style
   });
 
   @override
@@ -21,8 +23,8 @@ class SharedButton extends StatelessWidget {
     final theme = Theme.of(context);
 
     // Use theme colors if not provided
-    final btnBackground = backgroundColor ?? theme.colorScheme.primary;
-    final btnTextColor = textColor ?? theme.colorScheme.onPrimary;
+    final btnBackground = backgroundColor ?? theme.colorScheme.onPrimary;
+    final btnTextColor = textColor ?? theme.colorScheme.onSurface;
 
     // Responsive sizing based on screen width
     final screenWidth = MediaQuery.of(context).size.width;
@@ -33,6 +35,36 @@ class SharedButton extends StatelessWidget {
     final borderRadius = BorderRadius.circular(screenWidth * 0.03);
     final fontSize = screenWidth * 0.04; // ~4% of width
 
+    if (styleType == 2) {
+      // Text style button (No padding / background / border)
+      return TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: btnTextColor, size: fontSize * 1.2),
+              SizedBox(width: screenWidth * 0.02),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: fontSize,
+                color: btnTextColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Default style
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: btnBackground,
