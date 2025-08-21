@@ -1,31 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/hive_initializer.dart';
 import '../core/service_locator.dart';
 import '../goal_tracker/domain/usecases/goal_usecases.dart';
-import '../goal_tracker/presentation/bloc/goal_bloc.dart';
-import '../goal_tracker/presentation/bloc/goal_event.dart';
+import '../goal_tracker/domain/usecases/milestone_usecases.dart';
+import '../goal_tracker/presentation/bloc/bloc_service_provider.dart';
 import '../goal_tracker/presentation/pages/goal_list_page.dart';
 import '../presentation/settings_page.dart';
 //import '../presentation/webapp_screen.dart';
-
-/// A custom bottom navigation bar widget that displays a list of navigation items,
-/// each associated with an icon, label, and page. The selected page is shown above
-/// the navigation bar, and tapping an item switches to its corresponding page.
-/// 
-/// Usage:
-/// - Provide a list of [BottomBarItem]s, each specifying an icon, label, and page.
-/// - Optionally set [initialIndex] to specify the initially selected item.
-/// 
-/// Example:
-/// ```dart
-/// AppBottomBar(
-///   items: [
-///     BottomBarItem(icon: Icons.home, label: 'Home', page: HomePage()),
-///     BottomBarItem(icon: Icons.settings, label: 'Settings', page: SettingsPage()),
-///   ],
-/// )
-/// ```
 
 AppBottomBar createAppBottomBar() {
   return AppBottomBar(
@@ -35,6 +16,7 @@ AppBottomBar createAppBottomBar() {
         label: 'Home',
         content: Center(child: Text('Welcome to AllTracker Home!')),
       ),
+
       BottomBarItem(
         icon: Icons.flag,
         label: 'Goals',
@@ -48,15 +30,23 @@ AppBottomBar createAppBottomBar() {
               return Center(child: Text('Error loading Goals: ${snapshot.error}'));
             }
 
-            return BlocProvider(
-              create: (_) => GoalBloc(
-                getGoals: sl<GetGoals>(),
-                getGoalById: sl<GetGoalById>(),
-                addGoal: sl<AddGoal>(),
-                updateGoal: sl<UpdateGoal>(),
-                deleteGoal: sl<DeleteGoal>(),
-                clearAllGoals: sl<ClearAllGoals>(),
-              )..add(LoadGoals()),
+            return BlocServiceProvider(
+              // GoalBloc dependencies
+              getGoals: sl<GetGoals>(),
+              getGoalById: sl<GetGoalById>(),
+              addGoal: sl<AddGoal>(),
+              updateGoal: sl<UpdateGoal>(),
+              deleteGoal: sl<DeleteGoal>(),
+              clearAllGoals: sl<ClearAllGoals>(),
+
+              // MilestoneBloc dependencies
+              getMilestones: sl<GetMilestones>(),
+              getMilestoneById: sl<GetMilestoneById>(),
+              addMilestone: sl<AddMilestone>(),
+              updateMilestone: sl<UpdateMilestone>(),
+              deleteMilestone: sl<DeleteMilestone>(),
+              clearAllMilestones: sl<ClearAllMilestones>(),
+
               child: const GoalListPage(),
             );
           },
