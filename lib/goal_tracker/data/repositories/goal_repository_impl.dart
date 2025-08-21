@@ -3,9 +3,6 @@ import '../../domain/entities/goal.dart';
 import '../../domain/repositories/goal_repository.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../models/goal_model.dart';
-import '../models/milestone_model.dart';
-import '../models/task_model.dart';
-import '../models/checklist_model.dart';
 
 class GoalRepositoryImpl implements GoalRepository {
   final GoalLocalDataSource localDataSource;
@@ -54,26 +51,10 @@ class GoalRepositoryImpl implements GoalRepository {
       id: model.id,
       title: model.title,
       description: model.description,
-      milestones: model.milestones.map((milestone) {
-        return Milestone(
-          id: milestone.id,
-          title: milestone.title,
-          tasks: milestone.tasks.map((task) {
-            return Task(
-              id: task.id,
-              name: task.name,
-              completed: task.completed,
-              checklists: task.checklists.map((check) {
-                return Checklist(
-                  id: check.id,
-                  title: check.title,
-                  isCompleted: check.isCompleted,
-                );
-              }).toList(),
-            );
-          }).toList(),
-        );
-      }).toList(),
+      targetDate: model.targetDate,
+      // Instead of mapping milestones, map IDs only
+      milestoneIds: model.milestoneIds,
+      // You may optionally load milestones here from milestone box if needed (see note below)
     );
   }
 
@@ -82,26 +63,9 @@ class GoalRepositoryImpl implements GoalRepository {
       id: entity.id.isEmpty ? const Uuid().v4() : entity.id,
       title: entity.title,
       description: entity.description,
-      milestones: entity.milestones.map((milestone) {
-        return MilestoneModel(
-          id: milestone.id.isEmpty ? const Uuid().v4() : milestone.id,
-          title: milestone.title,
-          tasks: milestone.tasks.map((task) {
-            return TaskModel(
-              id: task.id.isEmpty ? const Uuid().v4() : task.id,
-              name: task.name,
-              completed: task.completed,
-              checklists: task.checklists.map((check) {
-                return ChecklistModel(
-                  id: check.id.isEmpty ? const Uuid().v4() : check.id,
-                  title: check.title,
-                  isCompleted: check.isCompleted,
-                );
-              }).toList(),
-            );
-          }).toList(),
-        );
-      }).toList(),
+      targetDate: entity.targetDate,
+      // Save only milestone IDs, not full objects
+      milestoneIds: entity.milestoneIds,
     );
   }
 }

@@ -2,50 +2,30 @@ class Goal {
   final String id;
   String title;
   String description;
-  List<Milestone> milestones;
+  DateTime? targetDate;
+  List<String> milestoneIds;
 
   Goal({
     required this.id,
     required this.title,
     required this.description,
-    List<Milestone>? milestones,
-  }) : milestones = milestones ?? [];
-}
+    this.targetDate,
+    List<String>? milestoneIds,
+  })  : milestoneIds = milestoneIds ?? [];
 
-class Milestone {
-  final String id;
-  String title;
-  List<Task> tasks;
-
-  Milestone({
-    required this.id,
-    required this.title,
-    List<Task>? tasks,
-  }) : tasks = tasks ?? [];
-}
-
-class Task {
-  final String id;
-  String name;
-  bool completed;
-  List<Checklist> checklists;
-
-  Task({
-    required this.id,
-    required this.name,
-    this.completed = false,
-    List<Checklist>? checklists,
-  }) : checklists = checklists ?? [];
-}
-
-class Checklist {
-  final String id;
-  String title;
-  bool isCompleted;
-
-  Checklist({
-    required this.id,
-    required this.title,
-    this.isCompleted = false,
-  });
+  Goal copyWith({
+    String? id,
+    String? title,
+    String? description,
+    DateTime? targetDate,
+    List<String>? milestoneIds,
+  }) {
+    return Goal(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      targetDate: targetDate ?? this.targetDate,
+      milestoneIds: milestoneIds ?? this.milestoneIds,
+    );
+  }
 }

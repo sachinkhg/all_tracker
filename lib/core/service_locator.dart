@@ -6,3 +6,4 @@ final sl = GetIt.instance;
 Future<void> initAppDI() async {
   await Hive.initFlutter();
 }
+

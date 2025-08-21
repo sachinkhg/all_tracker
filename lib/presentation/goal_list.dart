@@ -17,6 +17,7 @@ class Goal {
 }
 
 class GoalsListPage extends StatelessWidget {
+
   final List<Goal> goals = const [
     Goal(
       icon: Icons.public,
@@ -60,7 +61,7 @@ class GoalsListPage extends StatelessWidget {
           icon: goal.icon,
           iconBackgroundColor: goal.iconBackgroundColor,
           title: goal.title,
-          subtitle: goal.subtitle,
+          subtitle1: goal.subtitle,
           textColor: theme.colorScheme.onPrimary,
           inactiveTextColor: theme.colorScheme.onPrimary,
           backgroundColor: theme.colorScheme.primary,
@@ -68,4 +69,5 @@ class GoalsListPage extends StatelessWidget {
       },
     );
   }
+  
 }

@@ -1,4 +1,4 @@
-import '../../domain/entities/goal.dart';
+import '../../../domain/entities/goal.dart';
 
 abstract class GoalEvent {}
 
@@ -25,3 +25,9 @@ class DeleteGoalEvent extends GoalEvent {
 }
 
 class ClearAllGoalsEvent extends GoalEvent {}
+
+ class DeleteGoalAndMilestonesEvent extends GoalEvent {
+  final String goalId;
+  final List<String> milestoneIds;
+  DeleteGoalAndMilestonesEvent(this.goalId, this.milestoneIds);
+}

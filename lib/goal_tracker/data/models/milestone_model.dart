@@ -11,13 +11,16 @@ class MilestoneModel extends HiveObject {
   @HiveField(1)
   String title;
 
-  // Optional tasks
   @HiveField(2)
   List<TaskModel> tasks;
+
+  @HiveField(3)
+  DateTime? targetDate; // Defaults to now if not provided
 
   MilestoneModel({
     required this.id,
     required this.title,
     List<TaskModel>? tasks,
+    this.targetDate,
   }) : tasks = tasks ?? [];
 }

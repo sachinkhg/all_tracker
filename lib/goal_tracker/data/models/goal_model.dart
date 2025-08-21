@@ -1,5 +1,4 @@
 import 'package:hive/hive.dart';
-import 'milestone_model.dart';
 
 part 'goal_model.g.dart';
 
@@ -16,12 +15,16 @@ class GoalModel extends HiveObject {
 
   // Optional milestones
   @HiveField(3)
-  List<MilestoneModel> milestones;
+  List<String> milestoneIds;
+
+  @HiveField(4)
+  DateTime? targetDate;
 
   GoalModel({
     required this.id,
     required this.title,
     required this.description,
-    List<MilestoneModel>? milestones,
-  }) : milestones = milestones ?? [];
+    List<String>? milestoneIds,
+    this.targetDate,
+  })  : milestoneIds = milestoneIds ?? [];
 }
