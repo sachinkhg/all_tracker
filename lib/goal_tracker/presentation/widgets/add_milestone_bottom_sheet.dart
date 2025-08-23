@@ -2,15 +2,25 @@ import 'package:all_tracker/widgets/shared_date.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+
 import '../../../util/common_util.dart';
 import '../../../widgets/shared_text_box.dart';
 import '../../../widgets/shared_button.dart';
+
 import '../../domain/entities/goal.dart';
 import '../../domain/entities/milestone.dart';
-import '../bloc/goal/goal_bloc.dart';
-import '../bloc/goal/goal_event.dart';
-import '../bloc/milestone/milestone_bloc.dart';
-import '../bloc/milestone/milestone_event.dart';
+
+// ❌ remove bloc/event imports
+// import '../bloc/goal/goal_bloc.dart';
+// import '../bloc/goal/goal_event.dart';
+// import '../bloc/milestone/milestone_bloc.dart';
+// import '../bloc/milestone/milestone_event.dart';
+
+// ✅ add DI + usecases + cubits
+import '../../di/service_locator.dart'; // exposes getIt
+import '../../domain/usecases/milestone_usecases.dart';
+import '../bloc/milestone/milestone_list_cubit.dart';
+import '../bloc/goal/goal_list_cubit.dart';
 
 class AddMilestoneBottomSheet extends StatefulWidget {
   final void Function(String title, DateTime targetDate) onSubmit;
@@ -24,7 +34,7 @@ class AddMilestoneBottomSheet extends StatefulWidget {
 class _AddMilestoneBottomSheetState extends State<AddMilestoneBottomSheet> {
   final _titleController = TextEditingController();
   final _dateController = TextEditingController();
-  final _titleFocusNode = FocusNode(); // ✅ focus node
+  final _titleFocusNode = FocusNode();
 
   DateTime _selectedDate = DateTime.now();
 
@@ -32,10 +42,8 @@ class _AddMilestoneBottomSheetState extends State<AddMilestoneBottomSheet> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _titleFocusNode.requestFocus(); // ✅ autofocus
+      _titleFocusNode.requestFocus();
     });
-
-    // Initialize the date field text
     _dateController.text = formatDate(_selectedDate);
   }
 
@@ -47,16 +55,13 @@ class _AddMilestoneBottomSheetState extends State<AddMilestoneBottomSheet> {
     super.dispose();
   }
 
-void _handleSubmit() {
-  final title = _titleController.text.trim();
+  void _handleSubmit() {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) return;
+    widget.onSubmit(title, _selectedDate);
+    Navigator.of(context).pop();
+  }
 
-  if (title.isEmpty) return;
-  widget.onSubmit(title, _selectedDate);
-  Navigator.of(context).pop();
-}
-
-
-  // Callback when SharedDate picks a date
   void _handleDateSelected(DateTime date) {
     setState(() {
       _selectedDate = date;
@@ -70,7 +75,7 @@ void _handleSubmit() {
     final theme = Theme.of(context);
 
     return Padding(
-      padding: MediaQuery.of(context).viewInsets, // adjusts for keyboard
+      padding: MediaQuery.of(context).viewInsets,
       child: Container(
         padding: EdgeInsets.all(screenWidth * 0.05),
         decoration: BoxDecoration(
@@ -80,7 +85,7 @@ void _handleSubmit() {
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min, // Shrinks to fit content
+            mainAxisSize: MainAxisSize.min,
             children: [
               Center(
                 child: Container(
@@ -96,7 +101,8 @@ void _handleSubmit() {
               Text(
                 "Add Milestone",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,  color: theme.colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onPrimary,
                     ),
               ),
               SizedBox(height: screenWidth * 0.05),
@@ -126,62 +132,44 @@ void _handleSubmit() {
   }
 }
 
-// void openAddMilestonePopup(BuildContext context, Goal goal) {
-//   showModalBottomSheet(
-//     context: context,
-//     isScrollControlled: true,
-//     builder: (_) => BlocProvider.value(
-//       value: context.read<MilestoneBloc>(), // Re-use the existing MilestoneBloc instance
-//       child: AddMilestoneBottomSheet(
-//         onSubmit: (milestoneTitle, targetDate) {
-//           final milestoneId = const Uuid().v4();
-//           final milestone = Milestone(
-//             id: milestoneId,
-//             title: milestoneTitle,
-//             targetDate: targetDate,
-//           );
-
-//           // Dispatch event to add the milestone to the MilestoneBloc
-//           context.read<MilestoneBloc>().add(AddMilestoneEvent(milestone));
-
-//           // Dispatch event to update the goal's milestones
-//           context.read<GoalBloc>().add(UpdateGoalEvent(goal.copyWith(
-//             milestoneIds: List<String>.from(goal.milestoneIds)..add(milestoneId),
-//           )));
-//         },
-//       ),    
-
-//     ),
-//   );
-// }
-
-void openAddMilestonePopup(BuildContext context, Goal goal) {
+///
+/// Call this from MilestoneListPage:
+///   openAddMilestonePopup(context, goal,
+///     milestoneListCubit: context.read<MilestoneListCubit>(),
+///     goalListCubit: context.read<GoalListCubit>(), // optional
+///   );
+///
+void openAddMilestonePopup(
+  BuildContext context,
+  Goal goal, {
+  MilestoneListCubit? milestoneListCubit,
+  GoalListCubit? goalListCubit, // optional: refresh goals page if present
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     builder: (_) => MultiBlocProvider(
       providers: [
-        BlocProvider.value(
-          value: context.read<MilestoneBloc>(),
-        ),
-        BlocProvider.value(
-          value: context.read<GoalBloc>(),
-        ),
+        // pass the SAME page-scoped cubit instance down (safe/no re-creation)
+        if (milestoneListCubit != null) BlocProvider.value(value: milestoneListCubit),
+        if (goalListCubit != null) BlocProvider.value(value: goalListCubit),
       ],
       child: AddMilestoneBottomSheet(
-        onSubmit: (milestoneTitle, targetDate) {
+        onSubmit: (milestoneTitle, targetDate) async {
           final milestoneId = const Uuid().v4();
           final milestone = Milestone(
             id: milestoneId,
             title: milestoneTitle,
             targetDate: targetDate,
+            associatedGoalID: goal.id,
           );
 
-          // Now these will find the correct Bloc providers!
-          context.read<MilestoneBloc>().add(AddMilestoneEvent(milestone));
-          context.read<GoalBloc>().add(UpdateGoalEvent(goal.copyWith(
-            milestoneIds: List<String>.from(goal.milestoneIds)..add(milestoneId),
-          )));
+          // Persist via usecase
+          await getIt<AddMilestone>()(milestone);
+
+          // Refresh lists
+          milestoneListCubit?.load();   // refresh the milestones under this goal
+          goalListCubit?.load();       // (optional) refresh aggregated goal list
         },
       ),
     ),

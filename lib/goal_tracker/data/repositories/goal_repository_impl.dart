@@ -53,7 +53,7 @@ class GoalRepositoryImpl implements GoalRepository {
       description: model.description,
       targetDate: model.targetDate,
       // Instead of mapping milestones, map IDs only
-      milestoneIds: model.milestoneIds,
+      // milestoneIds: model.milestoneIds,
       // You may optionally load milestones here from milestone box if needed (see note below)
     );
   }
@@ -65,7 +65,7 @@ class GoalRepositoryImpl implements GoalRepository {
       description: entity.description,
       targetDate: entity.targetDate,
       // Save only milestone IDs, not full objects
-      milestoneIds: entity.milestoneIds,
+      // milestoneIds: entity.milestoneIds,
     );
   }
 }

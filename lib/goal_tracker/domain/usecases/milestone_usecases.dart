@@ -72,3 +72,12 @@ class ClearAllMilestones {
     return repository.clearAll();
   }
 }
+
+class GetMilestonesForGoal {
+  final MilestoneRepository repository;
+  GetMilestonesForGoal(this.repository);
+
+  Future<List<Milestone>> call(String associatedGoalID) {
+    return repository.getMilestonesForGoal(associatedGoalID);
+  }
+}

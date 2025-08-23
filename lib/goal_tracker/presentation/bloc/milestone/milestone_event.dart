@@ -25,3 +25,8 @@ class DeleteMilestoneEvent extends MilestoneEvent {
 }
 
 class ClearAllMilestonesEvent extends MilestoneEvent {}
+
+class GetMilestonesForGoalEvent extends MilestoneEvent {
+  final String associatedGoalID;
+  GetMilestonesForGoalEvent(this.associatedGoalID);
+}

@@ -1,7 +1,5 @@
 import 'package:hive/hive.dart';
-import 'task_model.dart';
-
-part 'milestone_model.g.dart';
+part 'milestone_model.g.dart';  
 
 @HiveType(typeId: 2)
 class MilestoneModel extends HiveObject {
@@ -12,7 +10,7 @@ class MilestoneModel extends HiveObject {
   String title;
 
   @HiveField(2)
-  List<TaskModel> tasks;
+  String? associatedGoalID;
 
   @HiveField(3)
   DateTime? targetDate; // Defaults to now if not provided
@@ -20,7 +18,7 @@ class MilestoneModel extends HiveObject {
   MilestoneModel({
     required this.id,
     required this.title,
-    List<TaskModel>? tasks,
+    this.associatedGoalID,
     this.targetDate,
-  }) : tasks = tasks ?? [];
+  });
 }

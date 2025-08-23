@@ -1,3 +1,4 @@
+// goal_state.dart
 import '../../../domain/entities/goal.dart';
 import '../../../domain/entities/milestone.dart';
 
@@ -11,10 +12,13 @@ class GoalLoaded extends GoalState {
   final List<Goal> goals;
   final Map<String, Milestone> allMilestonesMap;
   GoalLoaded(this.goals, this.allMilestonesMap);
+
+  @override
+  List<Object?> get props => [goals, allMilestonesMap];
 }
 
 class GoalDetailsLoaded extends GoalState {
-  final Goal? goal; // null if not found
+  final Goal? goal;
   GoalDetailsLoaded(this.goal);
 }
 

@@ -7,4 +7,5 @@ abstract class MilestoneRepository {
   Future<void> updateMilestone(Milestone milestone);
   Future<void> deleteMilestone(String id);
   Future<void> clearAll();
+  Future<List<Milestone>> getMilestonesForGoal(String associatedGoalID);
 }

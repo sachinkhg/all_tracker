@@ -1,12 +1,8 @@
 import 'package:uuid/uuid.dart';
-import '../../domain/entities/checklist.dart';
 import '../../domain/entities/milestone.dart';
-import '../../domain/entities/task.dart';
 import '../../domain/repositories/milestone_repository.dart';
 import '../datasources/milestone_local_data_source.dart';
 import '../models/milestone_model.dart';
-import '../models/task_model.dart';
-import '../models/checklist_model.dart';
 
 class MilestoneRepositoryImpl implements MilestoneRepository {
   final MilestoneLocalDataSource localDataSource;
@@ -46,6 +42,12 @@ class MilestoneRepositoryImpl implements MilestoneRepository {
     await localDataSource.clearAll();
   }
 
+  @override
+  Future<List<Milestone>> getMilestonesForGoal(String associatedGoalID) async {
+    final models = localDataSource.getMilestonesForGoal(associatedGoalID);
+    return models.map((m) => _mapModelToEntity(m)).toList();
+  }
+
   // ------------------------
   // Mapping Helpers
   // ------------------------
@@ -54,20 +56,7 @@ class MilestoneRepositoryImpl implements MilestoneRepository {
       id: model.id,
       title: model.title,
       targetDate: model.targetDate,
-      tasks: model.tasks.map((task) {
-        return Task(
-          id: task.id,
-          name: task.name,
-          completed: task.completed,
-          checklists: task.checklists.map((check) {
-            return Checklist(
-              id: check.id,
-              title: check.title,
-              isCompleted: check.isCompleted,
-            );
-          }).toList(),
-        );
-      }).toList(),
+      associatedGoalID: model.associatedGoalID
     );
   }
 
@@ -76,20 +65,7 @@ class MilestoneRepositoryImpl implements MilestoneRepository {
       id: entity.id.isEmpty ? const Uuid().v4() : entity.id,
       title: entity.title,
       targetDate: entity.targetDate,
-      tasks: entity.tasks.map((task) {
-        return TaskModel(
-          id: task.id.isEmpty ? const Uuid().v4() : task.id,
-          name: task.name,
-          completed: task.completed,
-          checklists: task.checklists.map((check) {
-            return ChecklistModel(
-              id: check.id.isEmpty ? const Uuid().v4() : check.id,
-              title: check.title,
-              isCompleted: check.isCompleted,
-            );
-          }).toList(),
-        );
-      }).toList(),
+      associatedGoalID: entity.associatedGoalID,
     );
   }
 }

@@ -19,7 +19,7 @@ class MilestoneModelAdapter extends TypeAdapter<MilestoneModel> {
     return MilestoneModel(
       id: fields[0] as String,
       title: fields[1] as String,
-      tasks: (fields[2] as List?)?.cast<TaskModel>(),
+      associatedGoalID: fields[2] as String?,
       targetDate: fields[3] as DateTime?,
     );
   }
@@ -33,7 +33,7 @@ class MilestoneModelAdapter extends TypeAdapter<MilestoneModel> {
       ..writeByte(1)
       ..write(obj.title)
       ..writeByte(2)
-      ..write(obj.tasks)
+      ..write(obj.associatedGoalID)
       ..writeByte(3)
       ..write(obj.targetDate);
   }

@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../domain/entities/task.dart';
 import '../../../domain/usecases/milestone_usecases.dart';
 import 'milestone_event.dart';
 import 'milestone_state.dart';
@@ -10,6 +11,7 @@ class MilestoneBloc extends Bloc<MilestoneEvent, MilestoneState> {
   final UpdateMilestone updateMilestone;
   final DeleteMilestone deleteMilestone;
   final ClearAllMilestones clearAllMilestones;
+  final GetMilestonesForGoal getMilestonesForGoal;
 
   MilestoneBloc({
     required this.getMilestones,
@@ -18,6 +20,7 @@ class MilestoneBloc extends Bloc<MilestoneEvent, MilestoneState> {
     required this.updateMilestone,
     required this.deleteMilestone,
     required this.clearAllMilestones,
+    required this.getMilestonesForGoal,
   }) : super(MilestoneInitial()) {
     on<LoadMilestones>(_onLoadMilestones);
     on<GetMilestoneDetails>(_onGetMilestoneDetails);
@@ -36,6 +39,7 @@ class MilestoneBloc extends Bloc<MilestoneEvent, MilestoneState> {
       emit(MilestoneError(e.toString()));
     }
   }
+
 
   Future<void> _onGetMilestoneDetails(GetMilestoneDetails event, Emitter<MilestoneState> emit) async {
     emit(MilestoneLoading());

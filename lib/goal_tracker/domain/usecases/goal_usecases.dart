@@ -1,5 +1,3 @@
-import 'package:all_tracker/goal_tracker/domain/repositories/milestone_repository.dart';
-
 import '../entities/goal.dart';
 import '../repositories/goal_repository.dart';
 

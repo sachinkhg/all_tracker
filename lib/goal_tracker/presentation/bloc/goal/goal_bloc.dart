@@ -1,31 +1,32 @@
+// goal_bloc.dart
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../domain/entities/milestone.dart';
 import '../../../domain/usecases/goal_usecases.dart';
 import '../../../domain/usecases/milestone_usecases.dart';
 import 'goal_event.dart';
 import 'goal_state.dart';
 
 class GoalBloc extends Bloc<GoalEvent, GoalState> {
-
   final GetGoals getGoals;
   final GetGoalById getGoalById;
   final AddGoal addGoal;
   final UpdateGoal updateGoal;
   final DeleteGoal deleteGoal;
   final ClearAllGoals clearAllGoals;
-  final GetMilestones getAllMilestones;
+
+  // Milestone use cases (Option‑2)
+  final GetMilestonesForGoal getAssociatedMilestones;
   final DeleteMilestone deleteMilestone;
 
-
-    GoalBloc({
+  GoalBloc({
     required this.getGoals,
     required this.getGoalById,
     required this.addGoal,
     required this.updateGoal,
     required this.deleteGoal,
     required this.clearAllGoals,
-    required this.getAllMilestones, 
-    required this.deleteMilestone, // <-- Add deleteMilestone here
-    // <-- And in constructor
+    required this.getAssociatedMilestones,
+    required this.deleteMilestone,
   }) : super(GoalInitial()) {
     on<LoadGoals>(_onLoadGoals);
     on<GetGoalDetails>(_onGetGoalDetails);
@@ -36,17 +37,43 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
     on<DeleteGoalAndMilestonesEvent>(_onDeleteGoalAndMilestones);
   }
 
-    Future<void> _onLoadGoals(LoadGoals event, Emitter<GoalState> emit) async {
-      emit(GoalLoading());
-      try {
-        final goals = await getGoals();
-        final allMilestonesList = await getAllMilestones(); // <-- Fetch all milestones
-        final allMilestonesMap = { for (var m in allMilestonesList) m.id : m };
-        emit(GoalLoaded(goals, allMilestonesMap));
-      } catch (e) {
-        emit(GoalError(e.toString()));
+  Future<void> _onLoadGoals(LoadGoals event, Emitter<GoalState> emit) async {
+    emit(GoalLoading());
+    try {
+      final goals = await getGoals();
+
+      final allMilestonesList = <Milestone>[];
+      for (final g in goals) {
+        final milestonesForGoal = await getAssociatedMilestones(g.id);
+        allMilestonesList.addAll(milestonesForGoal);
       }
+      final allMilestonesMap = { for (final m in allMilestonesList) m.id: m };
+
+      emit(GoalLoaded(goals, allMilestonesMap));
+    } catch (e) {
+      emit(GoalError(e.toString()));
     }
+  }
+
+
+  // Future<void> _onLoadGoals(LoadGoals event, Emitter<GoalState> emit) async {
+  //   emit(GoalLoading());
+  //   try {
+  //     final goals = await getGoals();
+
+  //     // Build a complete milestone map for all goals (Option‑2)
+  //     final List<Milestone> allMilestonesList = [];
+  //     for (final g in goals) {
+  //       final milestonesForGoal = await getAssociatedMilestones(g.id);
+  //       allMilestonesList.addAll(milestonesForGoal);
+  //     }
+  //     final allMilestonesMap = { for (final m in allMilestonesList) m.id: m };
+
+  //     emit(GoalLoaded(goals, allMilestonesMap));
+  //   } catch (e) {
+  //     emit(GoalError(e.toString()));
+  //   }
+  // }
 
   Future<void> _onGetGoalDetails(GetGoalDetails event, Emitter<GoalState> emit) async {
     emit(GoalLoading());
@@ -94,21 +121,23 @@ class GoalBloc extends Bloc<GoalEvent, GoalState> {
     }
   }
 
-Future _onDeleteGoalAndMilestones(
-  DeleteGoalAndMilestonesEvent event,
-  Emitter<GoalState> emit,
-) async {
-  try {
-    emit(GoalLoading());
+  Future _onDeleteGoalAndMilestones(
+    DeleteGoalAndMilestonesEvent event,
+    Emitter<GoalState> emit,
+  ) async {
+    try {
+      emit(GoalLoading());
 
-    // You need a Milestone delete use case injected, e.g. deleteMilestone
-    for (final milestoneId in event.milestoneIds) {
-      await deleteMilestone(milestoneId);
+      // Option‑2: derive milestones to delete by goalId
+      final milestones = await getAssociatedMilestones(event.goalId);
+      for (final m in milestones) {
+        await deleteMilestone(m.id);
+      }
+
+      await deleteGoal(event.goalId);
+      add(LoadGoals());
+    } catch (e) {
+      emit(GoalError(e.toString()));
     }
-    await deleteGoal(event.goalId);
-    add(LoadGoals());
-  } catch (e) {
-    emit(GoalError(e.toString()));
   }
-}
 }
