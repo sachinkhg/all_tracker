@@ -18,24 +18,27 @@ class TaskModelAdapter extends TypeAdapter<TaskModel> {
     };
     return TaskModel(
       id: fields[0] as String,
-      name: fields[1] as String,
-      completed: fields[2] as bool,
-      checklists: (fields[3] as List?)?.cast<ChecklistModel>(),
+      associatedMilestoneId: fields[1] as String,
+      name: fields[2] as String,
+      completed: fields[3] as bool,
+      dueDate: fields[4] as DateTime?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TaskModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(5)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.name)
+      ..write(obj.associatedMilestoneId)
       ..writeByte(2)
-      ..write(obj.completed)
+      ..write(obj.name)
       ..writeByte(3)
-      ..write(obj.checklists);
+      ..write(obj.completed)
+      ..writeByte(4)
+      ..write(obj.dueDate);
   }
 
   @override
