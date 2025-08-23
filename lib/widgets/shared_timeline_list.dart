@@ -120,6 +120,13 @@ class MonthTimelineList<T> extends StatelessWidget {
     // Example → "August 2025"
   }
 
+  String _formatMonthYearStacked(String key) {
+    final parts = key.split('-'); // ["2025", "08"]
+    final year = int.parse(parts[0]);
+    final month = int.parse(parts[1]);
+    final monthName = DateFormat.MMM().format(DateTime(year, month)); // "August"
+    return "$monthName\n$year";
+  }
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -134,7 +141,7 @@ class MonthTimelineList<T> extends StatelessWidget {
                 Column(
                   children: [
                     Text(
-                      _formatMonthYear(monthKey),
+                      _formatMonthYearStacked(monthKey),
                       style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
