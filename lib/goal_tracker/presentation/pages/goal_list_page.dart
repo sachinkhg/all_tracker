@@ -462,7 +462,7 @@ class GoalListPageView extends StatelessWidget {
       context,
       title: 'Create Goal',
       onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
-        await cubit.addGoal(name, desc, targetDate!, contxt!);
+        await cubit.addGoal(name, desc, targetDate, contxt, isCompleted);
       },
     );
   }
@@ -481,8 +481,9 @@ class GoalListPageView extends StatelessWidget {
       initialDescription: goal.description,
       initialTargetDate: goal.targetDate,
       initialContext: goal.context,
+      initialIsCompleted: goal.isCompleted,
       onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
-        await cubit.editGoal(goal.id, name, desc, targetDate!, contxt!, isCompleted);
+        await cubit.editGoal(goal.id, name, desc, targetDate, contxt, isCompleted);
       },
       onDelete: () async {
         context.read<GoalCubit>().removeGoal(goal.id);

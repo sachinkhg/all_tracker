@@ -182,7 +182,7 @@ class GoalCubit extends Cubit<GoalState> {
   /// Generates a UUID for the new goal id, constructs a [Goal] entity and
   /// invokes the domain create use-case. Reloads the goals after creation to
   /// refresh the master list.
-  Future<void> addGoal(String name, String description, DateTime? targetDate, String? context) async {
+  Future<void> addGoal(String name, String description, DateTime? targetDate, String? context, bool isCompleted) async {
     final id = const Uuid().v4();
     final goal = Goal(
       id: id,
@@ -190,6 +190,7 @@ class GoalCubit extends Cubit<GoalState> {
       description: description,
       targetDate: targetDate,
       context: context,
+      isCompleted: isCompleted,
     );
     await create(goal);
     await loadGoals();
@@ -206,6 +207,7 @@ class GoalCubit extends Cubit<GoalState> {
       description: description,
       targetDate: targetDate,
       context: context,
+      isCompleted: isCompleted,
     );
     await update(goal);
     await loadGoals();
