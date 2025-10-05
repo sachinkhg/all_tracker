@@ -1,43 +1,49 @@
 import 'package:hive/hive.dart';
 import '../models/goal_model.dart';
 
-class GoalLocalDataSource {
-  final Box<GoalModel> goalBox;
 
-  GoalLocalDataSource(this.goalBox);
+// Abstract data source for local goal storage
+abstract class GoalLocalDataSource {
+  Future<List<GoalModel>> getAllGoals();
+  Future<GoalModel?> getGoalById(String id);
+  Future<void> createGoal(GoalModel goal);
+  Future<void> updateGoal(GoalModel goal);
+  Future<void> deleteGoal(String id);
+}
 
-  // Retrieve all Goals from the box
-  List<GoalModel> getGoals() {
-    return goalBox.values.toList();
+
+// Hive implementation of GoalLocalDataSource
+class GoalLocalDataSourceImpl implements GoalLocalDataSource {
+  final Box<GoalModel> box;
+  GoalLocalDataSourceImpl(this.box);
+
+
+  @override
+  Future<void> createGoal(GoalModel goal) async {
+    await box.put(goal.id, goal);
   }
 
-  // Get a single Goal by id
-  GoalModel? getGoalById(String id) {
-    return goalBox.get(id);
-  }
 
-    // Get a single Goal by id
-  GoalModel? getGoalByName(String name) {
-    return goalBox.get(name);
-  }
-
-  // Add a new Goal
-  Future<void> addGoal(GoalModel goal) async {
-    await goalBox.put(goal.id, goal);
-  }
-
-  // Update an existing Goal
-  Future<void> updateGoal(GoalModel goal) async {
-    await goalBox.put(goal.id, goal);
-  }
-
-  // Delete a Goal by id
+  @override
   Future<void> deleteGoal(String id) async {
-    await goalBox.delete(id);
+    await box.delete(id);
   }
 
-  // Additional utility: Clear all goals (optional)
-  Future<void> clearAll() async {
-    await goalBox.clear();
+
+  @override
+  Future<GoalModel?> getGoalById(String id) async {
+    return box.get(id);
+  }
+
+
+  @override
+  Future<List<GoalModel>> getAllGoals() async {
+    return box.values.toList();
+  }
+
+
+  @override
+  Future<void> updateGoal(GoalModel goal) async {
+    await box.put(goal.id, goal);
   }
 }

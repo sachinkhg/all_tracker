@@ -44,6 +44,13 @@ dependencies:
   get_it: ^8.2.0
   intl: ^0.19.0
   path_provider: ^2.1.5
+  equatable: ^2.0.7
+  excel: ^4.0.6    # read/write xlsx
+  #file_picker: ^5.2.2 # choose versions from pub.dev
+  share_plus: ^8.0.0   # optional
+  file_selector: ^1.0.4
+  file_picker: ^8.0.7
+  permission_handler: ^12.0.1
 
 dev_dependencies:
   flutter_test:

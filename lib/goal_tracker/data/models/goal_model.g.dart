@@ -8,7 +8,7 @@ part of 'goal_model.dart';
 
 class GoalModelAdapter extends TypeAdapter<GoalModel> {
   @override
-  final int typeId = 3;
+  final int typeId = 0;
 
   @override
   GoalModel read(BinaryReader reader) {
@@ -18,24 +18,30 @@ class GoalModelAdapter extends TypeAdapter<GoalModel> {
     };
     return GoalModel(
       id: fields[0] as String,
-      title: fields[1] as String,
-      description: fields[2] as String,
+      name: fields[1] as String,
+      description: fields[2] as String?,
       targetDate: fields[3] as DateTime?,
+      context: fields[4] as String?,
+      isCompleted: fields[5] as bool,
     );
   }
 
   @override
   void write(BinaryWriter writer, GoalModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.title)
+      ..write(obj.name)
       ..writeByte(2)
       ..write(obj.description)
       ..writeByte(3)
-      ..write(obj.targetDate);
+      ..write(obj.targetDate)
+      ..writeByte(4)
+      ..write(obj.context)
+      ..writeByte(5)
+      ..write(obj.isCompleted);
   }
 
   @override

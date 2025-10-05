@@ -1,35 +1,61 @@
+import 'package:all_tracker/core/hive_initializer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'app_route.dart';
-import 'core/hive_initializer.dart';
+import 'core/app_typography.dart';
+
+import 'goal_tracker/presentation/pages/home_page.dart';
 import 'core/theme_notifier.dart';
-import 'presentation/home_page.dart';
 
+/// Box name constant for storing goals in Hive
+// const String GOAL_BOX = 'goals_box';
 
-void main() async {
-  await HiveInitializer.initialize(tracker: TrackerType.goalManagement);
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
 
+  // // Open the box for GoalModel objects
+  HiveInitializer.initialize();
+
+  // print('Printing all milestones in box:');
+  // for (var key in box.keys) {
+  //   var goal = box.get(key);
+  //   print('Key: $key, name: ${goal?.name}, targetDate: ${goal?.targetDate}, context: ${goal?.context}, isCompleted: ${goal?.isCompleted}');
+  // }
+
+  // Provide ThemeNotifier above the app so MyApp can read the current theme
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier(),
-      child: const AllTrackerApp(),
+      child: const MyApp(),
     ),
   );
 }
 
-class AllTrackerApp extends StatelessWidget {
-  const AllTrackerApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Read theme from ThemeNotifier
     final themeProvider = Provider.of<ThemeNotifier>(context);
+
+    // Merge AppTypography into the ThemeData returned by ThemeNotifier.
+    // This ensures the app uses the typography defined in core/app_typography.dart
+    final ThemeData mergedTheme = themeProvider.currentTheme.copyWith(
+      textTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+      primaryTextTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+    );
     return MaterialApp(
-      title: 'AllTracker',
+      title: 'Goal Tracker',
       debugShowCheckedModeBanner: false,
-      theme: themeProvider.currentTheme,
+      theme: mergedTheme,
+      // If you support an explicit darkTheme in ThemeNotifier, you can also
+      // merge typography into it. Here we reuse the same mergedTheme for both,
+      // but you can customize as needed.
+      darkTheme: themeProvider.currentTheme.copyWith(
+        textTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+        primaryTextTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+      ),
       home: const HomePage(),
-      //home: const RootScaffold(),
-      onGenerateRoute: AppRoutes.generateRoute,
     );
   }
 }

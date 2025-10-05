@@ -1,292 +1,423 @@
-import 'package:all_tracker/goal_tracker/presentation/bloc/milestone/milestone_list_cubit.dart';
-import 'package:all_tracker/goal_tracker/presentation/bloc/task/task_list_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:intl/intl.dart';
 
-import '../../../util/common_util.dart';
-import '../../../widgets/shared_timeline_list.dart';
 import '../../domain/entities/goal.dart';
-import '../../domain/entities/milestone.dart';
+import '../../features/goal_import_export.dart';
+import '../bloc/goal_cubit.dart';
+import '../bloc/goal_state.dart';
+import '../../core/injection.dart'; // factory that wires everything
 
-// Usecases + DI
-import '../../domain/usecases/goal_usecases.dart';
-import '../../domain/usecases/milestone_usecases.dart';
-import '../../di/service_locator.dart'; // exposes `getIt`
+// Shared component imports - adjust paths to your project
+import '../../../widgets/primary_app_bar.dart';
+import '../widgets/filter_group_bottom_sheet.dart';
+import '../widgets/goal_list_item.dart';
+import '../../../widgets/loading_view.dart';
+import '../../../widgets/error_view.dart';
+import '../widgets/goal_form_bottom_sheet.dart';
+import '../widgets/view_field_bottom_sheet.dart';
 
-// ✅ Use the Cubit version
-import '../bloc/goal/goal_list_cubit.dart';
-
-// UI widgets
-import '../../../widgets/shared_card.dart';
-import '../../../widgets/shared_button.dart';
-
-// Milestone flow (still using MilestoneBloc in your project)
-import '../bloc/milestone/milestone_bloc.dart';
-
-import '../widgets/add_goal_bottom_sheet.dart';
-import '../widgets/add_milestone_bottom_sheet.dart';
-import 'milestone_list_page.dart';
-
-class GoalListPage extends StatefulWidget {
+class GoalListPage extends StatelessWidget {
   const GoalListPage({super.key});
 
   @override
-  State<GoalListPage> createState() => _GoalListPageState();
-}
-
-class _GoalListPageState extends State<GoalListPage> {
-  late final GoalListCubit _cubit;
-
-  @override
-  void initState() {
-    super.initState();
-    _cubit = GoalListCubit(
-      getGoals: getIt<GetGoals>(),
-      getMilestonesForGoal: getIt<GetMilestonesForGoal>(),
-    )..load();
-  }
-
-  @override
-  void dispose() {
-    _cubit.close();
-    super.dispose();
-  }
-
-  void _onNavBarTap(int index) {
-    if (index == 0) {
-      Navigator.pushReplacementNamed(context, '/');
-    } else if (index == 1) {
-      Navigator.pushReplacementNamed(context, '/settings');
-    }
-  }
-
-  // ===== Common helper for Option 2 (Milestone.associatedGoalID) =====
-  List<Milestone> _milestonesForGoal(Map<String, Milestone> all, Goal goal) {
-    return all.values.where((m) => m.associatedGoalID == goal.id).toList();
-  }
-
-  List<String> _milestoneIdsForGoal(Map<String, Milestone> all, Goal goal) {
-    return _milestonesForGoal(all, goal).map((m) => m.id).toList();
-  }
-  // ==================================================================
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return BlocProvider.value(
-      value: _cubit,
-      child: Scaffold(
-        appBar: AppBar(title: const Text("Goals")),
-        body: SafeArea(
-          child: BlocBuilder<GoalListCubit, GoalListState>(
-            builder: (context, s) {
-              if (s.loading) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (s.error != null) {
-                return Center(child: Text('Error: ${s.error}'));
-              }
-
-              final goals = s.goals;
-              final allMilestonesMap = s.allMilestonesMap;
-
-              final sortedGoals =
-                  sortListByDate(goals, (goal) => goal.targetDate);
-              final byYear = groupByYear<Goal>(
-                  sortedGoals, (goal) => goal.targetDate);
-              final undated = filterItemsWithNullDate<Goal>(
-                  sortedGoals, (goal) => goal.targetDate);
-
-              // Sort years ascending
-              final yearKeys = byYear.keys.toList()..sort();
-
-              return ListView(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 24.0, horizontal: 16.0),
-                children: [
-                  YearTimelineList<Goal>(
-                    yearKeys: yearKeys,
-                    itemsByYear: byYear,
-                    itemBuilder: (context, goal) =>
-                        buildGoalCard(context, goal, allMilestonesMap),
-                  ),
-                  if (undated.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 32.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'No Target Date',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          for (final goal in undated)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: SharedCard(
-                                // onCardTap: () {
-                                //   Navigator.of(context).push(
-                                //     MaterialPageRoute(
-                                //       builder: (_) => MultiBlocProvider(
-                                //         providers: [
-                                //           BlocProvider.value(value: context.read<GoalListCubit>()),
-                                //           // pass through MilestoneBloc if MilestoneListPage depends on it
-                                //           BlocProvider.value(
-                                //             value: context.read<MilestoneBloc>(),
-                                //           ),
-                                //         ],
-                                //         child: MilestoneListPage(goalId: goal.id),
-                                //       ),
-                                //     ),
-                                //   );
-                                // },
-
-                                icon: Icons.flag,
-                                iconBackgroundColor:
-                                    Theme.of(context).colorScheme.primary,
-                                title: goal.title,
-                                actionButtonText: "ADD MILESTONE",
-                              onActionPressed: () => openAddMilestonePopup(
-                                context,
-                                goal,
-                                goalListCubit: context.read<GoalListCubit>(),
-                              ),
-                                actionListItems:
-                                    _milestoneIdsForGoal(allMilestonesMap, goal)
-                                            .isNotEmpty
-                                        ? buildLimitedMilestonesList(
-                                            _milestoneIdsForGoal(
-                                                allMilestonesMap, goal),
-                                            allMilestonesMap,
-                                          )
-                                        : null,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  if (yearKeys.isEmpty && undated.isEmpty)
-                    const Center(child: Text('No goals found')),
-                ],
-              );
-            },
-          ),
-        ),
-        bottomNavigationBar: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Add Goal button
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: SharedButton(
-                    label: "Add Goal",
-                    icon: Icons.add,
-                    onPressed: () => openAddGoalPopup(context, goalListCubit: _cubit),
-                  ),
-                ),
-              ),
-
-              // Bottom Nav Bar
-              BottomNavigationBar(
-                selectedItemColor: theme.colorScheme.onSurface,
-                unselectedItemColor: theme.colorScheme.primary,
-                backgroundColor: theme.colorScheme.onPrimary,
-                selectedLabelStyle: const TextStyle(
-                    fontSize: 9.0, fontWeight: FontWeight.w600),
-                unselectedLabelStyle: const TextStyle(fontSize: 8.0),
-                onTap: _onNavBarTap,
-                items: const [
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.home),
-                    label: 'Home',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Icon(Icons.settings),
-                    label: 'Settings',
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
+    return BlocProvider(
+      create: (_) => createGoalCubit()..loadGoals(),
+      child: const GoalListPageView(),
     );
   }
 }
 
-List<String> buildLimitedMilestonesList(
-  List<String> milestoneIds,
-  Map<String, Milestone> allMilestones,
-) {
-  final milestones = milestoneIds
-      .map((id) => allMilestones[id])
-      .whereType<Milestone>()
-      .toList();
+class GoalListPageView extends StatelessWidget {
+  const GoalListPageView({super.key});
 
-  final sortedMilestones =
-      sortListByDate(milestones, (milestone) => milestone.targetDate);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const PrimaryAppBar(title: 'Goal Tracker'),
+      body: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          children: [
+            // Expanded area for list / empty states
+            Expanded(
+              child: BlocConsumer<GoalCubit, GoalState>(
+                listenWhen: (prev, curr) => true,
+                listener: (context, state) {},
+                buildWhen: (prev, curr) => true,
+                builder: (context, state) {
+                  if (state is GoalsLoading) {
+                    return const LoadingView();
+                  }
 
-  if (sortedMilestones.length <= 3) {
-    return sortedMilestones.map((m) => m.title).toList();
-  } else {
-    return sortedMilestones.take(3).map((m) => m.title).toList()
-      ..add('... and ${sortedMilestones.length - 3} more');
-  }
-}
+                  if (state is GoalsLoaded) {
+                    final goals = state.goals;
+                    final cubit = context.read<GoalCubit>();
 
-Widget buildGoalCard(
-  BuildContext context,
-  Goal goal,
-  Map<String, Milestone> allMilestonesMap,
-) {
-  // Get this goal's milestones via associatedGoalID (Option 2)
-  final milestonesForGoal = allMilestonesMap.values
-      .where((m) => m.associatedGoalID == goal.id)
-      .toList();
+                    final bool filterActive = cubit.hasActiveFilters ||
+                        (cubit.currentContextFilter != null && cubit.currentContextFilter!.isNotEmpty) ||
+                        (cubit.currentTargetDateFilter != null && cubit.currentTargetDateFilter!.isNotEmpty) ||
+                        (cubit.currentGrouping != null && cubit.currentGrouping!.isNotEmpty);
 
-  final milestoneIdsForGoal = milestonesForGoal.map((m) => m.id).toList();
+                    if (goals.isEmpty) {
+                      final message = filterActive ? 'No goals found' : 'No goals yet';
 
-  return SharedCard(
-    icon: Icons.flag,
-    title: goal.title,
-    onCardTap: () {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (_) => MultiBlocProvider(
-            providers: [
-              BlocProvider.value(value: context.read<GoalListCubit>()),
-              // pass through MilestoneBloc if MilestoneListPage depends on it
-              BlocProvider.value(
-                value: context.read<MilestoneBloc>(),
+                      // Force a plain, unmistakable UI so we can detect it on screen
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(message, style: Theme.of(context).textTheme.titleMedium),
+                            const SizedBox(height: 8),
+                            if (filterActive)
+                              OutlinedButton(
+                                onPressed: () {
+                                  // quick debug: clear filters to show unfiltered data
+                                  context.read<GoalCubit>().clearFilters();
+                                },
+                                child: const Text('No goals found. Clear filters?'),
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // When there are goals, show optional filter label above the list.
+                    return Column(
+                      children: [
+                        if (filterActive) _buildFilterHeader(context, cubit),
+                        // List needs to expand to fill the remaining space
+                        Expanded(
+                          child: ListView.builder(
+                            itemCount: goals.length,
+                            itemBuilder: (context, index) {
+                              final g = goals[index];
+                              return GoalListItem(
+                                id: g.id,
+                                title: g.name,
+                                description: g.description ?? '',
+                                onEdit: () => _onEditGoal(context, g),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+
+                  if (state is GoalsError) {
+                    return ErrorView(
+                      message: state.message,
+                      onRetry: () => context.read<GoalCubit>().loadGoals(),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
               ),
-            ],
-            child: MilestoneListPage(goalId: goal.id),
-          ),
+            ),
+          ],
         ),
-      );
-    },
-    subtitle2Icon: Icons.calendar_today,
-    subtitle2: goal.targetDate != null
-        ? DateFormat('dd/MM/yyyy').format(goal.targetDate!)
-        : null,
-    actionButtonText: "ADD MILESTONE",
-    onActionPressed: () => openAddMilestonePopup(
+      ),
+      floatingActionButton: _buildFabColumn(context),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    );
+  }
+
+  Widget _buildFilterHeader(BuildContext context, GoalCubit cubit) {
+    final summary = _filterSummary(cubit);
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_alt, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              summary,
+              style: Theme.of(context).textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Edit filters',
+            icon: const Icon(Icons.edit, size: 20),
+            onPressed: () => _editFilters(context, cubit),
+          ),
+          IconButton(
+            tooltip: 'Clear filters',
+            icon: const Icon(Icons.clear, size: 20),
+            onPressed: () {
+              cubit.clearFilters();
+              // attempt to clear grouping as well by passing empty group value
+              // (keeps compatibility if applyGrouping expects a string)
+              try {
+                cubit.applyGrouping(groupBy: '');
+              } catch (_) {
+                // ignore if cubit doesn't support clearing grouping this way
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _filterSummary(GoalCubit cubit) {
+    final parts = <String>[];
+
+    if (cubit.currentContextFilter != null && cubit.currentContextFilter!.isNotEmpty) {
+      parts.add('Context: ${cubit.currentContextFilter}');
+    }
+    if (cubit.currentTargetDateFilter != null && cubit.currentTargetDateFilter!.isNotEmpty) {
+      parts.add('Date: ${cubit.currentTargetDateFilter}');
+    }
+    if (cubit.currentGrouping != null && cubit.currentGrouping!.isNotEmpty) {
+      parts.add('Group: ${cubit.currentGrouping}');
+    }
+
+    if (parts.isEmpty) {
+      // Fallback if hasActiveFilters is true but specific fields are empty
+      return 'Filters applied';
+    }
+
+    return parts.join(' • ');
+  }
+
+  Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
+    final result = await showModalBottomSheet<Map<String, dynamic>?>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
+      ),
+      builder: (ctx) => FilterGroupBottomSheet(
+        initialContext: cubit.currentContextFilter,
+        initialDateFilter: cubit.currentTargetDateFilter,
+        initialGrouping: cubit.currentGrouping,
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result.containsKey('context') || result.containsKey('targetDate')) {
+      final selectedContext = result['context'] as String?;
+      final selectedTargetDate = result['targetDate'] as String?;
+      context.read<GoalCubit>().applyFilter(
+            contextFilter: selectedContext,
+            targetDateFilter: selectedTargetDate,
+          );
+    }
+
+    if (result['groupBy'] != null && (result['groupBy'] as String).isNotEmpty) {
+      final groupBy = result['groupBy'] as String;
+      context.read<GoalCubit>().applyGrouping(groupBy: groupBy);
+    }
+  }
+
+   Widget _buildFabColumn(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Row 1: View + Filter
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'viewFab',
+              tooltip: 'Change View',
+              onPressed: () async {
+                final cubit = context.read<GoalCubit>();
+                Map<String, bool>? initial;
+
+                try {
+                  initial = (cubit as dynamic).visibleFields as Map<String, bool>?;
+                } catch (_) {
+                  initial = null;
+                }
+
+                final result = await showModalBottomSheet<Map<String, bool>?>(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
+                  ),
+                  builder: (ctx) => ViewFieldsBottomSheet(initial: initial),
+                );
+
+                if (result == null) return;
+
+                try {
+                  (cubit as dynamic).setVisibleFields(result);
+                } catch (e) {
+                  final enabled = result.entries
+                      .where((e) => e.value)
+                      .map((e) => e.key)
+                      .join(', ');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Visible fields: $enabled')),
+                  );
+                }
+              },
+              child: const Icon(Icons.remove_red_eye),
+            ),
+
+            const SizedBox(width: 8),
+            FloatingActionButton.small(
+              heroTag: 'filterGroupFab',
+              tooltip: 'Filter & Group',
+              onPressed: () async {
+                final cubit = context.read<GoalCubit>();
+                final result = await showModalBottomSheet<Map<String, dynamic>?>(
+                  context: context,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
+                  ),
+                  builder: (ctx) => FilterGroupBottomSheet(
+                    initialContext: cubit.currentContextFilter,
+                    initialDateFilter: cubit.currentTargetDateFilter,
+                    initialGrouping: cubit.currentGrouping,
+                  ),
+                );
+
+                if (result == null) return;
+
+                if (result.containsKey('context') || result.containsKey('targetDate')) {
+                  final selectedContext = result['context'] as String?;
+                  final selectedTargetDate = result['targetDate'] as String?;
+                  context.read<GoalCubit>().applyFilter(
+                        contextFilter: selectedContext,
+                        targetDateFilter: selectedTargetDate,
+                      );
+                }
+
+                // if (result['groupBy'] != null && (result['groupBy'] as String).isNotEmpty) {
+                //   final groupBy = result['groupBy'] as String;
+                //   context.read<GoalCubit>().applyGrouping(groupBy: groupBy);
+                // }
+              },
+              child: const Icon(Icons.filter_alt),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 10),
+
+        // Row 2: Add + More
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'addGoalFab',
+              tooltip: 'Add Goal',
+              onPressed: () => _onCreateGoal(context),
+              child: const Icon(Icons.add),
+            ),
+            const SizedBox(width: 12),
+            FloatingActionButton.small(
+              heroTag: 'moreFab',
+              tooltip: 'More actions',
+              onPressed: () => _showActionsSheet(context),
+              child: const Icon(Icons.more_vert),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  void _showActionsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
+      ),
+      builder: (BuildContext ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: const Text('Add Goal'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _onCreateGoal(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_download),
+                title: const Text('Export'),
+                onTap: () async {
+                  Navigator.of(ctx).pop();
+                  final state = context.read<GoalCubit>().state;
+                  final goals = state is GoalsLoaded ? state.goals : <Goal>[];
+                  final path = await exportGoalsToXlsx(context, goals);
+                  if (path != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('File exported')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.file_upload),
+                title: const Text('Import'),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  importGoalsFromXlsx(context);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _onCreateGoal(BuildContext context) {
+    final cubit = context.read<GoalCubit>();
+    GoalFormBottomSheet.show(
       context,
-      goal,
-      goalListCubit: context.read<GoalListCubit>(), // refresh goals after save
-    ),
-    actionListItems: milestoneIdsForGoal.isNotEmpty
-        ? buildLimitedMilestonesList(milestoneIdsForGoal, allMilestonesMap)
-        : null,
-  );
+      title: 'Create Goal',
+      onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
+        await cubit.addGoal(name, desc, targetDate!, contxt!);
+      },
+    );
+  }
+
+  void _onEditGoal(BuildContext context, Goal goal) {
+    final cubit = context.read<GoalCubit>();
+    GoalFormBottomSheet.show(
+      context,
+      title: 'Edit Goal',
+      initialName: goal.name,
+      initialDescription: goal.description,
+      initialTargetDate: goal.targetDate,
+      initialContext: goal.context,
+      onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
+        await cubit.editGoal(goal.id, name, desc, targetDate!, contxt!, isCompleted);
+      },
+      onDelete: () async {
+        context.read<GoalCubit>().removeGoal(goal.id);
+      },
+    );
+  }
 }

@@ -4,20 +4,45 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTypography {
   // Define your font families here
   static final String primaryFontFamily = GoogleFonts.lato().fontFamily!;
-  static final String secondaryFontFamily = GoogleFonts.openSans().fontFamily!;
+  // static final String secondaryFontFamily = GoogleFonts.openSans().fontFamily!;
 
-  // Optionally define TextStyle presets for common use cases
-  static final TextTheme textTheme = TextTheme(
-    displayLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 96, fontWeight: FontWeight.bold, fontStyle: FontStyle.italic, ),
-    displayMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 60, fontStyle: FontStyle.italic, ),
-    displaySmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 48, fontStyle: FontStyle.italic, ),
-    headlineMedium: TextStyle(fontFamily: primaryFontFamily, fontSize: 34),
-    headlineSmall: TextStyle(fontFamily: primaryFontFamily, fontSize: 24),
-    titleLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 20, fontWeight: FontWeight.w500),
-    bodyLarge: TextStyle(fontFamily: secondaryFontFamily, fontSize: 16, fontWeight: FontWeight.w500),
-    bodyMedium: TextStyle(fontFamily: secondaryFontFamily, fontSize: 14,fontStyle: FontStyle.italic, ),
-    labelLarge: TextStyle(fontFamily: primaryFontFamily, fontSize: 14, fontWeight: FontWeight.bold),
-    bodySmall: TextStyle(fontFamily: secondaryFontFamily, fontSize: 14),
-    labelSmall: TextStyle(fontFamily: secondaryFontFamily, fontSize: 10),
-  );
+  /// Build a text theme with dynamic colors from [colorScheme].
+  static TextTheme textTheme(ColorScheme colorScheme) {
+    return TextTheme(
+      headlineSmall: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 24,
+        color: colorScheme.primary,
+      ),
+      titleLarge: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 20,
+        fontWeight: FontWeight.w500,
+        color: colorScheme.primary, // titles use primary
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 16,
+        fontWeight: FontWeight.w500,
+        color: colorScheme.primary,
+      ),
+      bodyMedium: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 14,
+        fontStyle: FontStyle.italic,
+        color: colorScheme.primary,
+      ),
+      labelLarge: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 14,
+        fontWeight: FontWeight.bold,
+        color: colorScheme.secondary,
+      ),
+      bodySmall: TextStyle(
+        fontFamily: primaryFontFamily,
+        fontSize: 14,
+        color: colorScheme.primary.withOpacity(0.8),
+      ),
+    );
+  }
 }
