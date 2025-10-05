@@ -1,4 +1,31 @@
 // lib/features/goals/goal_import_export.dart
+/* 
+  purpose:
+    - Helpers for importing/exporting Goal data to/from XLSX files.
+    - Acts as a thin DTO layer for spreadsheet I/O: maps spreadsheet columns
+      to the domain Goal entity fields (id, name, description, targetDate, context, isCompleted).
+    - NOT a Hive model file — however these helpers must remain compatible with
+      the domain entity shape used by the rest of the app.
+
+  serialization rules:
+    - id: optional in import. When present, used to update an existing goal; when absent, a new goal is created.
+    - name: required for import rows. Empty/blank names will cause the row to be skipped.
+    - description: nullable/empty string allowed.
+    - target_date: nullable. Exported in DD/MM/YYYY format. Import accepts DateTime objects,
+      ISO-like strings, or common localized formats (dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy).
+    - context: nullable. When importing, values are validated case-insensitively against kContextOptions;
+      invalid values are treated as null (no update).
+    - is_completed: exported as "Yes"/"No". Import accepts booleans, numeric 1/0, and common yes/no strings.
+      If missing, defaults to false for import (the caller can decide otherwise in cubit methods).
+
+  compatibility guidance:
+    - Spreadsheet column order is flexible: headers are mapped case-insensitively and normalized (underscores/spaces removed).
+    - Do NOT reuse or rename existing header tokens without updating any documentation and migration notes.
+    - If you add new exported/imported columns, update migration_notes.md and README/ARCHITECTURE where import/export is referenced.
+    - Keep column canonical names stable: id, name, description, target_date, context, is_completed.
+    - Changing the date serialization format requires communicating the change to users and updating parsing helpers (_parseExcelDate).
+*/
+
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -20,18 +47,22 @@ import '../core/constants.dart'; // <-- adjust path if your constants file is el
 String _formatDateDdMmYyyy(DateTime d) =>
     '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-/// Try to parse a value coming from an Excel cell into a DateTime.
-/// Supports:
-///  - actual DateTime objects (excel package may give DateTime)
+/// Attempts to parse various representations of dates found in Excel cells.
+/// Accepts:
+///  - DateTime objects (some excel libs return DateTime directly)
 ///  - ISO-like strings (DateTime.parse)
-///  - dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy
+///  - Common localized formats: dd/mm/yyyy, dd-mm-yyyy, dd.mm.yyyy
+///
+/// Returns null when parsing fails or input is empty.
+///
+/// Note: If you change accepted formats, update header docs and migration notes.
 DateTime? _parseExcelDate(dynamic raw) {
   if (raw == null) return null;
   if (raw is DateTime) return raw;
   final s = raw.toString().trim();
   if (s.isEmpty) return null;
 
-  // Try ISO-like parse first
+  // Try ISO-like parse first (covers "2024-01-02T..." and "2024-01-02")
   try {
     return DateTime.parse(s);
   } catch (_) {}
@@ -43,7 +74,7 @@ DateTime? _parseExcelDate(dynamic raw) {
       final day = int.parse(parts[0]);
       final month = int.parse(parts[1]);
       final year = int.parse(parts[2]);
-      // Basic validity check
+      // Basic validity check — protects against malformed values
       if (year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
         return DateTime(year, month, day);
       }
@@ -55,9 +86,14 @@ DateTime? _parseExcelDate(dynamic raw) {
   return null;
 }
 
-/// Validate a context value read from Excel against kContextOptions.
-/// Returns the canonical option (from kContextOptions) when matched (case-insensitive),
-/// or null if not matched / empty.
+/// Validate and canonicalize a context value read from Excel against kContextOptions.
+///
+/// Returns:
+///  - the canonical option from kContextOptions if matched case-insensitively
+///  - null if not matched or blank
+///
+/// Rationale:
+///  - Keeps storage consistent (avoids storing "Home" vs "home" vs "HOME")
 String? _normalizeAndValidateContext(String? raw) {
   if (raw == null) return null;
   final s = raw.trim();
@@ -69,11 +105,12 @@ String? _normalizeAndValidateContext(String? raw) {
 }
 
 /// Parse a cell into a boolean for is_completed column.
-/// Accepts a variety of inputs:
-/// - bool true/false
-/// - numeric 1/0
-/// - strings: 'yes','y','true','1' -> true; 'no','n','false','0' -> false
-/// Returns null when the cell is empty/blank -> caller can decide default (we use false)
+/// Accepts:
+///  - bool true/false
+///  - numeric 1/0
+///  - strings: 'yes','y','true','1' -> true; 'no','n','false','0' -> false
+///
+/// Returns null when the cell is empty/blank — caller interprets as default (we use false).
 bool? _parseYesNo(dynamic raw) {
   if (raw == null) return null;
   if (raw is bool) return raw;
@@ -94,7 +131,13 @@ bool? _parseYesNo(dynamic raw) {
   return null;
 }
 
-/// Export goals to XLSX. Returns the final saved path (if available) or null.
+/// Export a list of [goals] into an XLSX file and trigger system share/save.
+///
+/// Returns the saved file path on success, or null on failure.
+///
+/// Notes:
+///  - Columns exported: id, name, description, target_date (DD/MM/YYYY), context, is_completed (Yes/No)
+///  - target_date uses DD/MM/YYYY for human-readability; import accepts multiple formats.
 Future<String?> exportGoalsToXlsx(BuildContext context, List<Goal> goals) async {
   final excel = Excel.createExcel();
   final sheetName = excel.getDefaultSheet() ?? 'Sheet1';
@@ -172,7 +215,20 @@ Future<String?> exportGoalsToXlsx(BuildContext context, List<Goal> goals) async 
   }
 }
 
-/// Import goals from selected XLSX file. Uses file_selector openFile.
+/// Import goals from an XLSX file selected by the user using file_selector.
+///
+/// Behaviour summary:
+///  - Reads the first sheet.
+///  - First row is treated as header and is normalized (lowercased, spaces/underscores removed).
+///  - Required column: 'name'. Optional: id, description, target_date, context, is_completed.
+///  - When 'id' is present and non-empty, attempts to edit existing goal; on failure falls back to create.
+///  - When 'id' is absent, creates a new goal.
+///
+/// Shows user-facing SnackBars for common error states.
+///
+/// Important:
+///  - Header matching is flexible but relies on canonical tokens:
+///    id, name, description, target_date (normalized to 'targetdate'), context, is_completed (normalized to 'iscompleted')
 Future<void> importGoalsFromXlsx(BuildContext context) async {
   try {
     // Filter for xlsx/xls
@@ -288,7 +344,13 @@ Future<void> importGoalsFromXlsx(BuildContext context) async {
   }
 }
 
-/// Download / share a template XLSX (header only).
+/// Generate and offer a header-only template XLSX for users to download or share.
+///
+/// Template columns (canonical names): id, name, description, target_date, context, is_completed
+///
+/// Notes:
+///  - Uses getSaveLocation where desktop/desktop-like environments are available,
+///    otherwise falls back to saving to application documents and triggering a share.
 Future<String?> downloadGoalsTemplate(BuildContext context) async {
   final excel = Excel.createExcel();
   final sheetName = excel.getDefaultSheet() ?? 'Sheet1';
@@ -341,6 +403,14 @@ const MethodChannel _androidSaveChannel = MethodChannel('app.channel.savefile');
 
 /// Requests Android Save As dialog and writes [bytes] into the chosen location with [fileName].
 /// Returns a platform-specific string (URI path) on success, or null if user cancelled / failed.
+///
+/// Platform note:
+///  - This method is a no-op (returns null) on non-Android platforms.
+///  - The 'saveFile' method name is expected to be implemented in Android native layer.
+///  - The bytes are sent binary-safe via standard method channel codec.
+///
+/// Error handling:
+///  - PlatformException logs the message and returns null.
 Future<String?> androidSaveFile(Uint8List bytes, String fileName) async {
   if (!defaultTargetPlatform.toString().contains('android')) return null;
 

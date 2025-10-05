@@ -5,9 +5,55 @@ import 'package:flutter/material.dart';
 import '../../../widgets/context_dropdown_bottom_sheet.dart';
 import '../../../widgets/date_picker_bottom_sheet.dart';
 
-/// Goal form bottom sheet updated to include Target Date, Context, and Completion check.
-/// onSubmit signature: Future<void> Function(String name, String desc, DateTime? targetDate, String? context, bool isCompleted)
+/// ---------------------------------------------------------------------------
+/// GoalFormBottomSheet
+///
+/// File purpose:
+/// - Provides a unified bottom sheet for creating or editing Goal entities.
+/// - Supports entry of key Goal attributes: name, description, target date,
+///   context, and completion state.
+/// - This widget is used for both new-goal creation and goal updates, adapting
+///   its layout and available actions (delete/completion checkbox) accordingly.
+///
+/// Form fields and behavior:
+/// - Name and description: standard text input fields.
+/// - Context: selected from a list of predefined options using
+///   [ContextDropdownBottomSheet].
+/// - Target date: chosen via [DatePickerBottomSheet].
+/// - Mark as Completed: checkbox, visible only during edit mode (when onDelete
+///   is provided).
+///
+/// Serialization and compatibility notes:
+/// - Form inputs map directly to domain entity fields (Goal.name, Goal.desc,
+///   Goal.targetDate, Goal.context, Goal.isCompleted).
+/// - Nullable values (context, targetDate) are treated as optional.
+/// - When modifying parameters or adding new fields:
+///   * Update onSubmit signature and ensure existing callers are migrated.
+///   * Record field additions or behavioral changes in migration_notes.md.
+///
+/// Developer guidance:
+/// - Keep validation and transformation minimal; domain-level validation
+///   should occur in the Goal use cases or repository.
+/// - The bottom sheet should not depend on Bloc or Cubit directly; parent
+///   layers handle submission and data refresh.
+/// - Use Theme colors to maintain consistent look across light/dark modes.
+/// ---------------------------------------------------------------------------
+
 class GoalFormBottomSheet {
+  /// Displays the goal creation/editing modal sheet.
+  ///
+  /// [onSubmit] executes when the user taps "Save".
+  /// [onDelete] (optional) enables deletion and completion checkbox (edit mode).
+  /// [initial*] parameters prefill the form when editing an existing goal.
+  ///
+  /// Signature:
+  /// Future<void> Function(
+  ///   String name,
+  ///   String desc,
+  ///   DateTime? targetDate,
+  ///   String? context,
+  ///   bool isCompleted,
+  /// )
   static Future<void> show(
     BuildContext context, {
     String? initialName,
@@ -26,15 +72,19 @@ class GoalFormBottomSheet {
     Future<void> Function()? onDelete,
     String title = 'Create Goal',
   }) {
+    // Text controllers for user input fields
     final nameCtrl = TextEditingController(text: initialName ?? '');
     final descCtrl = TextEditingController(text: initialDescription ?? '');
+
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
+    // Mutable local state for context/date selections and completion toggle.
     DateTime? selectedDate = initialTargetDate;
     String? selectedContext = initialContext;
     bool isCompleted = initialIsCompleted;
 
+    // Simple date formatting for display.
     String _formatDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/'
         '${d.year}';
@@ -59,7 +109,8 @@ class GoalFormBottomSheet {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header Row with Title + Delete (if edit mode)
+                    // --- Header ---
+                    // Displays the form title and optional delete button.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -76,7 +127,8 @@ class GoalFormBottomSheet {
                     ),
                     const SizedBox(height: 16),
 
-                    // Name
+                    // --- Name Field ---
+                    // Required; must be non-empty before submission.
                     TextField(
                       controller: nameCtrl,
                       style: TextStyle(color: cs.primary),
@@ -88,7 +140,8 @@ class GoalFormBottomSheet {
                     ),
                     const SizedBox(height: 12),
 
-                    // Description
+                    // --- Description Field ---
+                    // Optional multi-line text input for goal details.
                     TextField(
                       controller: descCtrl,
                       style: TextStyle(color: cs.primary),
@@ -101,7 +154,8 @@ class GoalFormBottomSheet {
                     ),
                     const SizedBox(height: 12),
 
-                    // Context row (dropdown)
+                    // --- Context Selector ---
+                    // Displays a dropdown-like row that opens a custom picker.
                     Row(
                       children: [
                         Expanded(
@@ -119,6 +173,7 @@ class GoalFormBottomSheet {
                                     options: kContextOptions,
                                   );
                                   if (picked == null) return;
+                                  // Update context selection. Empty strings reset to null.
                                   setState(() => selectedContext = picked.isEmpty ? null : picked);
                                 },
                                 child: Container(
@@ -156,7 +211,8 @@ class GoalFormBottomSheet {
 
                     const SizedBox(height: 12),
 
-                    // Target Date row
+                    // --- Target Date Selector ---
+                    // Uses a custom bottom sheet for date picking. Supports clearing.
                     Row(
                       children: [
                         Expanded(
@@ -174,6 +230,7 @@ class GoalFormBottomSheet {
                                   );
 
                                   if (picked == null) return;
+                                  // 0 timestamp conventionally means "no date" (reset).
                                   setState(() {
                                     if (picked.millisecondsSinceEpoch == 0) {
                                       selectedDate = null;
@@ -217,7 +274,8 @@ class GoalFormBottomSheet {
 
                     const SizedBox(height: 16),
 
-                    //"Mark as Completed" checkbox (visible only in Edit mode)
+                    // --- Completion Checkbox ---
+                    // Appears only in edit mode (when onDelete is provided).
                     if (onDelete != null)
                       CheckboxListTile(
                         contentPadding: EdgeInsets.zero,
@@ -228,7 +286,8 @@ class GoalFormBottomSheet {
 
                     const SizedBox(height: 20),
 
-                    // Action buttons
+                    // --- Action Buttons ---
+                    // Provides Cancel and Save controls aligned to the right.
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -245,6 +304,7 @@ class GoalFormBottomSheet {
                           onPressed: () async {
                             final name = nameCtrl.text.trim();
                             final desc = descCtrl.text.trim();
+                            // Minimal validation: name required.
                             if (name.isEmpty) return;
                             await onSubmit(name, desc, selectedDate, selectedContext, isCompleted);
                             // ignore: use_build_context_synchronously

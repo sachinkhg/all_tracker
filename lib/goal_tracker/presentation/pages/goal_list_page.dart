@@ -1,3 +1,25 @@
+// ./lib/goal_tracker/presentation/pages/goal_list_page.dart
+/*
+  purpose:
+    - Presentation layer page that displays the list of Goal entities and related actions.
+    - Responsible for wiring the GoalCubit for this screen, rendering loading/error/empty states,
+      and providing user actions (create, edit, filter, import/export).
+    - Keeps UI concerns only — all business logic lives in GoalCubit / domain use cases.
+
+  behavior & notes:
+    - Uses createGoalCubit() from core/injection.dart to obtain a properly-wired cubit instance.
+    - The page expects the cubit to expose:
+        * loadGoals()
+        * addGoal(...)
+        * editGoal(...)
+        * removeGoal(...)
+        * hasActiveFilters, currentContextFilter, currentTargetDateFilter, currentGrouping
+      If your cubit uses different names, update either the cubit or this page accordingly.
+    - Import/Export features delegate to features/goal_import_export.dart helpers.
+    - UI-level defensive coding is used around optional cubit members (casting to dynamic)
+      to preserve compatibility with multiple cubit implementations.
+*/
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -16,6 +38,11 @@ import '../../../widgets/error_view.dart';
 import '../widgets/goal_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 
+/// Page that provides a BlocProvider for [GoalCubit] and hosts [GoalListPageView].
+///
+/// Responsibility:
+///  - Bootstraps the cubit for this screen and triggers initial load (loadGoals).
+///  - Keeps wiring separate from the view to simplify testing.
 class GoalListPage extends StatelessWidget {
   const GoalListPage({super.key});
 
@@ -28,6 +55,10 @@ class GoalListPage extends StatelessWidget {
   }
 }
 
+/// The main view for displaying goals, filters, and floating action buttons.
+///
+/// This widget is presentation-only: it subscribes to [GoalCubit] state changes
+/// via BlocConsumer and delegates actions back to the cubit. No data logic here.
 class GoalListPageView extends StatelessWidget {
   const GoalListPageView({super.key});
 
@@ -123,6 +154,12 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
+  /// Builds a compact header that summarizes active filters and provides quick actions.
+  ///
+  /// Notes:
+  ///  - Reads values from [GoalCubit] and shows canonical text (see _filterSummary).
+  ///  - The 'Clear filters' action attempts to also clear grouping; a try/catch
+  ///    is used to remain compatible with cubit implementations that might not expose applyGrouping.
   Widget _buildFilterHeader(BuildContext context, GoalCubit cubit) {
     final summary = _filterSummary(cubit);
 
@@ -169,6 +206,9 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
+  /// Constructs a human-readable summary of active filters from [cubit].
+  ///
+  /// Returns 'Filters applied' when hasActiveFilters is true but no specific fields are present.
   String _filterSummary(GoalCubit cubit) {
     final parts = <String>[];
 
@@ -190,6 +230,11 @@ class GoalListPageView extends StatelessWidget {
     return parts.join(' • ');
   }
 
+  /// Shows the filter/group bottom sheet and applies results to the cubit.
+  ///
+  /// Behavior:
+  ///  - Opens [FilterGroupBottomSheet] with initial values from [cubit].
+  ///  - Applies context/targetDate filter and grouping if provided in the result map.
   Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
     final result = await showModalBottomSheet<Map<String, dynamic>?>(
       context: context,
@@ -221,6 +266,15 @@ class GoalListPageView extends StatelessWidget {
     }
   }
 
+   /// Builds the stacked floating action buttons used on the page.
+   ///
+   /// Layout:
+   ///  - Row 1: View (visible fields) + Filter & Group
+   ///  - Row 2: Add Goal + More actions (export/import)
+   ///
+   /// Notes:
+   ///  - Defensive casting to `dynamic` is used when accessing optional cubit members
+   ///    (visibleFields / setVisibleFields) so this UI remains compatible with different cubit shapes.
    Widget _buildFabColumn(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -333,6 +387,12 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
+  /// Shows the bottom sheet with additional actions (Add, Export, Import).
+  ///
+  /// Export:
+  ///  - Reads current state from cubit; if loaded, exports that list, otherwise exports empty list.
+  /// Import:
+  ///  - Calls importGoalsFromXlsx which opens file picker and performs import.
   void _showActionsSheet(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
@@ -392,6 +452,10 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
+  /// Opens the create-goal form bottom sheet and delegates creation to the cubit.
+  ///
+  /// Note: The onSubmit callback currently assumes targetDate and contxt are non-null;
+  /// the form must enforce these or adapt the call signature accordingly.
   void _onCreateGoal(BuildContext context) {
     final cubit = context.read<GoalCubit>();
     GoalFormBottomSheet.show(
@@ -403,6 +467,11 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
+  /// Opens the edit form pre-filled with [goal] and delegates update/delete to the cubit.
+  ///
+  /// Notes:
+  ///  - onSubmit passes isCompleted through — ensure cubit.editGoal signature matches.
+  ///  - onDelete delegates to removeGoal on the cubit.
   void _onEditGoal(BuildContext context, Goal goal) {
     final cubit = context.read<GoalCubit>();
     GoalFormBottomSheet.show(

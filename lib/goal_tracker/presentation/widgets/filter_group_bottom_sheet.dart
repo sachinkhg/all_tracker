@@ -2,6 +2,36 @@
 import 'package:flutter/material.dart';
 import '../../core/constants.dart'; // path to kContextOptions
 
+/// ---------------------------------------------------------------------------
+/// FilterGroupBottomSheet
+///
+/// File purpose:
+/// - Provides a modal bottom-sheet UI that allows users to filter and (later)
+///   group goals. Contains two tabs: "Filter" and "Group".
+/// - Filter tab supports: context selection (from kContextOptions) and a set
+///   of predefined target-date filters (This Month, This Year, etc.).
+/// - Group tab is a placeholder for future grouping features.
+///
+/// Interaction & UX rules:
+/// - Uses a DefaultTabController so TabBar and TabBarView have a controller
+///   without requiring an external TabController (prevents "No TabController"
+///   errors when this widget is shown in isolation).
+/// - Respects keyboard insets (viewInsets) so form UI doesn't get covered by
+///   the on-screen keyboard. The padding is applied only while visible so the
+///   sheet does not permanently reserve extra bottom space.
+/// - Returns a map with the selected filters when "Apply Filter" is pressed:
+///   { "context": String? , "targetDate": String? }
+///
+/// Compatibility & developer notes:
+/// - kContextOptions is the single source of truth for available contexts.
+///   When adding or renaming contexts, update core/constants.dart and any
+///   persisted filters or migration notes accordingly.
+/// - Keep the filter keys stable to avoid migration complexity in persisted
+///   filter storage (if implemented later).
+/// - The grouping tab is intentionally minimal; implement grouping behavior
+///   in the feature layer and map selections to domain logic there.
+/// ---------------------------------------------------------------------------
+
 class FilterGroupBottomSheet extends StatefulWidget {
   final String? initialContext;
   final String? initialDateFilter;
@@ -25,6 +55,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   @override
   void initState() {
     super.initState();
+    // Initialize selections from incoming values to support edit/restore flows.
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
   }
@@ -32,7 +63,10 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    // Limit sheet height so it doesn't cover the entire screen on large devices.
     final maxHeight = MediaQuery.of(context).size.height * 0.40;
+    // Respect keyboard insets so interactive controls remain visible when the
+    // keyboard appears (e.g., if later expanded to include text inputs).
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
 
     // Provide a TabController for TabBar & TabBarView
@@ -75,6 +109,9 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
+                                    // Build ChoiceChips from kContextOptions.
+                                    // Using the constants list ensures consistency
+                                    // across the app when contexts are modified.
                                     for (final ctx in kContextOptions)
                                       ChoiceChip(
                                         label: Text(ctx),
@@ -129,6 +166,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               const SizedBox(width: 12),
                               ElevatedButton(
                                 onPressed: () {
+                                  // Return a simple map of the chosen filters.
                                   Navigator.of(context).pop({
                                     "context": _selectedContext,
                                     "targetDate": _selectedDateFilter,
@@ -172,6 +210,8 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               const SizedBox(width: 12),
                               ElevatedButton(
                                 onPressed: () {
+                                  // Currently mirrors the filter behavior; when grouping
+                                  // is implemented, this should return grouping choices.
                                   Navigator.of(context).pop({
                                     "context": _selectedContext,
                                     "targetDate": _selectedDateFilter,
