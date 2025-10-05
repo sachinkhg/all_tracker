@@ -168,7 +168,7 @@ Future<String?> exportGoalsToXlsx(BuildContext context, List<Goal> goals) async 
       g.name.isEmpty ? null : TextCellValue(g.name),
       (desc == null || desc.isEmpty) ? null : TextCellValue(desc),
       (target == null) ? null : TextCellValue(_formatDateDdMmYyyy(target)),
-      (contextVal == null) ? null : TextCellValue(contextVal!),
+      (contextVal == null) ? null : TextCellValue(contextVal),
       TextCellValue(isCompletedStr),
     ];
     sheet.appendRow(row);
@@ -322,12 +322,12 @@ Future<void> importGoalsFromXlsx(BuildContext context) async {
           updated++;
         } catch (e) {
           // fallback to create if edit fails
-          await cubit.addGoal(name, desc, parsedTarget, contextToUse);
+          await cubit.addGoal(name, desc, parsedTarget, contextToUse, parsedIsCompleted);
           created++;
         }
       } else {
         // NOTE: addGoal signature is assumed to accept isCompleted as last parameter.
-        await cubit.addGoal(name, desc, parsedTarget, contextToUse);
+        await cubit.addGoal(name, desc, parsedTarget, contextToUse, parsedIsCompleted);
         created++;
       }
     }

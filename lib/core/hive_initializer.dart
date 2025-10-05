@@ -69,6 +69,12 @@ class HiveInitializer {
     // Recommendation: catch and handle exceptions at the call site (see file header).
     var box = await Hive.openBox<GoalModel>('goals_box');
 
+    // print('Printing all milestones in box:');
+    // for (var key in box.keys) {
+    //   var goal = box.get(key);
+    //   print('Key: $key, name: ${goal?.name}, targetDate: ${goal?.targetDate}, context: ${goal?.context}, isCompleted: ${goal?.isCompleted}');
+    // }
+
     // Return the opened box so callers can use it immediately (e.g., to construct local data sources).
     return box;
   }
