@@ -83,6 +83,7 @@ class GoalListPageView extends StatelessWidget {
 
                   if (state is GoalsLoaded) {
                     final goals = state.goals;
+                    final visible = state.visibleFields;
                     final cubit = context.read<GoalCubit>();
 
                     final bool filterActive = cubit.hasActiveFilters ||
@@ -124,9 +125,13 @@ class GoalListPageView extends StatelessWidget {
                             itemBuilder: (context, index) {
                               final g = goals[index];
                               return GoalListItem(
+                                key: ValueKey(g.id),
                                 id: g.id,
                                 title: g.name,
                                 description: g.description ?? '',
+                                targetDate: g.targetDate,
+                                contextValue: g.context,
+                                visibleFields: visible,
                                 onEdit: () => _onEditGoal(context, g),
                               );
                             },
@@ -288,13 +293,7 @@ class GoalListPageView extends StatelessWidget {
               tooltip: 'Change View',
               onPressed: () async {
                 final cubit = context.read<GoalCubit>();
-                Map<String, bool>? initial;
-
-                try {
-                  initial = (cubit as dynamic).visibleFields as Map<String, bool>?;
-                } catch (_) {
-                  initial = null;
-                }
+                final Map<String, bool>? initial = cubit.visibleFields;
 
                 final result = await showModalBottomSheet<Map<String, bool>?>(
                   context: context,
@@ -307,17 +306,7 @@ class GoalListPageView extends StatelessWidget {
 
                 if (result == null) return;
 
-                try {
-                  (cubit as dynamic).setVisibleFields(result);
-                } catch (e) {
-                  final enabled = result.entries
-                      .where((e) => e.value)
-                      .map((e) => e.key)
-                      .join(', ');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Visible fields: $enabled')),
-                  );
-                }
+                cubit.setVisibleFields(result);
               },
               child: const Icon(Icons.remove_red_eye),
             ),

@@ -47,6 +47,28 @@ class GoalCubit extends Cubit<GoalState> {
   String? _currentTargetDateFilter;
   String? _currentGrouping; // e.g. 'context' or null
 
+  // Visible fields configuration for presentation layer
+  Map<String, bool> _visibleFields = const {
+    'name': true,
+    'description': true,
+    'targetDate': false,
+    'context': false,
+    'remainingDays': false,
+  };
+
+  Map<String, bool> get visibleFields => Map<String, bool>.unmodifiable(_visibleFields);
+
+  void setVisibleFields(Map<String, bool> fields) {
+    _visibleFields = Map<String, bool>.from(fields);
+    // Re-emit current view to trigger UI rebuild with new visibility
+    if (state is GoalsLoaded) {
+      final current = state as GoalsLoaded;
+      emit(GoalsLoaded(List<Goal>.from(current.goals), visibleFields));
+    } else {
+      emit(GoalsLoaded(List<Goal>.from(_allGoals), visibleFields));
+    }
+  }
+
   String? get currentContextFilter => _currentContextFilter;
   String? get currentTargetDateFilter => _currentTargetDateFilter;
   String? get currentGrouping => _currentGrouping;
@@ -77,7 +99,7 @@ class GoalCubit extends Cubit<GoalState> {
       final data = await getAll();
       _allGoals = data;
       // Emit a defensive copy to avoid external mutation of internal list.
-      emit(GoalsLoaded(List.from(_allGoals)));
+      emit(GoalsLoaded(List.from(_allGoals), visibleFields));
     } catch (e) {
       emit(GoalsError(e.toString()));
     }
@@ -92,7 +114,7 @@ class GoalCubit extends Cubit<GoalState> {
     _currentTargetDateFilter = targetDateFilter;
 
     final filtered = _filterGoals(_allGoals);
-    emit(GoalsLoaded(filtered));
+    emit(GoalsLoaded(filtered, visibleFields));
   }
 
   /// Apply grouping (presentation-only).
@@ -116,7 +138,7 @@ class GoalCubit extends Cubit<GoalState> {
     }
 
     print("📊 Grouped goals count: ${filtered.length}");
-    emit(GoalsLoaded(filtered));
+    emit(GoalsLoaded(filtered, visibleFields));
   }
 
   /// Clear all active filters and grouping, restoring the master list view.
@@ -124,7 +146,7 @@ class GoalCubit extends Cubit<GoalState> {
     _currentContextFilter = null;
     _currentTargetDateFilter = null;
     _currentGrouping = null;
-    emit(GoalsLoaded(List.from(_allGoals)));
+    emit(GoalsLoaded(List.from(_allGoals), visibleFields));
   }
 
   /// Internal: filtering logic applied to a source list.

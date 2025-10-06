@@ -177,35 +177,39 @@ class GoalListItem extends StatelessWidget {
               ],
 
               // --- Target Date & Remaining Days ---
-              // Shown together if target date is visible and non-null.
-              if (_visible('targetDate') && targetDate != null) ...[
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Target: $formattedTarget',
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-
-                    // Remaining days indicator — styled by deadline status.
-                    if (_visible('remainingDays') && remainingDays != null)
-                      Text(
-                        remainingDays! >= 0
-                            ? '${remainingDays!} day${remainingDays == 1 ? '' : 's'} left'
-                            : 'Overdue by ${remainingDays!.abs()} day${remainingDays!.abs() == 1 ? '' : 's'}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: remainingDays! >= 0 ? cs.primary : cs.error,
-                          fontWeight: FontWeight.w600,
+              // Render either or both independently based on visibility flags.
+              ...() {
+                final bool showTarget = _visible('targetDate') && targetDate != null;
+                final bool showRemaining = _visible('remainingDays') && remainingDays != null;
+                if (!(showTarget || showRemaining)) return <Widget>[];
+                return <Widget>[
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      if (showTarget)
+                        Text(
+                          'Target: $formattedTarget',
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
-                      ),
-                  ],
-                ),
-              ],
+                      if (showRemaining)
+                        Text(
+                          remainingDays! >= 0
+                              ? '${remainingDays!} day${remainingDays == 1 ? '' : 's'} left'
+                              : 'Overdue by ${remainingDays!.abs()} day${remainingDays!.abs() == 1 ? '' : 's'}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: remainingDays! >= 0 ? cs.primary : cs.error,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
+                  ),
+                ];
+              }(),
             ],
           ),
         ),
