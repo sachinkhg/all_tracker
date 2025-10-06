@@ -84,7 +84,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
       // Defaults rationale:
       // - 'name' and 'description' are core to the UI so default to true.
       // - Others default to false to keep the list compact for first-time users.
-      'name': widget.initial?['name'] ?? true,
+      'name': true, // Always enforced ON
       'description': widget.initial?['description'] ?? true,
       'targetDate': widget.initial?['targetDate'] ?? false,
       'context': widget.initial?['context'] ?? false,
@@ -131,7 +131,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-            _buildToggle('name', 'Name'),
+            // Name is always visible; toggle removed to guarantee at least one field.
             _buildToggle('description', 'Description'),
             _buildToggle('targetDate', 'Target Date'),
             _buildToggle('context', 'Context'),
@@ -147,7 +147,11 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
                 const SizedBox(width: 8),
                 ElevatedButton(
                   child: const Text('APPLY'),
-                  onPressed: () => Navigator.of(context).pop(_fields),
+                  onPressed: () {
+                    // Ensure 'name' remains enabled
+                    _fields['name'] = true;
+                    Navigator.of(context).pop(_fields);
+                  },
                 ),
               ],
             ),

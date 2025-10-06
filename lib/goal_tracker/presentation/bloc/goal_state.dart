@@ -38,11 +38,12 @@ class GoalsLoading extends GoalState {}
 // Loaded state — holds the list of successfully fetched goals.
 class GoalsLoaded extends GoalState {
   final List<Goal> goals;
+  final Map<String, bool> visibleFields;
 
-  const GoalsLoaded(this.goals);
+  const GoalsLoaded(this.goals, this.visibleFields);
 
   @override
-  List<Object?> get props => [goals];
+  List<Object?> get props => [goals, visibleFields];
 }
 
 // Error state — emitted when fetching or modifying goals fails.
