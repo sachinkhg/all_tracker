@@ -58,7 +58,7 @@ class GoalListPage extends StatelessWidget {
 /// The main view for displaying goals, filters, and floating action buttons.
 ///
 /// This widget is presentation-only: it subscribes to [GoalCubit] state changes
-/// via BlocConsumer and delegates actions back to the cubit. No data logic here.
+/// via BlocBuilder and delegates actions back to the cubit. No data logic here.
 class GoalListPageView extends StatelessWidget {
   const GoalListPageView({super.key});
 
@@ -72,11 +72,10 @@ class GoalListPageView extends StatelessWidget {
           children: [
             // Expanded area for list / empty states
             Expanded(
-              child: BlocConsumer<GoalCubit, GoalState>(
-                listenWhen: (prev, curr) => true,
-                listener: (context, state) {},
-                buildWhen: (prev, curr) => true,
+              child: BlocBuilder<GoalCubit, GoalState>(
                 builder: (context, state) {
+                  // Explicit sealed-style branching so we only access properties
+                  // that are available for a particular state.
                   if (state is GoalsLoading) {
                     return const LoadingView();
                   }
@@ -147,6 +146,8 @@ class GoalListPageView extends StatelessWidget {
                       onRetry: () => context.read<GoalCubit>().loadGoals(),
                     );
                   }
+
+                  // Fallback - should rarely happen if states are exhaustive
                   return const SizedBox.shrink();
                 },
               ),
