@@ -83,8 +83,9 @@ class GoalListPageView extends StatelessWidget {
                   if (state is GoalsLoaded) {
                     final goals = state.goals;
                     final visible = state.visibleFields;
-                    final cubit = context.read<GoalCubit>();
 
+                    // compute derived booleans ONCE here and reuse
+                    final cubit = context.read<GoalCubit>();
                     final bool filterActive = cubit.hasActiveFilters ||
                         (cubit.currentContextFilter != null && cubit.currentContextFilter!.isNotEmpty) ||
                         (cubit.currentTargetDateFilter != null && cubit.currentTargetDateFilter!.isNotEmpty) ||
@@ -123,6 +124,7 @@ class GoalListPageView extends StatelessWidget {
                             itemCount: goals.length,
                             itemBuilder: (context, index) {
                               final g = goals[index];
+                              // IMPORTANT: no context.read() here — pass computed values down
                               return GoalListItem(
                                 key: ValueKey(g.id),
                                 id: g.id,
@@ -131,6 +133,7 @@ class GoalListPageView extends StatelessWidget {
                                 targetDate: g.targetDate,
                                 contextValue: g.context,
                                 visibleFields: visible,
+                                filterActive: filterActive, // <-- passed once
                                 onEdit: () => _onEditGoal(context, g),
                               );
                             },
