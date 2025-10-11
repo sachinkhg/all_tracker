@@ -56,6 +56,12 @@ class GoalListPageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Obtain cubit & state here so we can pass safe initial values into _ActionsFab
+    final cubit = context.read<GoalCubit>();
+    final state = cubit.state;
+    final Map<String, bool> initialVisible =
+        state is GoalsLoaded ? state.visibleFields : <String, bool>{};
+
     return Scaffold(
       appBar: const PrimaryAppBar(title: 'Goal Tracker'),
       body: Padding(
@@ -121,7 +127,28 @@ class GoalListPageView extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: _buildFabColumn(context),
+      floatingActionButton: _ActionsFab(
+        // initialVisibleFields provided for widget that might want to render based on it.
+        initialVisibleFields: initialVisible,
+        // onView opens the ViewFieldsBottomSheet and applies selected fields to cubit.
+        onView: () async {
+          final Map<String, bool>? initial = initialVisible;
+          final result = await showAppBottomSheet<Map<String, bool>?>(
+            context,
+            ViewFieldsBottomSheet(initial: initial),
+          );
+          if (result == null) return;
+          cubit.setVisibleFields(result);
+        },
+        // onFilter opens the FilterGroupBottomSheet and applies filters/grouping via cubit.
+        onFilter: () async {
+          await _editFilters(context, cubit);
+        },
+        // onAdd shows the create goal sheet
+        onAdd: () => _onCreateGoal(context),
+        // onMore shows the actions sheet
+        onMore: () => _showActionsSheet(context),
+      ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
@@ -151,87 +178,6 @@ class GoalListPageView extends StatelessWidget {
       final groupBy = result['groupBy'] as String;
       context.read<GoalCubit>().applyGrouping(groupBy: groupBy);
     }
-  }
-
-  Widget _buildFabColumn(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'viewFab',
-              tooltip: 'Change View',
-              onPressed: () async {
-                final cubit = context.read<GoalCubit>();
-                final Map<String, bool>? initial = cubit.visibleFields;
-
-                final result = await showAppBottomSheet<Map<String, bool>?>(
-                  context,
-                  ViewFieldsBottomSheet(initial: initial),
-                );
-
-                if (result == null) return;
-
-                cubit.setVisibleFields(result);
-              },
-              child: const Icon(Icons.remove_red_eye),
-            ),
-
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              heroTag: 'filterGroupFab',
-              tooltip: 'Filter & Group',
-              onPressed: () async {
-                final cubit = context.read<GoalCubit>();
-                final result = await showAppBottomSheet<Map<String, dynamic>?>(
-                  context,
-                  FilterGroupBottomSheet(
-                    initialContext: cubit.currentContextFilter,
-                    initialDateFilter: cubit.currentTargetDateFilter,
-                    initialGrouping: cubit.currentGrouping,
-                  ),
-                );
-
-                if (result == null) return;
-
-                if (result.containsKey('context') || result.containsKey('targetDate')) {
-                  final selectedContext = result['context'] as String?;
-                  final selectedTargetDate = result['targetDate'] as String?;
-                  context.read<GoalCubit>().applyFilter(
-                        contextFilter: selectedContext,
-                        targetDateFilter: selectedTargetDate,
-                      );
-                }
-              },
-              child: const Icon(Icons.filter_alt),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 10),
-
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'addGoalFab',
-              tooltip: 'Add Goal',
-              onPressed: () => _onCreateGoal(context),
-              child: const Icon(Icons.add),
-            ),
-            const SizedBox(width: 12),
-            FloatingActionButton.small(
-              heroTag: 'moreFab',
-              tooltip: 'More actions',
-              onPressed: () => _showActionsSheet(context),
-              child: const Icon(Icons.more_vert),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 
   void _showActionsSheet(BuildContext context) {
@@ -314,6 +260,88 @@ class GoalListPageView extends StatelessWidget {
       onDelete: () async {
         context.read<GoalCubit>().removeGoal(goal.id);
       },
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// _ActionsFab
+///
+/// New extracted widget for the FAB column. It does NOT read from context or call
+/// any cubit methods — all interactions are done via the callbacks passed in.
+/// Accepts an initialVisibleFields map (optional) to allow rendering differences
+/// if needed in future, but currently it only uses callbacks.
+/// ---------------------------------------------------------------------------
+class _ActionsFab extends StatelessWidget {
+  const _ActionsFab({
+    required this.onView,
+    required this.onFilter,
+    required this.onAdd,
+    required this.onMore,
+    this.initialVisibleFields = const <String, bool>{},
+    super.key,
+  });
+
+  /// Callback invoked when the 'view' FAB is tapped.
+  /// Parent should handle showing the view fields sheet and applying fields.
+  final Future<void> Function() onView;
+
+  /// Callback invoked when the 'filter' FAB is tapped.
+  /// Parent should handle showing the filter/group sheet and applying filters.
+  final Future<void> Function() onFilter;
+
+  /// Callback invoked when 'add' FAB is tapped.
+  final VoidCallback onAdd;
+
+  /// Callback invoked when 'more' FAB is tapped.
+  final VoidCallback onMore;
+
+  /// Optional map of visible fields initially — provided for potential rendering.
+  final Map<String, bool> initialVisibleFields;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'viewFab',
+              tooltip: 'Change View',
+              onPressed: () => onView(),
+              child: const Icon(Icons.remove_red_eye),
+            ),
+            const SizedBox(width: 8),
+            FloatingActionButton.small(
+              heroTag: 'filterGroupFab',
+              tooltip: 'Filter & Group',
+              onPressed: () => onFilter(),
+              child: const Icon(Icons.filter_alt),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'addGoalFab',
+              tooltip: 'Add Goal',
+              onPressed: onAdd,
+              child: const Icon(Icons.add),
+            ),
+            const SizedBox(width: 12),
+            FloatingActionButton.small(
+              heroTag: 'moreFab',
+              tooltip: 'More actions',
+              onPressed: onMore,
+              child: const Icon(Icons.more_vert),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
