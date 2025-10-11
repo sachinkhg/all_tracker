@@ -61,11 +61,12 @@ class GoalListItem extends StatelessWidget {
   /// - name = true
   /// - description = true
   /// - others = false
-  ///
-  /// When integrating with persistence layers (e.g., Hive or SharedPrefs),
-  /// ensure key names remain consistent across versions to avoid migration
-  /// issues. Update migration_notes.md if you rename or add keys.
   final Map<String, bool>? visibleFields;
+
+  /// Whether the list is currently filtered. This is computed once in the
+  /// parent and passed down to avoid re-reading the cubit in item builders.
+  /// Used here only for a small visual hint (a compact "Filtered" badge).
+  final bool filterActive;
 
   const GoalListItem({
     super.key,
@@ -76,6 +77,7 @@ class GoalListItem extends StatelessWidget {
     this.contextValue,
     required this.onEdit,
     this.visibleFields,
+    this.filterActive = false,
   });
 
   /// Returns the number of days remaining until the target date.
@@ -130,18 +132,52 @@ class GoalListItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- Name Field ---
-              // Always shown if 'name' is visible.
-              if (_visible('name')) ...[
-                Text(title, style: Theme.of(context).textTheme.labelLarge),
-              ],
+              // Top row: Name on left, optional Filter badge on right
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // --- Name Field ---
+                  Expanded(
+                    child: _visible('name')
+                        ? Text(title, style: Theme.of(context).textTheme.labelLarge)
+                        : const SizedBox.shrink(),
+                  ),
+
+                  // Small "Filtered" hint when parent indicates filters are active.
+                  if (filterActive) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: cs.primaryContainer.withOpacity(0.28)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.filter_alt, size: 14, color: cs.onPrimaryContainer),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Filtered',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
 
               // --- Context Badge ---
               // Renders contextual information like category/tag when enabled.
               if (_visible('context') &&
                   contextValue != null &&
                   contextValue!.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(

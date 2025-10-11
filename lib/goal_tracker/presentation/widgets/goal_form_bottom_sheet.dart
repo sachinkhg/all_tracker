@@ -1,5 +1,4 @@
 import 'package:all_tracker/goal_tracker/core/constants.dart';
-import 'package:all_tracker/widgets/primary_elevated_button.dart';
 import 'package:flutter/material.dart';
 
 import '../../../widgets/context_dropdown_bottom_sheet.dart';
@@ -85,7 +84,7 @@ class GoalFormBottomSheet {
     bool isCompleted = initialIsCompleted;
 
     // Simple date formatting for display.
-    String _formatDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
+    String formatDate(DateTime d) => '${d.day.toString().padLeft(2, '0')}/'
         '${d.month.toString().padLeft(2, '0')}/'
         '${d.year}';
 
@@ -249,7 +248,7 @@ class GoalFormBottomSheet {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        selectedDate != null ? _formatDate(selectedDate!) : 'No target date',
+                                        selectedDate != null ? formatDate(selectedDate!) : 'No target date',
                                         style: textTheme.bodyLarge?.copyWith(color: cs.primary),
                                       ),
                                       Row(
