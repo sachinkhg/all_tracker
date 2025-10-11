@@ -5,19 +5,6 @@
     - Responsible for wiring the GoalCubit for this screen, rendering loading/error/empty states,
       and providing user actions (create, edit, filter, import/export).
     - Keeps UI concerns only — all business logic lives in GoalCubit / domain use cases.
-
-  behavior & notes:
-    - Uses createGoalCubit() from core/injection.dart to obtain a properly-wired cubit instance.
-    - The page expects the cubit to expose:
-        * loadGoals()
-        * addGoal(...)
-        * editGoal(...)
-        * removeGoal(...)
-        * hasActiveFilters, currentContextFilter, currentTargetDateFilter, currentGrouping
-      If your cubit uses different names, update either the cubit or this page accordingly.
-    - Import/Export features delegate to features/goal_import_export.dart helpers.
-    - UI-level defensive coding is used around optional cubit members (casting to dynamic)
-      to preserve compatibility with multiple cubit implementations.
 */
 
 import 'package:flutter/material.dart';
@@ -56,7 +43,7 @@ class GoalListPageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Obtain cubit & state here so we can pass safe initial values into _ActionsFab
+    // Obtain cubit & state here once so nested closures don't call context.read
     final cubit = context.read<GoalCubit>();
     final state = cubit.state;
     final Map<String, bool> initialVisible =
@@ -79,9 +66,7 @@ class GoalListPageView extends StatelessWidget {
                     final goals = state.goals;
                     final visible = state.visibleFields;
 
-                    // compute derived booleans ONCE here and reuse
-                    final cubit = context.read<GoalCubit>();
-                    // use cubit's hasActiveFilters getter
+                    // use the cubit captured from outer scope; do NOT call context.read here
                     final bool filterActive = cubit.hasActiveFilters;
                     final String filterSummary = cubit.filterSummary;
 
@@ -100,7 +85,8 @@ class GoalListPageView extends StatelessWidget {
                       visibleFields: visible,
                       filterActive: filterActive,
                       filterSummary: filterSummary,
-                      onEdit: (ctx, goal) => _onEditGoal(ctx, goal),
+                      // pass the cubit into the edit handler so nested closures don't call context.read
+                      onEdit: (ctx, goal) => _onEditGoal(ctx, goal, cubit),
                       onEditFilters: () => _editFilters(context, cubit),
                       onClearFilters: () {
                         cubit.clearFilters();
@@ -116,7 +102,8 @@ class GoalListPageView extends StatelessWidget {
                   if (state is GoalsError) {
                     return ErrorView(
                       message: state.message,
-                      onRetry: () => context.read<GoalCubit>().loadGoals(),
+                      // use captured cubit instead of context.read
+                      onRetry: () => cubit.loadGoals(),
                     );
                   }
 
@@ -132,7 +119,11 @@ class GoalListPageView extends StatelessWidget {
         initialVisibleFields: initialVisible,
         // onView opens the ViewFieldsBottomSheet and applies selected fields to cubit.
         onView: () async {
-          final Map<String, bool>? initial = initialVisible;
+          // read the up-to-date visible fields directly from cubit.state
+          final currentState = cubit.state;
+          final Map<String, bool>? initial =
+              currentState is GoalsLoaded ? currentState.visibleFields : <String, bool>{};
+
           final result = await showAppBottomSheet<Map<String, bool>?>(
             context,
             ViewFieldsBottomSheet(initial: initial),
@@ -144,15 +135,16 @@ class GoalListPageView extends StatelessWidget {
         onFilter: () async {
           await _editFilters(context, cubit);
         },
-        // onAdd shows the create goal sheet
-        onAdd: () => _onCreateGoal(context),
-        // onMore shows the actions sheet
-        onMore: () => _showActionsSheet(context),
+        // onAdd shows the create goal sheet — pass cubit explicitly
+        onAdd: () => _onCreateGoal(context, cubit),
+        // onMore shows the actions sheet — pass cubit explicitly
+        onMore: () => _showActionsSheet(context, cubit),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
+  // Edited to accept cubit and avoid reading from context inside the method.
   Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
@@ -168,19 +160,21 @@ class GoalListPageView extends StatelessWidget {
     if (result.containsKey('context') || result.containsKey('targetDate')) {
       final selectedContext = result['context'] as String?;
       final selectedTargetDate = result['targetDate'] as String?;
-      context.read<GoalCubit>().applyFilter(
-            contextFilter: selectedContext,
-            targetDateFilter: selectedTargetDate,
-          );
+      // use passed cubit instead of context.read
+      cubit.applyFilter(
+        contextFilter: selectedContext,
+        targetDateFilter: selectedTargetDate,
+      );
     }
 
     if (result['groupBy'] != null && (result['groupBy'] as String).isNotEmpty) {
       final groupBy = result['groupBy'] as String;
-      context.read<GoalCubit>().applyGrouping(groupBy: groupBy);
+      cubit.applyGrouping(groupBy: groupBy);
     }
   }
 
-  void _showActionsSheet(BuildContext context) {
+  // Accept cubit so we avoid nested context.read calls.
+  void _showActionsSheet(BuildContext context, GoalCubit cubit) {
     // Build the sheet content and pass to helper to preserve consistent look/behavior.
     final sheet = Column(
       mainAxisSize: MainAxisSize.min,
@@ -199,7 +193,8 @@ class GoalListPageView extends StatelessWidget {
           title: const Text('Add Goal'),
           onTap: () {
             Navigator.of(context).pop();
-            _onCreateGoal(context);
+            // pass cubit explicitly
+            _onCreateGoal(context, cubit);
           },
         ),
         ListTile(
@@ -207,7 +202,8 @@ class GoalListPageView extends StatelessWidget {
           title: const Text('Export'),
           onTap: () async {
             Navigator.of(context).pop();
-            final state = context.read<GoalCubit>().state;
+            // use passed cubit
+            final state = cubit.state;
             final goals = state is GoalsLoaded ? state.goals : <Goal>[];
             final path = await exportGoalsToXlsx(context, goals);
             if (path != null) {
@@ -233,8 +229,8 @@ class GoalListPageView extends StatelessWidget {
     showAppBottomSheet<void>(context, sheet);
   }
 
-  void _onCreateGoal(BuildContext context) {
-    final cubit = context.read<GoalCubit>();
+  // Now accepts both context and explicit cubit parameter
+  void _onCreateGoal(BuildContext context, GoalCubit cubit) {
     GoalFormBottomSheet.show(
       context,
       title: 'Create Goal',
@@ -244,8 +240,8 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
-  void _onEditGoal(BuildContext context, Goal goal) {
-    final cubit = context.read<GoalCubit>();
+  // Now explicitly typed and accepts cubit so nested closures don't call context.read.
+  void _onEditGoal(BuildContext context, Goal goal, GoalCubit cubit) {
     GoalFormBottomSheet.show(
       context,
       title: 'Edit Goal',
@@ -258,7 +254,7 @@ class GoalListPageView extends StatelessWidget {
         await cubit.editGoal(goal.id, name, desc, targetDate, contxt, isCompleted);
       },
       onDelete: () async {
-        context.read<GoalCubit>().removeGoal(goal.id);
+        cubit.removeGoal(goal.id);
       },
     );
   }
