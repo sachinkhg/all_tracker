@@ -38,6 +38,7 @@ import '../../../widgets/loading_view.dart';
 import '../../../widgets/error_view.dart';
 import '../widgets/goal_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
+import '../../../widgets/bottom_sheet_helpers.dart'; // <- centralized helper
 
 class GoalListPage extends StatelessWidget {
   const GoalListPage({super.key});
@@ -190,13 +191,9 @@ class GoalListPageView extends StatelessWidget {
   }
 
   Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
-    final result = await showModalBottomSheet<Map<String, dynamic>?>(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
-      ),
-      builder: (ctx) => FilterGroupBottomSheet(
+    final result = await showAppBottomSheet<Map<String, dynamic>?>(
+      context,
+      FilterGroupBottomSheet(
         initialContext: cubit.currentContextFilter,
         initialDateFilter: cubit.currentTargetDateFilter,
         initialGrouping: cubit.currentGrouping,
@@ -234,13 +231,9 @@ class GoalListPageView extends StatelessWidget {
                 final cubit = context.read<GoalCubit>();
                 final Map<String, bool>? initial = cubit.visibleFields;
 
-                final result = await showModalBottomSheet<Map<String, bool>?>(
-                  context: context,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
-                  ),
-                  builder: (ctx) => ViewFieldsBottomSheet(initial: initial),
+                final result = await showAppBottomSheet<Map<String, bool>?>(
+                  context,
+                  ViewFieldsBottomSheet(initial: initial),
                 );
 
                 if (result == null) return;
@@ -256,13 +249,9 @@ class GoalListPageView extends StatelessWidget {
               tooltip: 'Filter & Group',
               onPressed: () async {
                 final cubit = context.read<GoalCubit>();
-                final result = await showModalBottomSheet<Map<String, dynamic>?>(
-                  context: context,
-                  isScrollControlled: true,
-                  shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
-                  ),
-                  builder: (ctx) => FilterGroupBottomSheet(
+                final result = await showAppBottomSheet<Map<String, dynamic>?>(
+                  context,
+                  FilterGroupBottomSheet(
                     initialContext: cubit.currentContextFilter,
                     initialDateFilter: cubit.currentTargetDateFilter,
                     initialGrouping: cubit.currentGrouping,
@@ -310,62 +299,56 @@ class GoalListPageView extends StatelessWidget {
   }
 
   void _showActionsSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12.0)),
-      ),
-      builder: (BuildContext ctx) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 12),
-              ListTile(
-                leading: const Icon(Icons.add),
-                title: const Text('Add Goal'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  _onCreateGoal(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.file_download),
-                title: const Text('Export'),
-                onTap: () async {
-                  Navigator.of(ctx).pop();
-                  final state = context.read<GoalCubit>().state;
-                  final goals = state is GoalsLoaded ? state.goals : <Goal>[];
-                  final path = await exportGoalsToXlsx(context, goals);
-                  if (path != null) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('File exported')),
-                    );
-                  }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.file_upload),
-                title: const Text('Import'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  importGoalsFromXlsx(context);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
+    // Build the sheet content and pass to helper to preserve consistent look/behavior.
+    final sheet = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 8),
+        Container(
+          width: 40,
+          height: 4,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(2),
           ),
-        );
-      },
+        ),
+        const SizedBox(height: 12),
+        ListTile(
+          leading: const Icon(Icons.add),
+          title: const Text('Add Goal'),
+          onTap: () {
+            Navigator.of(context).pop();
+            _onCreateGoal(context);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.file_download),
+          title: const Text('Export'),
+          onTap: () async {
+            Navigator.of(context).pop();
+            final state = context.read<GoalCubit>().state;
+            final goals = state is GoalsLoaded ? state.goals : <Goal>[];
+            final path = await exportGoalsToXlsx(context, goals);
+            if (path != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('File exported')),
+              );
+            }
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.file_upload),
+          title: const Text('Import'),
+          onTap: () {
+            Navigator.of(context).pop();
+            importGoalsFromXlsx(context);
+          },
+        ),
+        const SizedBox(height: 8),
+      ],
     );
+
+    // Use helper which internally wraps with SafeArea and handles keyboard insets.
+    showAppBottomSheet<void>(context, sheet);
   }
 
   void _onCreateGoal(BuildContext context) {
