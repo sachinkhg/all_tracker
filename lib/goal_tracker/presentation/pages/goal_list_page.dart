@@ -361,60 +361,65 @@ class _GoalsBody extends StatelessWidget {
             onClear: onClearFilters,
           ),
         Expanded(
-          child: ListView.builder(
-            itemCount: goals.length,
-            itemBuilder: (context, index) {
-              final g = goals[index];
-              return GoalListItem(
-                key: ValueKey(g.id),
-                id: g.id,
-                title: g.name,
-                description: g.description ?? '',
-                targetDate: g.targetDate,
-                contextValue: g.context,
-                visibleFields: visibleFields,
-                filterActive: filterActive,
-                onEdit: () => onEdit(context, g),
-              );
-            },
+          child: _GoalsList(
+            goals: goals,
+            visibleFields: visibleFields,
+            filterActive: filterActive,
+            onEdit: onEdit,
           ),
         ),
       ],
     );
   }
+}
 
-  Widget _buildFilterHeader(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.filter_alt, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              filterSummary,
-              style: Theme.of(context).textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Edit filters',
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: onEditFilters,
-          ),
-          IconButton(
-            tooltip: 'Clear filters',
-            icon: const Icon(Icons.clear, size: 20),
-            onPressed: onClearFilters,
-          ),
-        ],
-      ),
+/// ---------------------------------------------------------------------------
+/// _GoalsList
+///
+/// Responsibility:
+///  - Render the scrollable list of goals (separated)
+///  - Wire each GoalListItem with required props and callbacks
+///  - MUST NOT access cubit/context.read inside its itemBuilder
+/// ---------------------------------------------------------------------------
+class _GoalsList extends StatelessWidget {
+  const _GoalsList({
+    required this.goals,
+    required this.visibleFields,
+    required this.filterActive,
+    required this.onEdit,
+    super.key,
+  });
+
+  final List<Goal> goals;
+  final Map<String, bool> visibleFields;
+  final bool filterActive;
+
+  /// Same signature as before: caller provides how to open edit sheet, etc.
+  final void Function(BuildContext context, Goal goal) onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: goals.length,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (context, index) {
+        final g = goals[index];
+
+        // IMPORTANT: Do not call context.read(...) or access cubit here.
+        // onEdit is provided by parent and will handle cubit interactions.
+        return GoalListItem(
+          key: ValueKey(g.id),
+          id: g.id,
+          title: g.name,
+          description: g.description ?? '',
+          targetDate: g.targetDate,
+          contextValue: g.context,
+          visibleFields: visibleFields,
+          filterActive: filterActive,
+          onEdit: () => onEdit(context, g),
+        );
+      },
     );
   }
 }
