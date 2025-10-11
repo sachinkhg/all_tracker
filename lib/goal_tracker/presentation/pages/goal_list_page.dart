@@ -20,7 +20,6 @@
       to preserve compatibility with multiple cubit implementations.
 */
 
-// ./lib/goal_tracker/presentation/pages/goal_list_page.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -78,51 +77,33 @@ class GoalListPageView extends StatelessWidget {
                     final cubit = context.read<GoalCubit>();
                     // use cubit's hasActiveFilters getter
                     final bool filterActive = cubit.hasActiveFilters;
+                    final String filterSummary = cubit.filterSummary;
 
                     if (goals.isEmpty) {
-                      final message = filterActive ? 'No goals found' : 'No goals yet';
-
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(message, style: Theme.of(context).textTheme.titleMedium),
-                            const SizedBox(height: 8),
-                            if (filterActive)
-                              OutlinedButton(
-                                onPressed: () {
-                                  context.read<GoalCubit>().clearFilters();
-                                },
-                                child: const Text('No goals found. Clear filters?'),
-                              ),
-                          ],
-                        ),
+                      return _EmptyGoals(
+                        filterActive: filterActive,
+                        onClear: () {
+                          // delegate clearing to cubit per acceptance criteria
+                          cubit.clearFilters();
+                        },
                       );
                     }
 
-                    return Column(
-                      children: [
-                        if (filterActive) _buildFilterHeader(context, cubit),
-                        Expanded(
-                          child: ListView.builder(
-                            itemCount: goals.length,
-                            itemBuilder: (context, index) {
-                              final g = goals[index];
-                              return GoalListItem(
-                                key: ValueKey(g.id),
-                                id: g.id,
-                                title: g.name,
-                                description: g.description ?? '',
-                                targetDate: g.targetDate,
-                                contextValue: g.context,
-                                visibleFields: visible,
-                                filterActive: filterActive,
-                                onEdit: () => _onEditGoal(context, g),
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                    return _GoalsBody(
+                      goals: goals,
+                      visibleFields: visible,
+                      filterActive: filterActive,
+                      filterSummary: filterSummary,
+                      onEdit: (ctx, goal) => _onEditGoal(ctx, goal),
+                      onEditFilters: () => _editFilters(context, cubit),
+                      onClearFilters: () {
+                        cubit.clearFilters();
+                        try {
+                          cubit.applyGrouping(groupBy: '');
+                        } catch (_) {
+                          // ignore if not supported
+                        }
+                      },
                     );
                   }
 
@@ -142,51 +123,6 @@ class GoalListPageView extends StatelessWidget {
       ),
       floatingActionButton: _buildFabColumn(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-    );
-  }
-
-  Widget _buildFilterHeader(BuildContext context, GoalCubit cubit) {
-    // NOW the UI reads the summary from the cubit
-    final summary = cubit.filterSummary;
-
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.filter_alt, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              summary,
-              style: Theme.of(context).textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Edit filters',
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: () => _editFilters(context, cubit),
-          ),
-          IconButton(
-            tooltip: 'Clear filters',
-            icon: const Icon(Icons.clear, size: 20),
-            onPressed: () {
-              cubit.clearFilters();
-              try {
-                cubit.applyGrouping(groupBy: '');
-              } catch (_) {
-                // ignore if not supported
-              }
-            },
-          ),
-        ],
-      ),
     );
   }
 
@@ -378,6 +314,198 @@ class GoalListPageView extends StatelessWidget {
       onDelete: () async {
         context.read<GoalCubit>().removeGoal(goal.id);
       },
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// _GoalsBody
+///
+/// Extracted widget that contains the filter header + list of goals.
+/// It does NOT read from context; all state and callbacks are passed in.
+/// ---------------------------------------------------------------------------
+class _GoalsBody extends StatelessWidget {
+  const _GoalsBody({
+    required this.goals,
+    required this.visibleFields,
+    required this.filterActive,
+    required this.filterSummary,
+    required this.onEdit,
+    required this.onEditFilters,
+    required this.onClearFilters,
+  });
+
+  final List<Goal> goals;
+  final Map<String, bool> visibleFields;
+  final bool filterActive;
+  final String filterSummary;
+
+  /// Called when user taps the edit action for a goal.
+  /// Provided a BuildContext so caller can show modals / sheets as needed.
+  final void Function(BuildContext context, Goal goal) onEdit;
+
+  /// Called when user taps the 'Edit filters' button in header.
+  final VoidCallback onEditFilters;
+
+  /// Called when user taps 'Clear filters' in header.
+  final VoidCallback onClearFilters;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        if (filterActive)
+          _FilterHeader(
+            summary: filterSummary,
+            onEdit: onEditFilters,
+            onClear: onClearFilters,
+          ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: goals.length,
+            itemBuilder: (context, index) {
+              final g = goals[index];
+              return GoalListItem(
+                key: ValueKey(g.id),
+                id: g.id,
+                title: g.name,
+                description: g.description ?? '',
+                targetDate: g.targetDate,
+                contextValue: g.context,
+                visibleFields: visibleFields,
+                filterActive: filterActive,
+                onEdit: () => onEdit(context, g),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_alt, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              filterSummary,
+              style: Theme.of(context).textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Edit filters',
+            icon: const Icon(Icons.edit, size: 20),
+            onPressed: onEditFilters,
+          ),
+          IconButton(
+            tooltip: 'Clear filters',
+            icon: const Icon(Icons.clear, size: 20),
+            onPressed: onClearFilters,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// _EmptyGoals
+///
+/// Extracted widget shown when there are no goals.
+/// Accepts filterActive and onClear callback. The caller should pass a callback
+/// that calls the cubit's `clearFilters()` (see acceptance criteria).
+/// ---------------------------------------------------------------------------
+class _EmptyGoals extends StatelessWidget {
+  const _EmptyGoals({
+    required this.filterActive,
+    required this.onClear,
+  });
+
+  final bool filterActive;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final message = filterActive ? 'No goals found' : 'No goals yet';
+
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          if (filterActive)
+            OutlinedButton(
+              onPressed: onClear,
+              child: const Text('No goals found. Clear filters?'),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// ---------------------------------------------------------------------------
+/// _FilterHeader
+///
+/// Pure stateless widget that displays the filter summary and exposes
+/// edit / clear callbacks to the parent. Does NOT read from context/cubit.
+/// ---------------------------------------------------------------------------
+class _FilterHeader extends StatelessWidget {
+  const _FilterHeader({
+    required this.summary,
+    required this.onEdit,
+    required this.onClear,
+  });
+
+  final String summary;
+  final VoidCallback onEdit;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.filter_alt, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              summary,
+              style: Theme.of(context).textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          IconButton(
+            tooltip: 'Edit filters',
+            icon: const Icon(Icons.edit, size: 20),
+            onPressed: onEdit,
+          ),
+          IconButton(
+            tooltip: 'Clear filters',
+            icon: const Icon(Icons.clear, size: 20),
+            onPressed: onClear,
+          ),
+        ],
+      ),
     );
   }
 }
