@@ -36,6 +36,8 @@ import '../../domain/usecases/task/get_task_by_id.dart';
 import '../../domain/usecases/task/get_tasks_by_milestone_id.dart';
 import '../../domain/usecases/task/update_task.dart';
 import '../../domain/usecases/task/delete_task.dart';
+import '../../core/view_preferences_service.dart';
+import '../widgets/view_field_bottom_sheet.dart';
 import 'task_state.dart';
 
 /// Custom exception thrown when a milestone is not found during task create/update.
@@ -69,6 +71,9 @@ class TaskCubit extends Cubit<TaskState> {
 
   /// MilestoneRepository is required to fetch milestone details for goalId resolution.
   final MilestoneRepository milestoneRepository;
+  
+  /// ViewPreferencesService for loading/saving field visibility preferences.
+  final ViewPreferencesService viewPreferencesService;
 
   // master copy of all tasks fetched from the domain layer.
   List<Task> _allTasks = [];
@@ -152,7 +157,14 @@ class TaskCubit extends Cubit<TaskState> {
     required this.update,
     required this.delete,
     required this.milestoneRepository,
-  }) : super(TasksLoading());
+    required this.viewPreferencesService,
+  }) : super(TasksLoading()) {
+    // Load saved view preferences on initialization
+    final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.task);
+    if (savedPrefs != null) {
+      _visibleFields = savedPrefs;
+    }
+  }
 
   /// Load all tasks from repository.
   Future<void> loadTasks() async {

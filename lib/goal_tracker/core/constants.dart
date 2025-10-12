@@ -46,3 +46,10 @@ const List<String> kContextOptions = [
 const String goalBoxName = 'goals_box';
 const String milestoneBoxName = 'milestones_box';
 const String taskBoxName = 'tasks_box';
+
+/// Hive box name for view field preferences.
+///
+/// - Stores user preferences for which fields are visible in list views.
+/// - Keys within this box: 'goal_view', 'milestone_view', 'task_view'
+/// - Each key maps to a JSON-encoded Map<String, bool> of field visibility settings.
+const String viewPreferencesBoxName = 'view_preferences_box';

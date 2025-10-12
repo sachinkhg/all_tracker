@@ -129,12 +129,28 @@ class MilestoneListPageView extends StatelessWidget {
           final Map<String, bool>? initial =
               currentState is MilestonesLoaded ? currentState.visibleFields : <String, bool>{};
 
-          final result = await showAppBottomSheet<Map<String, bool>?>(
+          final result = await showAppBottomSheet<Map<String, dynamic>?>(
             context,
             ViewFieldsBottomSheet(entity: ViewEntityType.milestone, initial: initial),
           );
           if (result == null) return;
-          cubit.setVisibleFields(result);
+          
+          // Extract fields and saveView preference from result
+          final fields = result['fields'] as Map<String, bool>;
+          final saveView = result['saveView'] as bool;
+          
+          // Get the ViewPreferencesService from cubit
+          final viewPrefsService = cubit.viewPreferencesService;
+          
+          // Save or clear preferences based on checkbox state
+          if (saveView) {
+            await viewPrefsService.saveViewPreferences(ViewEntityType.milestone, fields);
+          } else {
+            await viewPrefsService.clearViewPreferences(ViewEntityType.milestone);
+          }
+          
+          // Apply the fields to the cubit to update UI
+          cubit.setVisibleFields(fields);
         },
         // onFilter opens the FilterGroupBottomSheet and applies filters/grouping via cubit.
         onFilter: () async {

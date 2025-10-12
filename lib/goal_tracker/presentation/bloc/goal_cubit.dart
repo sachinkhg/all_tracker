@@ -5,6 +5,8 @@ import '../../domain/usecases/goal/get_all_goals.dart';
 import '../../domain/usecases/goal/create_goal.dart';
 import '../../domain/usecases/goal/update_goal.dart';
 import '../../domain/usecases/goal/delete_goal.dart';
+import '../../core/view_preferences_service.dart';
+import '../widgets/view_field_bottom_sheet.dart';
 import 'goal_state.dart';
 
 /// ---------------------------------------------------------------------------
@@ -39,6 +41,7 @@ class GoalCubit extends Cubit<GoalState> {
   final CreateGoal create;
   final UpdateGoal update;
   final DeleteGoal delete;
+  final ViewPreferencesService viewPreferencesService;
 
   // master copy of all goals fetched from the domain layer.
   List<Goal> _allGoals = []; // master copy of all goals
@@ -110,7 +113,14 @@ class GoalCubit extends Cubit<GoalState> {
     required this.create,
     required this.update,
     required this.delete,
-  }) : super(GoalsLoading());
+    required this.viewPreferencesService,
+  }) : super(GoalsLoading()) {
+    // Load saved view preferences on initialization
+    final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.goal);
+    if (savedPrefs != null) {
+      _visibleFields = savedPrefs;
+    }
+  }
 
   Future<void> loadGoals() async {
     try {

@@ -76,6 +76,11 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
   /// This map is intentionally simple (String -> bool) to make it easy to
   /// persist or convert to/from DTOs in the data layer.
   late Map<String, bool> _fields;
+  
+  /// Whether to save the view preferences to persistent storage.
+  /// Checked by default (auto-save enabled).
+  /// When unchecked and APPLY is clicked, saved preferences are cleared.
+  bool _saveView = true;
 
   @override
   void initState() {
@@ -174,6 +179,16 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('remainingDays', 'Remaining Days'),
             ],
             const SizedBox(height: 8),
+            const Divider(),
+            CheckboxListTile(
+              title: const Text('Save View'),
+              subtitle: const Text('Remember these settings for next time'),
+              value: _saveView,
+              onChanged: (val) {
+                setState(() => _saveView = val ?? true);
+              },
+            ),
+            const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -187,7 +202,11 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
                   onPressed: () {
                     // Ensure 'name' remains enabled
                     _fields['name'] = true;
-                    Navigator.of(context).pop(_fields);
+                    // Return both fields and saveView preference
+                    Navigator.of(context).pop({
+                      'fields': _fields,
+                      'saveView': _saveView,
+                    });
                   },
                 ),
               ],

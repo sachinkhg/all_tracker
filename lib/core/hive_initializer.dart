@@ -1,6 +1,7 @@
 import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/task_model.dart';
+import 'package:all_tracker/goal_tracker/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
@@ -65,9 +66,12 @@ class HiveInitializer {
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
-    var goalsBox = await Hive.openBox<GoalModel>('goals_box');
-    var milestonesBox = await Hive.openBox<MilestoneModel>('milestones_box');
-    var tasksBox = await Hive.openBox<TaskModel>('tasks_box');
+    var goalsBox = await Hive.openBox<GoalModel>(goalBoxName);
+    var milestonesBox = await Hive.openBox<MilestoneModel>(milestoneBoxName);
+    var tasksBox = await Hive.openBox<TaskModel>(taskBoxName);
+    
+    // Open view preferences box (stores user view field visibility settings)
+    await Hive.openBox(viewPreferencesBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

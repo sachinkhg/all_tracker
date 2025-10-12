@@ -30,6 +30,8 @@ import '../../domain/usecases/milestone/get_milestone_by_id.dart';
 import '../../domain/usecases/milestone/get_milestones_by_goal_id.dart';
 import '../../domain/usecases/milestone/update_milestone.dart';
 import '../../domain/usecases/milestone/delete_milestone.dart';
+import '../../core/view_preferences_service.dart';
+import '../widgets/view_field_bottom_sheet.dart';
 import 'milestone_state.dart';
 
 /// Cubit to manage Milestone state.
@@ -40,6 +42,9 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   final CreateMilestone create;
   final UpdateMilestone update;
   final DeleteMilestone delete;
+  
+  /// ViewPreferencesService for loading/saving field visibility preferences.
+  final ViewPreferencesService viewPreferencesService;
 
   // master copy of all milestones fetched from the domain layer.
   List<Milestone> _allMilestones = [];
@@ -105,7 +110,14 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     required this.create,
     required this.update,
     required this.delete,
-  }) : super(MilestonesLoading());
+    required this.viewPreferencesService,
+  }) : super(MilestonesLoading()) {
+    // Load saved view preferences on initialization
+    final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.milestone);
+    if (savedPrefs != null) {
+      _visibleFields = savedPrefs;
+    }
+  }
 
   /// Load all milestones from repository.
   Future<void> loadMilestones() async {
