@@ -20,7 +20,7 @@
       document the change in README and migration_notes.md.
 */
 
-import '../repositories/goal_repository.dart';
+import '../../repositories/goal_repository.dart';
 
 /// Use case class responsible for deleting a [Goal] by its [id].
 ///

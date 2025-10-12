@@ -32,16 +32,28 @@ import '../../core/constants.dart'; // path to kContextOptions
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
 
+enum FilterEntityType { goal, milestone }
+
 class FilterGroupBottomSheet extends StatefulWidget {
+  /// Which entity this filter sheet applies to.
+  final FilterEntityType entity;
+
+  /// For goals: semantic context value. For milestones: selected goalId.
   final String? initialContext;
   final String? initialDateFilter;
   final String? initialGrouping;
 
+  /// For milestones: list of goal options to display. Each item can be
+  /// "<id>::<title>" or a single string (used as both id and title).
+  final List<String>? goalOptions;
+
   const FilterGroupBottomSheet({
     super.key,
+    required this.entity,
     this.initialContext,
     this.initialDateFilter,
     this.initialGrouping,
+    this.goalOptions,
   });
 
   @override
@@ -51,6 +63,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
 class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   String? _selectedContext;
   String? _selectedDateFilter;
+  late final List<MapEntry<String, String>> _goalPairs; // id -> title
 
   @override
   void initState() {
@@ -58,6 +71,19 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     // Initialize selections from incoming values to support edit/restore flows.
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
+
+    // Parse goalOptions if provided (used when entity == milestone)
+    final raws = (widget.goalOptions ?? [])
+        .map((o) => o.trim())
+        .where((o) => o.isNotEmpty)
+        .toList(growable: false);
+    _goalPairs = raws.map((raw) {
+      if (raw.contains('::')) {
+        final parts = raw.split('::');
+        return MapEntry(parts.first.trim(), parts.sublist(1).join('::').trim());
+      }
+      return MapEntry(raw, raw);
+    }).toList(growable: false);
   }
 
   @override
@@ -103,25 +129,42 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Filter by Context", style: textTheme.bodySmall),
+                                Text(
+                                  widget.entity == FilterEntityType.goal
+                                      ? "Filter by Context"
+                                      : "Filter by Goal",
+                                  style: textTheme.bodySmall,
+                                ),
                                 const SizedBox(height: 8),
                                 Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
-                                    // Build ChoiceChips from kContextOptions.
-                                    // Using the constants list ensures consistency
-                                    // across the app when contexts are modified.
-                                    for (final ctx in kContextOptions)
-                                      ChoiceChip(
-                                        label: Text(ctx),
-                                        selected: _selectedContext == ctx,
-                                        onSelected: (sel) {
-                                          setState(() {
-                                            _selectedContext = sel ? ctx : null;
-                                          });
-                                        },
-                                      ),
+                                    if (widget.entity == FilterEntityType.goal) ...[
+                                      // Build ChoiceChips from kContextOptions.
+                                      for (final ctx in kContextOptions)
+                                        ChoiceChip(
+                                          label: Text(ctx),
+                                          selected: _selectedContext == ctx,
+                                          onSelected: (sel) {
+                                            setState(() {
+                                              _selectedContext = sel ? ctx : null;
+                                            });
+                                          },
+                                        ),
+                                    ] else ...[
+                                      // Milestone: build from goal titles; selection stores goalId.
+                                      for (final entry in _goalPairs)
+                                        ChoiceChip(
+                                          label: Text(entry.value),
+                                          selected: _selectedContext == entry.key,
+                                          onSelected: (sel) {
+                                            setState(() {
+                                              _selectedContext = sel ? entry.key : null; // store id
+                                            });
+                                          },
+                                        ),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 16),

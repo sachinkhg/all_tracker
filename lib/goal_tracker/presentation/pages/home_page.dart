@@ -1,8 +1,7 @@
-// ./lib/goal_tracker/presentation/pages/home_page.dart
 /*
   purpose:
     - Defines the app’s landing screen (entry point UI) within the presentation layer.
-    - Provides a simple and isolated navigation entry to the [GoalListPage].
+    - Provides simple and isolated navigation entry points to [GoalListPage] and [MilestoneListPage].
     - Designed to be lightweight — contains no business or data logic, only UI and navigation.
 
   app lifecycle role:
@@ -19,8 +18,10 @@
 import 'package:flutter/material.dart';
 
 import 'goal_list_page.dart';
+import 'milestone_list_page.dart';
 
-/// The app’s landing page providing a single primary action to view all goals.
+/// The app’s landing page providing navigation to both
+/// the Goal Tracker and Milestone Tracker modules.
 ///
 /// This widget is stateless and presentation-only:
 /// it defines layout, theming, and navigation behavior.
@@ -38,22 +39,44 @@ class HomePage extends StatelessWidget {
         foregroundColor: cs.onPrimary,
       ),
       body: Center(
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: cs.primary,
-            foregroundColor: cs.onPrimary,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          ),
-          onPressed: () {
-            // Navigate to the goal list page — direct push for simplicity.
-            // Keeps navigation logic presentation-focused and decoupled
-            // from data-layer or state management dependencies.
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const GoalListPage()),
-            );
-          },
-          child: const Text('Goals', style: TextStyle(fontSize: 18)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // --- Goals Button ---
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cs.primary,
+                foregroundColor: cs.onPrimary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                // Navigate to the Goal List Page.
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const GoalListPage()),
+                );
+              },
+              child: const Text('Goals', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(height: 20),
+
+            // --- Milestones Button ---
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cs.secondary,
+                foregroundColor: cs.onSecondary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                // Navigate to the Milestone List Page.
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MilestoneListPage()),
+                );
+              },
+              child: const Text('Milestones', style: TextStyle(fontSize: 18)),
+            ),
+          ],
         ),
       ),
     );

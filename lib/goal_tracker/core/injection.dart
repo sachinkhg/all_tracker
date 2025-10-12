@@ -8,11 +8,23 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../data/datasources/goal_local_data_source.dart';
 import '../data/repositories/goal_repository_impl.dart';
 import '../data/models/goal_model.dart';
-import '../domain/usecases/create_goal.dart';
-import '../domain/usecases/get_all_goals.dart';
-import '../domain/usecases/update_goal.dart';
-import '../domain/usecases/delete_goal.dart';
+import '../domain/usecases/goal/create_goal.dart';
+import '../domain/usecases/goal/get_all_goals.dart';
+import '../domain/usecases/goal/update_goal.dart';
+import '../domain/usecases/goal/delete_goal.dart';
 import '../presentation/bloc/goal_cubit.dart';
+
+import '../data/datasources/milestone_local_data_source.dart';
+import '../data/repositories/milestone_repository_impl.dart';
+import '../data/models/milestone_model.dart';
+import '../domain/usecases/milestone/create_milestone.dart';
+import '../domain/usecases/milestone/get_all_milestones.dart';
+import '../domain/usecases/milestone/get_milestone_by_id.dart';
+import '../domain/usecases/milestone/get_milestones_by_goal_id.dart';
+import '../domain/usecases/milestone/update_milestone.dart';
+import '../domain/usecases/milestone/delete_milestone.dart';
+import '../presentation/bloc/milestone_cubit.dart';
+
 import 'constants.dart';
 
 /// Composition root for the goal_tracker feature.
@@ -110,4 +122,49 @@ GoalCubit createGoalCubit() {
   // - Consider registering Cubits via `registerFactory` in a DI container so each consumer receives a fresh instance.
   // - In this manual wiring approach we return a ready-to-use instance; callers (e.g., the UI) are responsible for disposing it.
   return GoalCubit(getAll: getAll, create: create, update: update, delete: delete);
+}
+
+/// ---------------------------------------------------------------------------
+/// Milestone wiring: parallel factory that constructs a fully-wired [MilestoneCubit].
+///
+/// Notes:
+/// - Assumes the Hive box named [milestoneBoxName] has already been opened.
+/// - Mirrors the Goal wiring pattern: local datasource → repository → use-cases → cubit.
+/// - Tests should construct their own graph and inject mocks as required.
+/// ---------------------------------------------------------------------------
+MilestoneCubit createMilestoneCubit() {
+  // Ensure Hive.box<MilestoneModel>(milestoneBoxName) is opened beforehand (main.dart).
+  final Box<MilestoneModel> box = Hive.box<MilestoneModel>(milestoneBoxName);
+
+  // ---------------------------------------------------------------------------
+  // Data layer
+  // ---------------------------------------------------------------------------
+  final local = MilestoneLocalDataSourceImpl(box);
+
+  // ---------------------------------------------------------------------------
+  // Repository layer
+  // ---------------------------------------------------------------------------
+  final repo = MilestoneRepositoryImpl(local);
+
+  // ---------------------------------------------------------------------------
+  // Use-cases (domain)
+  // ---------------------------------------------------------------------------
+  final getAll = GetAllMilestones(repo);
+  final getById = GetMilestoneById(repo);
+  final getByGoalId = GetMilestonesByGoalId(repo);
+  final create = CreateMilestone(repo);
+  final update = UpdateMilestone(repo);
+  final delete = DeleteMilestone(repo);
+
+  // ---------------------------------------------------------------------------
+  // Presentation
+  // ---------------------------------------------------------------------------
+  return MilestoneCubit(
+    getAll: getAll,
+    getById: getById,
+    getByGoalId: getByGoalId,
+    create: create,
+    update: update,
+    delete: delete,
+  );
 }

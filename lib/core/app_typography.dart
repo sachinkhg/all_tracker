@@ -86,7 +86,7 @@ class AppTypography {
         fontFamily: primaryFontFamily,
         fontSize: 14,
         fontWeight: FontWeight.bold,
-        color: colorScheme.secondary,
+        color: colorScheme.primary,
       ),
       // BodySmall for helper text or captions. Slight opacity reduces visual weight while keeping color linked to scheme.
       bodySmall: TextStyle(

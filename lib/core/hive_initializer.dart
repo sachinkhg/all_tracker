@@ -1,11 +1,12 @@
 import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
+import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
 ///
 /// Responsibility:
 /// - Registers all Hive TypeAdapters used by the app (so Hive can serialize/deserialize objects).
-/// - Opens the necessary Hive boxes for feature modules (returns the opened box here for immediate use).
+/// - Opens the necessary Hive boxes for feature modules (returns them for immediate use).
 /// - Ensures schema compatibility by making adapter registrations deterministic.
 ///
 /// Boot order:
@@ -32,50 +33,98 @@ import 'package:hive_flutter/hive_flutter.dart';
 /// Developer note:
 /// - This file contains only wiring and adapter registration. Keep migrations and data migrations separate (e.g., a `migrations/` folder or in `migration_notes.md`).
 class HiveInitializer {
-
-  /// Initializes Hive for the app and returns the opened goals box.
+  /// Initializes Hive for the app and returns both goal and milestone boxes.
   ///
-  /// - Registers the `GoalModel` adapter if not already registered.
-  /// - Opens (and returns) the box named `'goals_box'`.
-  /// - Caller responsibility:
-  ///   * Ensure this is awaited during startup before DI setup that depends on Hive boxes.
-  ///   * Handle errors thrown by `Hive.openBox` according to the app's recovery strategy (see header).
-  static Future<Box<GoalModel>> initialize() async {
+  /// - Registers adapters if not already registered.
+  /// - Opens boxes `'goals_box'` and `'milestones_box'`.
+  /// - Prints contents for verification.
+  /// - Must be awaited before DI setup and `runApp`.
+  static Future<HiveBoxes> initialize() async {
     // Initialize Hive Flutter bindings. This must be called before any Hive operations.
     await Hive.initFlutter();
 
     // -------------------------------------------------------------------------
     // Adapter registration
     // -------------------------------------------------------------------------
-    // Obtain the adapter typeId from the generated adapter for clarity and to avoid magic numbers.
-    // Mapping note: GoalModelAdapter().typeId -> GoalModel
-    final adapterId = GoalModelAdapter().typeId;
-
-    // Register adapter only if not already registered. This makes the initializer idempotent
-    // which helps in tests and hot-reload scenarios where adapters may already be registered.
-    if (!Hive.isAdapterRegistered(adapterId)) {
-      // Registering a TypeAdapter is required for Hive to (de)serialize GoalModel instances.
-      // Keep adapter registration order stable: register adapters before opening boxes that use them.
+    final goalAdapterId = GoalModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(goalAdapterId)) {
       Hive.registerAdapter(GoalModelAdapter());
+    }
+
+    final milestoneAdapterId = MilestoneModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(milestoneAdapterId)) {
+      Hive.registerAdapter(MilestoneModelAdapter());
     }
 
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
-    // Naming convention: use descriptive, lower_snake_case names with a feature prefix if needed.
-    // Box: 'goals_box' — holds GoalModel entries for the goal_tracker feature.
-    //
-    // IMPORTANT: opening a box can throw if the file is corrupted or if there are incompatible adapters.
-    // Recommendation: catch and handle exceptions at the call site (see file header).
-    var box = await Hive.openBox<GoalModel>('goals_box');
+    var goalsBox = await Hive.openBox<GoalModel>('goals_box');
+    var milestonesBox = await Hive.openBox<MilestoneModel>('milestones_box');
 
-    // print('Printing all milestones in box:');
-    // for (var key in box.keys) {
-    //   var goal = box.get(key);
-    //   print('Key: $key, name: ${goal?.name}, targetDate: ${goal?.targetDate}, context: ${goal?.context}, isCompleted: ${goal?.isCompleted}');
+    // // -------------------------------------------------------------------------
+    // // Debug print section (for developer visibility)
+    // // -------------------------------------------------------------------------
+    // print('\n========== Hive Boxes Initialized ==========');
+
+    // // ---- Goals Box ----
+    // print('\n Goals Box (${goalsBox.length} entries)');
+    // if (goalsBox.isEmpty) {
+    //   print('  (empty)');
+    // } else {
+    //   for (var key in goalsBox.keys) {
+    //     final goal = goalsBox.get(key);
+    //     print('  ▶ Key: $key');
+    //     print('    • Name       : ${goal?.name}');
+    //     print('    • Description: ${goal?.description}');
+    //     print('    • TargetDate : ${goal?.targetDate}');
+    //     print('    • Context    : ${goal?.context}');
+    //     print('    • Completed  : ${goal?.isCompleted}');
+    //   }
     // }
 
-    // Return the opened box so callers can use it immediately (e.g., to construct local data sources).
-    return box;
+    // // ---- Milestones Box ----
+    // print('\n Milestones Box (${milestonesBox.length} entries)');
+    // if (milestonesBox.isEmpty) {
+    //   print('  (empty)');
+    // } else {
+    //   for (var key in milestonesBox.keys) {
+    //     final ms = milestonesBox.get(key);
+    //     print('  ▶ Key: $key');
+    //     print('    • Name         : ${ms?.name}');
+    //     print('    • Description  : ${ms?.description}');
+    //     print('    • PlannedValue : ${ms?.plannedValue}');
+    //     print('    • ActualValue  : ${ms?.actualValue}');
+    //     print('    • TargetDate   : ${ms?.targetDate}');
+    //     print('    • GoalId       : ${ms?.goalId}');
+    //   }
+    // }
+
+    // print('===========================================\n');
+
+    return HiveBoxes(
+      goalsBox: goalsBox,
+      milestonesBox: milestonesBox,
+    );
   }
+}
+
+/// Simple container class holding all opened Hive boxes.
+///
+/// Returned by [HiveInitializer.initialize] for easy dependency injection.
+///
+/// Example usage:
+/// ```dart
+/// final boxes = await HiveInitializer.initialize();
+/// final goalBox = boxes.goalsBox;
+/// final milestoneBox = boxes.milestonesBox;
+/// ```
+class HiveBoxes {
+  final Box<GoalModel> goalsBox;
+  final Box<MilestoneModel> milestonesBox;
+
+  HiveBoxes({
+    required this.goalsBox,
+    required this.milestonesBox,
+  });
 }
