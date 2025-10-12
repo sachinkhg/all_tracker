@@ -1,10 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/goal.dart';
-import '../../domain/usecases/get_all_goals.dart';
-import '../../domain/usecases/create_goal.dart';
-import '../../domain/usecases/update_goal.dart';
-import '../../domain/usecases/delete_goal.dart';
+import '../../domain/usecases/goal/get_all_goals.dart';
+import '../../domain/usecases/goal/create_goal.dart';
+import '../../domain/usecases/goal/update_goal.dart';
+import '../../domain/usecases/goal/delete_goal.dart';
 import 'goal_state.dart';
 
 /// ---------------------------------------------------------------------------
