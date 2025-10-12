@@ -19,8 +19,8 @@
     - Reflect any changes in ARCHITECTURE.md and migration_notes.md.
 */
 
-import '../entities/goal.dart';
-import '../repositories/goal_repository.dart';
+import '../../entities/goal.dart';
+import '../../repositories/goal_repository.dart';
 
 /// Use case class responsible for fetching all [Goal] entities.
 ///

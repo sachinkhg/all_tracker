@@ -1,77 +1,85 @@
-// ./lib/goal_tracker/presentation/pages/goal_list_page.dart
 /*
   purpose:
-    - Presentation layer page that displays the list of Goal entities and related actions.
-    - Responsible for wiring the GoalCubit for this screen, rendering loading/error/empty states,
+    - Presentation layer page that displays the list of Milestone entities and related actions.
+    - Responsible for wiring the MilestoneCubit for this screen, rendering loading/error/empty states,
       and providing user actions (create, edit, filter, import/export).
-    - Keeps UI concerns only — all business logic lives in GoalCubit / domain use cases.
+    - Keeps UI concerns only — all business logic lives in MilestoneCubit / domain use cases.
 */
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
-import '../../domain/entities/goal.dart';
-import '../../features/goal_import_export.dart';
-import '../bloc/goal_cubit.dart';
-import '../bloc/goal_state.dart';
-import '../../core/injection.dart'; // factory that wires everything
+import '../../domain/entities/milestone.dart';
+import '../../data/models/goal_model.dart';
+import '../../core/injection.dart'; // factory that wires everything (createMilestoneCubit)
+import '../../core/constants.dart'; // for goalBoxName
+import '../bloc/milestone_cubit.dart';
+import '../bloc/milestone_state.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
-import '../widgets/goal_list_item.dart';
+import '../widgets/milestone_list_item.dart';
 import '../../../widgets/loading_view.dart';
 import '../../../widgets/error_view.dart';
-import '../widgets/goal_form_bottom_sheet.dart';
+import '../widgets/milestone_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
-import '../../../widgets/bottom_sheet_helpers.dart'; // <- centralized helper
+import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
+import '../../features/milestone_import_export.dart';
 
-class GoalListPage extends StatelessWidget {
-  const GoalListPage({super.key});
+// Optional import placeholders for import/export functionality.
+// import '../../features/milestone_import_export.dart';
+
+class MilestoneListPage extends StatelessWidget {
+  const MilestoneListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createGoalCubit()..loadGoals(),
-      child: const GoalListPageView(),
+      create: (_) => createMilestoneCubit()..loadMilestones(),
+      child: const MilestoneListPageView(),
     );
   }
 }
 
-class GoalListPageView extends StatelessWidget {
-  const GoalListPageView({super.key});
+class MilestoneListPageView extends StatelessWidget {
+  const MilestoneListPageView({super.key});
 
   @override
   Widget build(BuildContext context) {
     // Obtain cubit & state here once so nested closures don't call context.read
-    final cubit = context.read<GoalCubit>();
+    final cubit = context.read<MilestoneCubit>();
     final state = cubit.state;
     final Map<String, bool> initialVisible =
-        state is GoalsLoaded ? state.visibleFields : <String, bool>{};
+        state is MilestonesLoaded ? state.visibleFields ?? <String, bool>{} : <String, bool>{};
 
     return Scaffold(
-      appBar: const PrimaryAppBar(title: 'Goal Tracker'),
+      appBar: const PrimaryAppBar(title: 'Milestones'),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
           children: [
             Expanded(
-              child: BlocBuilder<GoalCubit, GoalState>(
+              child: BlocBuilder<MilestoneCubit, MilestoneState>(
                 builder: (context, state) {
-                  if (state is GoalsLoading) {
+                  if (state is MilestonesLoading) {
                     return const LoadingView();
                   }
 
-                  if (state is GoalsLoaded) {
-                    final goals = state.goals;
-                    final visible = state.visibleFields;
+                  if (state is MilestonesLoaded) {
+                    final milestones = state.milestones;
+                    final visible = state.visibleFields ?? <String, bool>{};
 
                     // use the cubit captured from outer scope; do NOT call context.read here
                     final bool filterActive = cubit.hasActiveFilters;
                     final String filterSummary = cubit.filterSummary;
 
-                    if (goals.isEmpty) {
-                      return _EmptyGoals(
+                    // Build a map of goalId -> goalName to display human-readable goal names
+                    final Map<String, String> goalNameById = _getGoalNameById();
+
+                    if (milestones.isEmpty) {
+                      return _EmptyMilestones(
                         filterActive: filterActive,
                         onClear: () {
                           // delegate clearing to cubit per acceptance criteria
@@ -80,30 +88,26 @@ class GoalListPageView extends StatelessWidget {
                       );
                     }
 
-                    return _GoalsBody(
-                      goals: goals,
+                    return _MilestonesBody(
+                      milestones: milestones,
                       visibleFields: visible,
                       filterActive: filterActive,
                       filterSummary: filterSummary,
+                      goalNameById: goalNameById,
                       // pass the cubit into the edit handler so nested closures don't call context.read
-                      onEdit: (ctx, goal) => _onEditGoal(ctx, goal, cubit),
+                      onEdit: (ctx, milestone) => _onEditMilestone(ctx, milestone, cubit),
                       onEditFilters: () => _editFilters(context, cubit),
                       onClearFilters: () {
                         cubit.clearFilters();
-                        try {
-                          cubit.applyGrouping(groupBy: '');
-                        } catch (_) {
-                          // ignore if not supported
-                        }
                       },
                     );
                   }
 
-                  if (state is GoalsError) {
+                  if (state is MilestonesError) {
                     return ErrorView(
                       message: state.message,
                       // use captured cubit instead of context.read
-                      onRetry: () => cubit.loadGoals(),
+                      onRetry: () => cubit.loadMilestones(),
                     );
                   }
 
@@ -119,14 +123,13 @@ class GoalListPageView extends StatelessWidget {
         initialVisibleFields: initialVisible,
         // onView opens the ViewFieldsBottomSheet and applies selected fields to cubit.
         onView: () async {
-          // read the up-to-date visible fields directly from cubit.state
           final currentState = cubit.state;
           final Map<String, bool>? initial =
-              currentState is GoalsLoaded ? currentState.visibleFields : <String, bool>{};
+              currentState is MilestonesLoaded ? currentState.visibleFields : <String, bool>{};
 
           final result = await showAppBottomSheet<Map<String, bool>?>(
             context,
-            ViewFieldsBottomSheet(entity: ViewEntityType.goal, initial: initial),
+            ViewFieldsBottomSheet(entity: ViewEntityType.milestone, initial: initial),
           );
           if (result == null) return;
           cubit.setVisibleFields(result);
@@ -135,8 +138,8 @@ class GoalListPageView extends StatelessWidget {
         onFilter: () async {
           await _editFilters(context, cubit);
         },
-        // onAdd shows the create goal sheet — pass cubit explicitly
-        onAdd: () => _onCreateGoal(context, cubit),
+        // onAdd shows the create milestone sheet — pass cubit explicitly
+        onAdd: () => _onCreateMilestone(context, cubit),
         // onMore shows the actions sheet — pass cubit explicitly
         onMore: () => _showActionsSheet(context, cubit),
       ),
@@ -144,58 +147,53 @@ class GoalListPageView extends StatelessWidget {
     );
   }
 
-  // Edited to accept cubit and avoid reading from context inside the method.
-  Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
+  Future<void> _editFilters(BuildContext context, MilestoneCubit cubit) async {
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
       FilterGroupBottomSheet(
-        entity: FilterEntityType.goal,
-        initialContext: cubit.currentContextFilter,
+        entity: FilterEntityType.milestone,
+        initialContext: cubit.currentGoalIdFilter, // re-using context param to represent goal filter
         initialDateFilter: cubit.currentTargetDateFilter,
-        initialGrouping: cubit.currentGrouping,
+        initialGrouping: null,
+        goalOptions: _getGoalOptions(),
       ),
     );
 
     if (result == null) return;
 
     if (result.containsKey('context') || result.containsKey('targetDate')) {
-      final selectedContext = result['context'] as String?;
+      final selectedGoal = result['context'] as String?;
       final selectedTargetDate = result['targetDate'] as String?;
       // use passed cubit instead of context.read
       cubit.applyFilter(
-        contextFilter: selectedContext,
+        goalId: selectedGoal,
         targetDateFilter: selectedTargetDate,
       );
     }
 
     if (result['groupBy'] != null && (result['groupBy'] as String).isNotEmpty) {
       final groupBy = result['groupBy'] as String;
-      cubit.applyGrouping(groupBy: groupBy);
+      try {
+        //cubit.applyGrouping(groupBy: groupBy);
+      } catch (_) {
+        // ignore if not supported or no-op
+      }
     }
   }
 
-  // Accept cubit so we avoid nested context.read calls.
-  void _showActionsSheet(BuildContext context, GoalCubit cubit) {
-    // Build the sheet content and pass to helper to preserve consistent look/behavior.
+  void _showActionsSheet(BuildContext context, MilestoneCubit cubit) {
     final sheet = Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         const SizedBox(height: 8),
-        Container(
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
+        Container(width: 40, height: 4, decoration: BoxDecoration(borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 12),
         ListTile(
           leading: const Icon(Icons.add),
-          title: const Text('Add Goal'),
+          title: const Text('Add Milestone'),
           onTap: () {
             Navigator.of(context).pop();
-            // pass cubit explicitly
-            _onCreateGoal(context, cubit);
+            _onCreateMilestone(context, cubit);
           },
         ),
         ListTile(
@@ -203,11 +201,11 @@ class GoalListPageView extends StatelessWidget {
           title: const Text('Export'),
           onTap: () async {
             Navigator.of(context).pop();
-            // use passed cubit
             final state = cubit.state;
-            final goals = state is GoalsLoaded ? state.goals : <Goal>[];
-            final path = await exportGoalsToXlsx(context, goals);
+            final milestones = state is MilestonesLoaded ? state.milestones : <Milestone>[];
+            final path = await exportMilestonesToXlsx(context, milestones);
             if (path != null) {
+              // ignore: use_build_context_synchronously
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('File exported')),
               );
@@ -219,43 +217,87 @@ class GoalListPageView extends StatelessWidget {
           title: const Text('Import'),
           onTap: () {
             Navigator.of(context).pop();
-            importGoalsFromXlsx(context);
+            importMilestonesFromXlsx(context);
           },
         ),
         const SizedBox(height: 8),
       ],
     );
 
-    // Use helper which internally wraps with SafeArea and handles keyboard insets.
     showAppBottomSheet<void>(context, sheet);
   }
 
-  // Now accepts both context and explicit cubit parameter
-  void _onCreateGoal(BuildContext context, GoalCubit cubit) {
-    GoalFormBottomSheet.show(
+  /// Helper method to fetch goals from Hive and format them for the dropdown
+  List<String> _getGoalOptions() {
+    try {
+      final box = Hive.box<GoalModel>(goalBoxName);
+      final goals = box.values.toList();
+      
+      // Format as "id::name" for the dropdown
+      return goals.map((g) => '${g.id}::${g.name}').toList();
+    } catch (e) {
+      // If box is not open or any error occurs, return empty list
+      return [];
+    }
+  }
+
+  /// Helper to build a map from goalId to goalName for display purposes
+  Map<String, String> _getGoalNameById() {
+    try {
+      final box = Hive.box<GoalModel>(goalBoxName);
+      final goals = box.values.toList();
+      final map = <String, String>{};
+      for (final g in goals) {
+        map[g.id] = g.name;
+      }
+      return map;
+    } catch (_) {
+      return const <String, String>{};
+    }
+  }
+
+  void _onCreateMilestone(BuildContext context, MilestoneCubit cubit) {
+    MilestoneFormBottomSheet.show(
       context,
-      title: 'Create Goal',
-      onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
-        await cubit.addGoal(name, desc, targetDate, contxt, isCompleted);
+      title: 'Create Milestone',
+      goalOptions: _getGoalOptions(),
+      onSubmit: (name, desc, planned, actual, targetDate, goalId) async {
+        await cubit.addMilestone(
+          name: name,
+          description: desc,
+          plannedValue: planned,
+          actualValue: actual,
+          targetDate: targetDate,
+          goalId: goalId,
+        );
       },
     );
   }
 
-  // Now explicitly typed and accepts cubit so nested closures don't call context.read.
-  void _onEditGoal(BuildContext context, Goal goal, GoalCubit cubit) {
-    GoalFormBottomSheet.show(
+  void _onEditMilestone(BuildContext context, Milestone milestone, MilestoneCubit cubit) {
+    MilestoneFormBottomSheet.show(
       context,
-      title: 'Edit Goal',
-      initialName: goal.name,
-      initialDescription: goal.description,
-      initialTargetDate: goal.targetDate,
-      initialContext: goal.context,
-      initialIsCompleted: goal.isCompleted,
-      onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
-        await cubit.editGoal(goal.id, name, desc, targetDate, contxt, isCompleted);
+      title: 'Edit Milestone',
+      initialName: milestone.name,
+      initialDescription: milestone.description,
+      initialPlannedValue: milestone.plannedValue,
+      initialActualValue: milestone.actualValue,
+      initialTargetDate: milestone.targetDate,
+      initialGoalId: milestone.goalId,
+      goalOptions: _getGoalOptions(),
+      onSubmit: (name, desc, planned, actual, targetDate, goalId) async {
+        await cubit.editMilestone(
+          id: milestone.id,
+          name: name,
+          description: desc,
+          plannedValue: planned,
+          actualValue: actual,
+          targetDate: targetDate,
+          goalId: goalId,
+        );
       },
       onDelete: () async {
-        cubit.removeGoal(goal.id);
+        await cubit.removeMilestone(milestone.id);
       },
     );
   }
@@ -264,10 +306,8 @@ class GoalListPageView extends StatelessWidget {
 /// ---------------------------------------------------------------------------
 /// _ActionsFab
 ///
-/// New extracted widget for the FAB column. It does NOT read from context or call
+/// Extracted widget for the FAB column. It does NOT read from context or call
 /// any cubit methods — all interactions are done via the callbacks passed in.
-/// Accepts an initialVisibleFields map (optional) to allow rendering differences
-/// if needed in future, but currently it only uses callbacks.
 /// ---------------------------------------------------------------------------
 class _ActionsFab extends StatelessWidget {
   const _ActionsFab({
@@ -279,21 +319,10 @@ class _ActionsFab extends StatelessWidget {
     super.key,
   });
 
-  /// Callback invoked when the 'view' FAB is tapped.
-  /// Parent should handle showing the view fields sheet and applying fields.
   final Future<void> Function() onView;
-
-  /// Callback invoked when the 'filter' FAB is tapped.
-  /// Parent should handle showing the filter/group sheet and applying filters.
   final Future<void> Function() onFilter;
-
-  /// Callback invoked when 'add' FAB is tapped.
   final VoidCallback onAdd;
-
-  /// Callback invoked when 'more' FAB is tapped.
   final VoidCallback onMore;
-
-  /// Optional map of visible fields initially — provided for potential rendering.
   final Map<String, bool> initialVisibleFields;
 
   @override
@@ -324,8 +353,8 @@ class _ActionsFab extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             FloatingActionButton.small(
-              heroTag: 'addGoalFab',
-              tooltip: 'Add Goal',
+              heroTag: 'addMilestoneFab',
+              tooltip: 'Add Milestone',
               onPressed: onAdd,
               child: const Icon(Icons.add),
             ),
@@ -344,35 +373,33 @@ class _ActionsFab extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// _GoalsBody
+/// _MilestonesBody
 ///
-/// Extracted widget that contains the filter header + list of goals.
+/// Extracted widget that contains the filter header + list of milestones.
 /// It does NOT read from context; all state and callbacks are passed in.
 /// ---------------------------------------------------------------------------
-class _GoalsBody extends StatelessWidget {
-  const _GoalsBody({
-    required this.goals,
+class _MilestonesBody extends StatelessWidget {
+  const _MilestonesBody({
+    required this.milestones,
     required this.visibleFields,
     required this.filterActive,
     required this.filterSummary,
+    required this.goalNameById,
     required this.onEdit,
     required this.onEditFilters,
     required this.onClearFilters,
   });
 
-  final List<Goal> goals;
+  final List<Milestone> milestones;
   final Map<String, bool> visibleFields;
   final bool filterActive;
   final String filterSummary;
+  final Map<String, String> goalNameById;
 
-  /// Called when user taps the edit action for a goal.
-  /// Provided a BuildContext so caller can show modals / sheets as needed.
-  final void Function(BuildContext context, Goal goal) onEdit;
+  /// Called when user taps the edit action for a milestone.
+  final void Function(BuildContext context, Milestone milestone) onEdit;
 
-  /// Called when user taps the 'Edit filters' button in header.
   final VoidCallback onEditFilters;
-
-  /// Called when user taps 'Clear filters' in header.
   final VoidCallback onClearFilters;
 
   @override
@@ -386,10 +413,11 @@ class _GoalsBody extends StatelessWidget {
             onClear: onClearFilters,
           ),
         Expanded(
-          child: _GoalsList(
-            goals: goals,
+          child: _MilestonesList(
+            milestones: milestones,
             visibleFields: visibleFields,
             filterActive: filterActive,
+            goalNameById: goalNameById,
             onEdit: onEdit,
           ),
         ),
@@ -399,50 +427,52 @@ class _GoalsBody extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// _GoalsList
+/// _MilestonesList
 ///
 /// Responsibility:
-///  - Render the scrollable list of goals (separated)
-///  - Wire each GoalListItem with required props and callbacks
+///  - Render the scrollable list of milestones (separated)
+///  - Wire each MilestoneListItem with required props and callbacks
 ///  - MUST NOT access cubit/context.read inside its itemBuilder
 /// ---------------------------------------------------------------------------
-class _GoalsList extends StatelessWidget {
-  const _GoalsList({
-    required this.goals,
+class _MilestonesList extends StatelessWidget {
+  const _MilestonesList({
+    required this.milestones,
     required this.visibleFields,
     required this.filterActive,
+    required this.goalNameById,
     required this.onEdit,
     super.key,
   });
 
-  final List<Goal> goals;
+  final List<Milestone> milestones;
   final Map<String, bool> visibleFields;
   final bool filterActive;
+  final Map<String, String> goalNameById;
 
-  /// Same signature as before: caller provides how to open edit sheet, etc.
-  final void Function(BuildContext context, Goal goal) onEdit;
+  /// Caller provides how to open edit sheet, etc.
+  final void Function(BuildContext context, Milestone milestone) onEdit;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       padding: EdgeInsets.zero,
-      itemCount: goals.length,
+      itemCount: milestones.length,
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
-        final g = goals[index];
+        final m = milestones[index];
 
-        // IMPORTANT: Do not call context.read(...) or access cubit here.
-        // onEdit is provided by parent and will handle cubit interactions.
-        return GoalListItem(
-          key: ValueKey(g.id),
-          id: g.id,
-          title: g.name,
-          description: g.description ?? '',
-          targetDate: g.targetDate,
-          contextValue: g.context,
+        return MilestoneListItem(
+          key: ValueKey(m.id),
+          id: m.id,
+          title: m.name,
+          description: m.description,
+          plannedValue: m.plannedValue,
+          actualValue: m.actualValue,
+          targetDate: m.targetDate,
+          goalName: goalNameById[m.goalId] ?? m.goalId,
           visibleFields: visibleFields,
           filterActive: filterActive,
-          onEdit: () => onEdit(context, g),
+          onEdit: () => onEdit(context, m),
         );
       },
     );
@@ -450,14 +480,13 @@ class _GoalsList extends StatelessWidget {
 }
 
 /// ---------------------------------------------------------------------------
-/// _EmptyGoals
+/// _EmptyMilestones
 ///
-/// Extracted widget shown when there are no goals.
-/// Accepts filterActive and onClear callback. The caller should pass a callback
-/// that calls the cubit's `clearFilters()` (see acceptance criteria).
+/// Extracted widget shown when there are no milestones.
+/// Accepts filterActive and onClear callback.
 /// ---------------------------------------------------------------------------
-class _EmptyGoals extends StatelessWidget {
-  const _EmptyGoals({
+class _EmptyMilestones extends StatelessWidget {
+  const _EmptyMilestones({
     required this.filterActive,
     required this.onClear,
   });
@@ -467,7 +496,7 @@ class _EmptyGoals extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final message = filterActive ? 'No goals found' : 'No goals yet';
+    final message = filterActive ? 'No milestones found' : 'No milestones yet';
 
     return Center(
       child: Column(
@@ -478,7 +507,7 @@ class _EmptyGoals extends StatelessWidget {
           if (filterActive)
             OutlinedButton(
               onPressed: onClear,
-              child: const Text('No goals found. Clear filters?'),
+              child: const Text('No milestones found. Clear filters?'),
             ),
         ],
       ),

@@ -40,7 +40,11 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
+enum ViewEntityType { goal, milestone }
+
 class ViewFieldsBottomSheet extends StatefulWidget {
+  /// Which entity's fields are being configured (goal or milestone).
+  final ViewEntityType entity;
   /// Optional initial values provided by the caller.
   ///
   /// Expected shape:
@@ -59,7 +63,7 @@ class ViewFieldsBottomSheet extends StatefulWidget {
   ///   migration issues. If you change a key name, update migration_notes.md.
   final Map<String, bool>? initial;
 
-  const ViewFieldsBottomSheet({Key? key, this.initial}) : super(key: key);
+  const ViewFieldsBottomSheet({Key? key, required this.entity, this.initial}) : super(key: key);
 
   @override
   State<ViewFieldsBottomSheet> createState() => _ViewFieldsBottomSheetState();
@@ -76,20 +80,27 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _fields = {
-      // When reading values from widget.initial we defensively fallback to a
-      // default. This handles older persisted payloads that might not contain
-      // newly introduced keys (backward compatibility).
-      //
-      // Defaults rationale:
-      // - 'name' and 'description' are core to the UI so default to true.
-      // - Others default to false to keep the list compact for first-time users.
-      'name': true, // Always enforced ON
-      'description': widget.initial?['description'] ?? true,
-      'targetDate': widget.initial?['targetDate'] ?? false,
-      'context': widget.initial?['context'] ?? false,
-      'remainingDays': widget.initial?['remainingDays'] ?? false,
-    };
+    // Build default sets based on entity type; then overlay any provided initial map.
+    if (widget.entity == ViewEntityType.goal) {
+      _fields = {
+        'name': true, // Always enforced ON
+        'description': widget.initial?['description'] ?? true,
+        'targetDate': widget.initial?['targetDate'] ?? false,
+        'context': widget.initial?['context'] ?? false,
+        'remainingDays': widget.initial?['remainingDays'] ?? false,
+      };
+    } else {
+      // Milestone field set
+      _fields = {
+        'name': true, // Always enforced ON
+        'description': widget.initial?['description'] ?? true,
+        'targetDate': widget.initial?['targetDate'] ?? false,
+        'goalName': widget.initial?['goalName'] ?? false,
+        'plannedValue': widget.initial?['plannedValue'] ?? false,
+        'actualValue': widget.initial?['actualValue'] ?? false,
+        'remainingDays': widget.initial?['remainingDays'] ?? false,
+      };
+    }
   }
 
   /// Builds a labeled switch row for a given field key.
@@ -132,10 +143,19 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
             ),
             const SizedBox(height: 8),
             // Name is always visible; toggle removed to guarantee at least one field.
-            _buildToggle('description', 'Description'),
-            _buildToggle('targetDate', 'Target Date'),
-            _buildToggle('context', 'Context'),
-            _buildToggle('remainingDays', 'Remaining Days'),
+            if (widget.entity == ViewEntityType.goal) ...[
+              _buildToggle('description', 'Description'),
+              _buildToggle('targetDate', 'Target Date'),
+              _buildToggle('context', 'Context'),
+              _buildToggle('remainingDays', 'Remaining Days'),
+            ] else ...[
+              _buildToggle('description', 'Description'),
+              _buildToggle('targetDate', 'Target Date'),
+              _buildToggle('goalName', 'Goal'),
+              _buildToggle('plannedValue', 'Planned Value'),
+              _buildToggle('actualValue', 'Actual Value'),
+              _buildToggle('remainingDays', 'Remaining Days'),
+            ],
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

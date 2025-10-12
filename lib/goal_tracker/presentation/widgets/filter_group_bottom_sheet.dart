@@ -32,25 +32,27 @@ import '../../core/constants.dart'; // path to kContextOptions
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
 
-/// Enum to differentiate between filtering goals vs milestones
-enum FilterEntityType {
-  goal,
-  milestone,
-}
+enum FilterEntityType { goal, milestone }
 
 class FilterGroupBottomSheet extends StatefulWidget {
+  /// Which entity this filter sheet applies to.
+  final FilterEntityType entity;
+
+  /// For goals: semantic context value. For milestones: selected goalId.
   final String? initialContext;
   final String? initialDateFilter;
   final String? initialGrouping;
-  final FilterEntityType entity;
-  final List<String>? goalOptions; // For milestone filtering: expects "<id>::<title>" format
+
+  /// For milestones: list of goal options to display. Each item can be
+  /// "<id>::<title>" or a single string (used as both id and title).
+  final List<String>? goalOptions;
 
   const FilterGroupBottomSheet({
     super.key,
+    required this.entity,
     this.initialContext,
     this.initialDateFilter,
     this.initialGrouping,
-    this.entity = FilterEntityType.goal,
     this.goalOptions,
   });
 
@@ -61,7 +63,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
 class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   String? _selectedContext;
   String? _selectedDateFilter;
-  late final List<MapEntry<String, String>> _goalPairs;
+  late final List<MapEntry<String, String>> _goalPairs; // id -> title
 
   @override
   void initState() {
@@ -70,21 +72,18 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
 
-    // Parse goalOptions for milestone filtering (format: "id::title")
-    if (widget.entity == FilterEntityType.milestone && widget.goalOptions != null) {
-      _goalPairs = widget.goalOptions!.map((raw) {
-        if (raw.contains('::')) {
-          final parts = raw.split('::');
-          final id = parts.first.trim();
-          final title = parts.sublist(1).join('::').trim();
-          return MapEntry(id, title);
-        }
-        final trimmed = raw.trim();
-        return MapEntry(trimmed, trimmed);
-      }).toList(growable: false);
-    } else {
-      _goalPairs = [];
-    }
+    // Parse goalOptions if provided (used when entity == milestone)
+    final raws = (widget.goalOptions ?? [])
+        .map((o) => o.trim())
+        .where((o) => o.isNotEmpty)
+        .toList(growable: false);
+    _goalPairs = raws.map((raw) {
+      if (raw.contains('::')) {
+        final parts = raw.split('::');
+        return MapEntry(parts.first.trim(), parts.sublist(1).join('::').trim());
+      }
+      return MapEntry(raw, raw);
+    }).toList(growable: false);
   }
 
   @override
@@ -130,7 +129,12 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Filter by Context", style: textTheme.bodySmall),
+                                Text(
+                                  widget.entity == FilterEntityType.goal
+                                      ? "Filter by Context"
+                                      : "Filter by Goal",
+                                  style: textTheme.bodySmall,
+                                ),
                                 const SizedBox(height: 8),
                                 Wrap(
                                   spacing: 8,

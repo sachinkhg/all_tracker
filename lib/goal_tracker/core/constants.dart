@@ -44,3 +44,4 @@ const List<String> kContextOptions = [
 /// - Avoid prefixing with module name unless multiple feature boxes exist; use a clear,
 ///   lowercase underscore format (`feature_data_box`) for new boxes.
 const String goalBoxName = 'goals_box';
+const String milestoneBoxName = 'milestones_box';
