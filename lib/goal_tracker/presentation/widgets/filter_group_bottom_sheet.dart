@@ -32,16 +32,26 @@ import '../../core/constants.dart'; // path to kContextOptions
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
 
+/// Enum to differentiate between filtering goals vs milestones
+enum FilterEntityType {
+  goal,
+  milestone,
+}
+
 class FilterGroupBottomSheet extends StatefulWidget {
   final String? initialContext;
   final String? initialDateFilter;
   final String? initialGrouping;
+  final FilterEntityType entity;
+  final List<String>? goalOptions; // For milestone filtering: expects "<id>::<title>" format
 
   const FilterGroupBottomSheet({
     super.key,
     this.initialContext,
     this.initialDateFilter,
     this.initialGrouping,
+    this.entity = FilterEntityType.goal,
+    this.goalOptions,
   });
 
   @override
@@ -51,6 +61,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
 class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   String? _selectedContext;
   String? _selectedDateFilter;
+  late final List<MapEntry<String, String>> _goalPairs;
 
   @override
   void initState() {
@@ -58,6 +69,22 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     // Initialize selections from incoming values to support edit/restore flows.
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
+
+    // Parse goalOptions for milestone filtering (format: "id::title")
+    if (widget.entity == FilterEntityType.milestone && widget.goalOptions != null) {
+      _goalPairs = widget.goalOptions!.map((raw) {
+        if (raw.contains('::')) {
+          final parts = raw.split('::');
+          final id = parts.first.trim();
+          final title = parts.sublist(1).join('::').trim();
+          return MapEntry(id, title);
+        }
+        final trimmed = raw.trim();
+        return MapEntry(trimmed, trimmed);
+      }).toList(growable: false);
+    } else {
+      _goalPairs = [];
+    }
   }
 
   @override
@@ -109,19 +136,53 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
-                                    // Build ChoiceChips from kContextOptions.
-                                    // Using the constants list ensures consistency
-                                    // across the app when contexts are modified.
-                                    for (final ctx in kContextOptions)
-                                      ChoiceChip(
-                                        label: Text(ctx),
-                                        selected: _selectedContext == ctx,
-                                        onSelected: (sel) {
-                                          setState(() {
-                                            _selectedContext = sel ? ctx : null;
-                                          });
-                                        },
-                                      ),
+                                    if (widget.entity == FilterEntityType.goal) ...[
+                                      // Build ChoiceChips from kContextOptions.
+                                      for (final ctx in kContextOptions)
+                                        ChoiceChip(
+                                          label: Text(ctx),
+                                          selected: _selectedContext == ctx,
+                                          onSelected: (sel) {
+                                            setState(() {
+                                              _selectedContext = sel ? ctx : null;
+                                            });
+                                          },
+                                        ),
+                                    ] else ...[
+                                      // Milestone: custom selectable tags that support multi-line wrapping
+                                      for (final entry in _goalPairs)
+                                        Builder(builder: (ctx2) {
+                                          final cs = Theme.of(ctx2).colorScheme;
+                                          final bool selected = _selectedContext == entry.key;
+                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48; // padding + spacing
+                                          return InkWell(
+                                            borderRadius: BorderRadius.circular(16),
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedContext = selected ? null : entry.key; // store id
+                                              });
+                                            },
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                decoration: BoxDecoration(
+                                                  color: selected ? cs.primary.withValues(alpha: 0.12) : null,
+                                                  border: Border.all(color: selected ? cs.primary : cs.outline.withValues(alpha: 0.30)),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: Text(
+                                                  entry.value,
+                                                  softWrap: true,
+                                                  style: TextStyle(
+                                                    color: selected ? cs.primary : cs.onSurface,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 16),
