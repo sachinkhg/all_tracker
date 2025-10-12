@@ -25,6 +25,17 @@ import '../domain/usecases/milestone/update_milestone.dart';
 import '../domain/usecases/milestone/delete_milestone.dart';
 import '../presentation/bloc/milestone_cubit.dart';
 
+import '../data/datasources/task_local_data_source.dart';
+import '../data/repositories/task_repository_impl.dart';
+import '../data/models/task_model.dart';
+import '../domain/usecases/task/create_task.dart';
+import '../domain/usecases/task/get_all_tasks.dart';
+import '../domain/usecases/task/get_task_by_id.dart';
+import '../domain/usecases/task/get_tasks_by_milestone_id.dart';
+import '../domain/usecases/task/update_task.dart';
+import '../domain/usecases/task/delete_task.dart';
+import '../presentation/bloc/task_cubit.dart';
+
 import 'constants.dart';
 
 /// Composition root for the goal_tracker feature.
@@ -166,5 +177,58 @@ MilestoneCubit createMilestoneCubit() {
     create: create,
     update: update,
     delete: delete,
+  );
+}
+
+/// ---------------------------------------------------------------------------
+/// Task wiring: parallel factory that constructs a fully-wired [TaskCubit].
+///
+/// Notes:
+/// - Assumes the Hive box named [taskBoxName] has already been opened.
+/// - Mirrors the Goal and Milestone wiring pattern: local datasource → repository → use-cases → cubit.
+/// - **CRITICAL**: TaskCubit requires MilestoneRepository to auto-assign goalId from milestone.
+/// - Tests should construct their own graph and inject mocks as required.
+/// ---------------------------------------------------------------------------
+TaskCubit createTaskCubit() {
+  // Ensure Hive.box<TaskModel>(taskBoxName) is opened beforehand (main.dart).
+  final Box<TaskModel> box = Hive.box<TaskModel>(taskBoxName);
+
+  // ---------------------------------------------------------------------------
+  // Data layer
+  // ---------------------------------------------------------------------------
+  final local = TaskLocalDataSourceImpl(box);
+
+  // ---------------------------------------------------------------------------
+  // Repository layer
+  // ---------------------------------------------------------------------------
+  final repo = TaskRepositoryImpl(local);
+
+  // Task cubit needs MilestoneRepository for goalId resolution.
+  // We create the milestone repository here (reusing the pattern from createMilestoneCubit).
+  final Box<MilestoneModel> milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+  final milestoneLocal = MilestoneLocalDataSourceImpl(milestoneBox);
+  final milestoneRepo = MilestoneRepositoryImpl(milestoneLocal);
+
+  // ---------------------------------------------------------------------------
+  // Use-cases (domain)
+  // ---------------------------------------------------------------------------
+  final getAll = GetAllTasks(repo);
+  final getById = GetTaskById(repo);
+  final getByMilestoneId = GetTasksByMilestoneId(repo);
+  final create = CreateTask(repo);
+  final update = UpdateTask(repo);
+  final delete = DeleteTask(repo);
+
+  // ---------------------------------------------------------------------------
+  // Presentation
+  // ---------------------------------------------------------------------------
+  return TaskCubit(
+    getAll: getAll,
+    getById: getById,
+    getByMilestoneId: getByMilestoneId,
+    create: create,
+    update: update,
+    delete: delete,
+    milestoneRepository: milestoneRepo, // Required for goalId auto-assignment
   );
 }

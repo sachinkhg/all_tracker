@@ -1,5 +1,6 @@
 import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
+import 'package:all_tracker/goal_tracker/data/models/task_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
@@ -33,10 +34,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 /// Developer note:
 /// - This file contains only wiring and adapter registration. Keep migrations and data migrations separate (e.g., a `migrations/` folder or in `migration_notes.md`).
 class HiveInitializer {
-  /// Initializes Hive for the app and returns both goal and milestone boxes.
+  /// Initializes Hive for the app and returns goal, milestone, and task boxes.
   ///
   /// - Registers adapters if not already registered.
-  /// - Opens boxes `'goals_box'` and `'milestones_box'`.
+  /// - Opens boxes `'goals_box'`, `'milestones_box'`, and `'tasks_box'`.
   /// - Prints contents for verification.
   /// - Must be awaited before DI setup and `runApp`.
   static Future<HiveBoxes> initialize() async {
@@ -56,11 +57,17 @@ class HiveInitializer {
       Hive.registerAdapter(MilestoneModelAdapter());
     }
 
+    final taskAdapterId = TaskModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(taskAdapterId)) {
+      Hive.registerAdapter(TaskModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
     var goalsBox = await Hive.openBox<GoalModel>('goals_box');
     var milestonesBox = await Hive.openBox<MilestoneModel>('milestones_box');
+    var tasksBox = await Hive.openBox<TaskModel>('tasks_box');
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)
@@ -100,11 +107,28 @@ class HiveInitializer {
     //   }
     // }
 
+    // // ---- Tasks Box ----
+    // print('\n Tasks Box (${tasksBox.length} entries)');
+    // if (tasksBox.isEmpty) {
+    //   print('  (empty)');
+    // } else {
+    //   for (var key in tasksBox.keys) {
+    //     final task = tasksBox.get(key);
+    //     print('  ▶ Key: $key');
+    //     print('    • Name        : ${task?.name}');
+    //     print('    • TargetDate  : ${task?.targetDate}');
+    //     print('    • MilestoneId : ${task?.milestoneId}');
+    //     print('    • GoalId      : ${task?.goalId}');
+    //     print('    • Status      : ${task?.status}');
+    //   }
+    // }
+
     // print('===========================================\n');
 
     return HiveBoxes(
       goalsBox: goalsBox,
       milestonesBox: milestonesBox,
+      tasksBox: tasksBox,
     );
   }
 }
@@ -118,13 +142,16 @@ class HiveInitializer {
 /// final boxes = await HiveInitializer.initialize();
 /// final goalBox = boxes.goalsBox;
 /// final milestoneBox = boxes.milestonesBox;
+/// final taskBox = boxes.tasksBox;
 /// ```
 class HiveBoxes {
   final Box<GoalModel> goalsBox;
   final Box<MilestoneModel> milestonesBox;
+  final Box<TaskModel> tasksBox;
 
   HiveBoxes({
     required this.goalsBox,
     required this.milestonesBox,
+    required this.tasksBox,
   });
 }

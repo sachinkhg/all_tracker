@@ -176,17 +176,36 @@ class MilestoneCubit extends Cubit<MilestoneState> {
         final td = m.targetDate;
         if (td == null) return false;
 
+        final today = DateTime(now.year, now.month, now.day);
+        final targetDay = DateTime(td.year, td.month, td.day);
+
         switch (tf) {
+          case 'Today':
+            if (targetDay != today) return false;
+            break;
+          case 'Tomorrow':
+            final tomorrow = today.add(const Duration(days: 1));
+            if (targetDay != tomorrow) return false;
+            break;
+          case 'This Week':
+            final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+            final endOfWeek = startOfWeek.add(const Duration(days: 6));
+            if (targetDay.isBefore(startOfWeek) || targetDay.isAfter(endOfWeek)) return false;
+            break;
+          case 'Next Week':
+            final nextWeekStart = today.add(Duration(days: 8 - now.weekday));
+            final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+            if (targetDay.isBefore(nextWeekStart) || targetDay.isAfter(nextWeekEnd)) return false;
+            break;
           case 'This Month':
             if (!(td.year == now.year && td.month == now.month)) return false;
             break;
-          case 'This Year':
-            if (td.year != now.year) return false;
-            break;
           case 'Next Month':
-            // handle year boundary
             final nextMonth = DateTime(now.year, now.month + 1);
             if (!(td.year == nextMonth.year && td.month == nextMonth.month)) return false;
+            break;
+          case 'This Year':
+            if (td.year != now.year) return false;
             break;
           case 'Next Year':
             if (td.year != now.year + 1) return false;

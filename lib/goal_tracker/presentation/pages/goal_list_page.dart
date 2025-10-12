@@ -15,6 +15,8 @@ import '../../features/goal_import_export.dart';
 import '../bloc/goal_cubit.dart';
 import '../bloc/goal_state.dart';
 import '../../core/injection.dart'; // factory that wires everything
+import 'milestone_list_page.dart';
+import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
@@ -298,15 +300,48 @@ class _ActionsFab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        // Navigation row
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            FloatingActionButton.small(
+              heroTag: 'navMilestones',
+              tooltip: 'Milestones',
+              backgroundColor: cs.surface.withOpacity(0.85),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const MilestoneListPage()),
+                );
+              },
+              child: const Icon(Icons.flag),
+            ),
+            const SizedBox(width: 8),
+            FloatingActionButton.small(
+              heroTag: 'navTasks',
+              tooltip: 'Tasks',
+              backgroundColor: cs.surface.withOpacity(0.85),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TaskListPage()),
+                );
+              },
+              child: const Icon(Icons.task_alt),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             FloatingActionButton.small(
               heroTag: 'viewFab',
               tooltip: 'Change View',
+              backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: () => onView(),
               child: const Icon(Icons.remove_red_eye),
             ),
@@ -314,6 +349,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'filterGroupFab',
               tooltip: 'Filter & Group',
+              backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: () => onFilter(),
               child: const Icon(Icons.filter_alt),
             ),
@@ -326,6 +362,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'addGoalFab',
               tooltip: 'Add Goal',
+              backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: onAdd,
               child: const Icon(Icons.add),
             ),
@@ -333,6 +370,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'moreFab',
               tooltip: 'More actions',
+              backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: onMore,
               child: const Icon(Icons.more_vert),
             ),

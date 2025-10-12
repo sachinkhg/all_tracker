@@ -40,7 +40,7 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
-enum ViewEntityType { goal, milestone }
+enum ViewEntityType { goal, milestone, task }
 
 class ViewFieldsBottomSheet extends StatefulWidget {
   /// Which entity's fields are being configured (goal or milestone).
@@ -89,7 +89,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'context': widget.initial?['context'] ?? false,
         'remainingDays': widget.initial?['remainingDays'] ?? false,
       };
-    } else {
+    } else if (widget.entity == ViewEntityType.milestone) {
       // Milestone field set
       _fields = {
         'name': true, // Always enforced ON
@@ -99,6 +99,16 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'plannedValue': widget.initial?['plannedValue'] ?? false,
         'actualValue': widget.initial?['actualValue'] ?? false,
         'remainingDays': widget.initial?['remainingDays'] ?? false,
+      };
+    } else {
+      // Task field set
+      _fields = {
+        'name': true, // Always enforced ON
+        'targetDate': widget.initial?['targetDate'] ?? true,
+        'remainingDays': widget.initial?['remainingDays'] ?? false,
+        'status': widget.initial?['status'] ?? true,
+        'milestoneName': widget.initial?['milestoneName'] ?? false,
+        'goalName': widget.initial?['goalName'] ?? false,
       };
     }
   }
@@ -148,12 +158,19 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('context', 'Context'),
               _buildToggle('remainingDays', 'Remaining Days'),
-            ] else ...[
+            ] else if (widget.entity == ViewEntityType.milestone) ...[
               _buildToggle('description', 'Description'),
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('goalName', 'Goal'),
               _buildToggle('plannedValue', 'Planned Value'),
               _buildToggle('actualValue', 'Actual Value'),
+              _buildToggle('remainingDays', 'Remaining Days'),
+            ] else ...[
+              // Task fields
+              _buildToggle('targetDate', 'Target Date'),
+              _buildToggle('status', 'Status'),
+              _buildToggle('milestoneName', 'Milestone'),
+              _buildToggle('goalName', 'Goal'),
               _buildToggle('remainingDays', 'Remaining Days'),
             ],
             const SizedBox(height: 8),

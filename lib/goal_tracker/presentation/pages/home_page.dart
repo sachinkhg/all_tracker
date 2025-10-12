@@ -19,6 +19,7 @@ import 'package:flutter/material.dart';
 
 import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
+import 'task_list_page.dart';
 
 /// The app’s landing page providing navigation to both
 /// the Goal Tracker and Milestone Tracker modules.
@@ -75,6 +76,24 @@ class HomePage extends StatelessWidget {
                 );
               },
               child: const Text('Milestones', style: TextStyle(fontSize: 18)),
+            ),
+            const SizedBox(height: 20),
+
+            // --- Tasks Button ---
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: cs.tertiary,
+                foregroundColor: cs.onTertiary,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                // Navigate to the Task List Page.
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const TaskListPage()),
+                );
+              },
+              child: const Text('Tasks', style: TextStyle(fontSize: 18)),
             ),
           ],
         ),

@@ -45,3 +45,4 @@ const List<String> kContextOptions = [
 ///   lowercase underscore format (`feature_data_box`) for new boxes.
 const String goalBoxName = 'goals_box';
 const String milestoneBoxName = 'milestones_box';
+const String taskBoxName = 'tasks_box';
