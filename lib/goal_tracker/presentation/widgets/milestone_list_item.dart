@@ -135,8 +135,9 @@ class MilestoneListItem extends StatelessWidget {
                         ? Text(
                             title,
                             style: Theme.of(context).textTheme.labelLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            softWrap: true, 
+                            // maxLines: 1,
+                            // overflow: TextOverflow.ellipsis,
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -194,8 +195,9 @@ class MilestoneListItem extends StatelessWidget {
                 Text(
                   description!,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
+                  // maxLines: 2,
+                  // overflow: TextOverflow.ellipsis,
                 ),
               ],
 

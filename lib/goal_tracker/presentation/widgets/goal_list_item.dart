@@ -207,8 +207,9 @@ class GoalListItem extends StatelessWidget {
                       .textTheme
                       .bodyMedium
                       ?.copyWith(color: cs.onSurfaceVariant),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  softWrap: true,
+                  // maxLines: 2,
+                  // overflow: TextOverflow.ellipsis,
                 ),
               ],
 

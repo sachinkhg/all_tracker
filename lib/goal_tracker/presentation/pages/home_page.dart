@@ -204,7 +204,7 @@ class _InsightCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     '$completed/$total',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
@@ -213,7 +213,7 @@ class _InsightCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 title,
-                style: Theme.of(context).textTheme.titleSmall,
+                style: Theme.of(context).textTheme.bodySmall,
               ),
               const SizedBox(height: 12),
               ClipRRect(
@@ -277,14 +277,14 @@ class _TaskInsightCard extends StatelessWidget {
                   const SizedBox(width: 12),
                   Text(
                     'Tasks',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),
                   const Spacer(),
                   Text(
                     '$total Total',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                   ),

@@ -153,8 +153,9 @@ class TaskListItem extends StatelessWidget {
                         ? Text(
                             title,
                             style: Theme.of(context).textTheme.labelLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            softWrap: true,
+                            // maxLines: 1,
+                            // overflow: TextOverflow.ellipsis,
                           )
                         : const SizedBox.shrink(),
                   ),
