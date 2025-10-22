@@ -72,6 +72,9 @@ class HiveInitializer {
     
     // Open view preferences box (stores user view field visibility settings)
     await Hive.openBox(viewPreferencesBoxName);
+    
+    // Open filter preferences box (stores user filter settings)
+    await Hive.openBox(filterPreferencesBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

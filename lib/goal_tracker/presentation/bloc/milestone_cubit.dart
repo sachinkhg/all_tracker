@@ -22,6 +22,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../domain/entities/milestone.dart';
 import '../../domain/usecases/milestone/create_milestone.dart';
@@ -31,7 +32,11 @@ import '../../domain/usecases/milestone/get_milestones_by_goal_id.dart';
 import '../../domain/usecases/milestone/update_milestone.dart';
 import '../../domain/usecases/milestone/delete_milestone.dart';
 import '../../core/view_preferences_service.dart';
+import '../../core/filter_preferences_service.dart';
+import '../../data/models/goal_model.dart';
+import '../../core/constants.dart';
 import '../widgets/view_field_bottom_sheet.dart';
+import '../widgets/filter_group_bottom_sheet.dart';
 import 'milestone_state.dart';
 
 /// Cubit to manage Milestone state.
@@ -45,6 +50,9 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   
   /// ViewPreferencesService for loading/saving field visibility preferences.
   final ViewPreferencesService viewPreferencesService;
+  
+  /// FilterPreferencesService for loading/saving filter preferences.
+  final FilterPreferencesService filterPreferencesService;
 
   // master copy of all milestones fetched from the domain layer.
   List<Milestone> _allMilestones = [];
@@ -90,7 +98,14 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     final parts = <String>[];
 
     if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
-      parts.add('Goal: ${_currentGoalIdFilter!}');
+      try {
+        final goalBox = Hive.box<GoalModel>(goalBoxName);
+        final goal = goalBox.get(_currentGoalIdFilter);
+        final goalName = goal?.name ?? _currentGoalIdFilter!;
+        parts.add('Goal: $goalName');
+      } catch (e) {
+        parts.add('Goal: ${_currentGoalIdFilter!}');
+      }
     }
     if (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) {
       parts.add('Date: ${_currentTargetDateFilter!}');
@@ -111,11 +126,19 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     required this.update,
     required this.delete,
     required this.viewPreferencesService,
+    required this.filterPreferencesService,
   }) : super(MilestonesLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.milestone);
     if (savedPrefs != null) {
       _visibleFields = savedPrefs;
+    }
+    
+    // Load saved filter preferences on initialization
+    final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.milestone);
+    if (savedFilters != null) {
+      _currentGoalIdFilter = savedFilters['context']; // context is used for goalId in milestone filters
+      _currentTargetDateFilter = savedFilters['targetDate'];
     }
   }
 
@@ -125,7 +148,10 @@ class MilestoneCubit extends Cubit<MilestoneState> {
       emit(MilestonesLoading());
       final data = await getAll();
       _allMilestones = data;
-      emit(MilestonesLoaded(List.from(_allMilestones), visibleFields: visibleFields));
+      
+      // Apply any saved filters after loading data
+      final filteredMilestones = _filterMilestones(_allMilestones);
+      emit(MilestonesLoaded(filteredMilestones, visibleFields: visibleFields));
     } catch (e) {
       emit(MilestonesError(e.toString()));
     }

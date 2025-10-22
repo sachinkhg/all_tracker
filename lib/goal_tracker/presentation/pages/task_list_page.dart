@@ -147,6 +147,12 @@ class TaskListPageView extends StatelessWidget {
           cubit.setVisibleFields(fields);
         },
         onFilter: () async {
+          // Check if there are existing saved filters
+          final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.task);
+          final hasSavedFilters = savedFilters != null && 
+              (savedFilters['milestoneId'] != null || savedFilters['goalId'] != null || 
+               savedFilters['status'] != null || savedFilters['targetDate'] != null);
+          
           final result = await showAppBottomSheet<Map<String, dynamic>?>(
             context,
             FilterGroupBottomSheet(
@@ -156,6 +162,7 @@ class TaskListPageView extends StatelessWidget {
               initialStatus: cubit.currentStatusFilter,
               milestoneOptions: _getMilestoneOptions(),
               goalOptions: _getGoalOptions(),
+              initialSaveFilter: hasSavedFilters,
             ),
           );
 
@@ -165,6 +172,21 @@ class TaskListPageView extends StatelessWidget {
               result.containsKey('goalId') || 
               result.containsKey('status') || 
               result.containsKey('targetDate')) {
+            final saveFilter = result['saveFilter'] as bool? ?? false;
+            
+            // Save or clear filter preferences based on checkbox state
+            if (saveFilter) {
+              final filters = <String, String?>{
+                'milestoneId': result['milestoneId'] as String?,
+                'goalId': result['goalId'] as String?,
+                'status': result['status'] as String?,
+                'targetDate': result['targetDate'] as String?,
+              };
+              await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.task, filters);
+            } else {
+              await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.task);
+            }
+            
             cubit.applyFilter(
               milestoneId: result['milestoneId'] as String?,
               goalId: result['goalId'] as String?,
@@ -593,6 +615,8 @@ class _TasksBody extends StatelessWidget {
                   child: Text(
                     filterSummary,
                     style: Theme.of(context).textTheme.bodyMedium,
+                    softWrap: true,
+                    maxLines: 3,
                   ),
                 ),
                 IconButton(

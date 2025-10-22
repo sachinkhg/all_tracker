@@ -6,7 +6,9 @@ import '../../domain/usecases/goal/create_goal.dart';
 import '../../domain/usecases/goal/update_goal.dart';
 import '../../domain/usecases/goal/delete_goal.dart';
 import '../../core/view_preferences_service.dart';
+import '../../core/filter_preferences_service.dart';
 import '../widgets/view_field_bottom_sheet.dart';
+import '../widgets/filter_group_bottom_sheet.dart';
 import 'goal_state.dart';
 
 /// ---------------------------------------------------------------------------
@@ -42,6 +44,7 @@ class GoalCubit extends Cubit<GoalState> {
   final UpdateGoal update;
   final DeleteGoal delete;
   final ViewPreferencesService viewPreferencesService;
+  final FilterPreferencesService filterPreferencesService;
 
   // master copy of all goals fetched from the domain layer.
   List<Goal> _allGoals = []; // master copy of all goals
@@ -114,11 +117,19 @@ class GoalCubit extends Cubit<GoalState> {
     required this.update,
     required this.delete,
     required this.viewPreferencesService,
+    required this.filterPreferencesService,
   }) : super(GoalsLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.goal);
     if (savedPrefs != null) {
       _visibleFields = savedPrefs;
+    }
+    
+    // Load saved filter preferences on initialization
+    final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.goal);
+    if (savedFilters != null) {
+      _currentContextFilter = savedFilters['context'];
+      _currentTargetDateFilter = savedFilters['targetDate'];
     }
   }
 
@@ -127,7 +138,10 @@ class GoalCubit extends Cubit<GoalState> {
       emit(GoalsLoading());
       final data = await getAll();
       _allGoals = data;
-      emit(GoalsLoaded(List.from(_allGoals), visibleFields));
+      
+      // Apply any saved filters after loading data
+      final filteredGoals = _filterGoals(_allGoals);
+      emit(GoalsLoaded(filteredGoals, visibleFields));
     } catch (e) {
       emit(GoalsError(e.toString()));
     }

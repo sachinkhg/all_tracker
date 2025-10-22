@@ -53,3 +53,10 @@ const String taskBoxName = 'tasks_box';
 /// - Keys within this box: 'goal_view', 'milestone_view', 'task_view'
 /// - Each key maps to a JSON-encoded Map<String, bool> of field visibility settings.
 const String viewPreferencesBoxName = 'view_preferences_box';
+
+/// Hive box name for filter preferences.
+///
+/// - Stores user preferences for filter settings across entity types.
+/// - Keys within this box: 'goal_filters', 'milestone_filters', 'task_filters'
+/// - Each key maps to a Map<String, String?> of filter key-value pairs.
+const String filterPreferencesBoxName = 'filter_preferences_box';

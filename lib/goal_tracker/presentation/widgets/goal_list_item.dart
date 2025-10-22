@@ -143,32 +143,6 @@ class GoalListItem extends StatelessWidget {
                         : const SizedBox.shrink(),
                   ),
 
-                  // Small "Filtered" hint when parent indicates filters are active.
-                  if (filterActive) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: cs.primaryContainer.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: cs.primaryContainer.withOpacity(0.28)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.filter_alt, size: 14, color: cs.onPrimaryContainer),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Filtered',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(fontWeight: FontWeight.w600, color: cs.onPrimaryContainer),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
 

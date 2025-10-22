@@ -27,6 +27,7 @@
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../domain/entities/task.dart';
 import '../../domain/repositories/milestone_repository.dart';
@@ -37,7 +38,12 @@ import '../../domain/usecases/task/get_tasks_by_milestone_id.dart';
 import '../../domain/usecases/task/update_task.dart';
 import '../../domain/usecases/task/delete_task.dart';
 import '../../core/view_preferences_service.dart';
+import '../../core/filter_preferences_service.dart';
+import '../../data/models/milestone_model.dart';
+import '../../data/models/goal_model.dart';
+import '../../core/constants.dart';
 import '../widgets/view_field_bottom_sheet.dart';
+import '../widgets/filter_group_bottom_sheet.dart';
 import 'task_state.dart';
 
 /// Custom exception thrown when a milestone is not found during task create/update.
@@ -74,6 +80,9 @@ class TaskCubit extends Cubit<TaskState> {
   
   /// ViewPreferencesService for loading/saving field visibility preferences.
   final ViewPreferencesService viewPreferencesService;
+  
+  /// FilterPreferencesService for loading/saving filter preferences.
+  final FilterPreferencesService filterPreferencesService;
 
   // master copy of all tasks fetched from the domain layer.
   List<Task> _allTasks = [];
@@ -129,10 +138,24 @@ class TaskCubit extends Cubit<TaskState> {
 
     if (_currentMilestoneIdFilter != null &&
         _currentMilestoneIdFilter!.isNotEmpty) {
-      parts.add('Milestone: ${_currentMilestoneIdFilter!}');
+      try {
+        final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+        final milestone = milestoneBox.get(_currentMilestoneIdFilter);
+        final milestoneName = milestone?.name ?? _currentMilestoneIdFilter!;
+        parts.add('Milestone: $milestoneName');
+      } catch (e) {
+        parts.add('Milestone: ${_currentMilestoneIdFilter!}');
+      }
     }
     if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
-      parts.add('Goal: ${_currentGoalIdFilter!}');
+      try {
+        final goalBox = Hive.box<GoalModel>(goalBoxName);
+        final goal = goalBox.get(_currentGoalIdFilter);
+        final goalName = goal?.name ?? _currentGoalIdFilter!;
+        parts.add('Goal: $goalName');
+      } catch (e) {
+        parts.add('Goal: ${_currentGoalIdFilter!}');
+      }
     }
     if (_currentStatusFilter != null && _currentStatusFilter!.isNotEmpty) {
       parts.add('Status: ${_currentStatusFilter!}');
@@ -158,11 +181,21 @@ class TaskCubit extends Cubit<TaskState> {
     required this.delete,
     required this.milestoneRepository,
     required this.viewPreferencesService,
+    required this.filterPreferencesService,
   }) : super(TasksLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.task);
     if (savedPrefs != null) {
       _visibleFields = savedPrefs;
+    }
+    
+    // Load saved filter preferences on initialization
+    final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.task);
+    if (savedFilters != null) {
+      _currentMilestoneIdFilter = savedFilters['milestoneId'];
+      _currentGoalIdFilter = savedFilters['goalId'];
+      _currentStatusFilter = savedFilters['status'];
+      _currentTargetDateFilter = savedFilters['targetDate'];
     }
   }
 
@@ -172,7 +205,10 @@ class TaskCubit extends Cubit<TaskState> {
       emit(TasksLoading());
       final data = await getAll();
       _allTasks = data;
-      emit(TasksLoaded(List.from(_allTasks), visibleFields: visibleFields));
+      
+      // Apply any saved filters after loading data
+      final filteredTasks = _filterTasks(_allTasks);
+      emit(TasksLoaded(filteredTasks, visibleFields: visibleFields));
     } catch (e) {
       emit(TasksError(e.toString()));
     }

@@ -51,6 +51,9 @@ class FilterGroupBottomSheet extends StatefulWidget {
   /// For tasks: list of milestone options to display. Each item can be
   /// "<id>::<title>" or a single string (used as both id and title).
   final List<String>? milestoneOptions;
+  
+  /// Whether the save filter checkbox should be initially checked
+  final bool initialSaveFilter;
 
   const FilterGroupBottomSheet({
     super.key,
@@ -61,6 +64,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.initialStatus,
     this.goalOptions,
     this.milestoneOptions,
+    this.initialSaveFilter = false,
   });
 
   @override
@@ -72,6 +76,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   String? _selectedDateFilter;
   String? _selectedStatus;
   String? _selectedGoalId; // For tasks: selected goal filter
+  bool _saveFilter = false; // Save filter preference
   late final List<MapEntry<String, String>> _goalPairs; // id -> title
   late final List<MapEntry<String, String>> _milestonePairs; // id -> title
 
@@ -82,6 +87,9 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
     _selectedStatus = widget.initialStatus;
+    
+    // Set initial save filter checkbox state
+    _saveFilter = widget.initialSaveFilter;
 
     // Parse goalOptions if provided (used when entity == milestone or task)
     final raws = (widget.goalOptions ?? [])
@@ -109,6 +117,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
       return MapEntry(raw, raw);
     }).toList(growable: false);
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -352,6 +361,25 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                           ),
                         ),
 
+                        // Save Filter checkbox
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: _saveFilter,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _saveFilter = value ?? false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text("Save Filter"),
+                            ],
+                          ),
+                        ),
+
                         // Buttons — tight padding so they're close to content, not floating
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
@@ -372,11 +400,13 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                       "goalId": _selectedGoalId,
                                       "status": _selectedStatus,
                                       "targetDate": _selectedDateFilter,
+                                      "saveFilter": _saveFilter,
                                     });
                                   } else {
                                     Navigator.of(context).pop({
                                       "context": _selectedContext,
                                       "targetDate": _selectedDateFilter,
+                                      "saveFilter": _saveFilter,
                                     });
                                   }
                                 },
@@ -406,6 +436,25 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                             ),
                           ),
                         ),
+                        // Save Filter checkbox
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: _saveFilter,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _saveFilter = value ?? false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text("Save Filter"),
+                            ],
+                          ),
+                        ),
+
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                           child: Row(
@@ -423,6 +472,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   Navigator.of(context).pop({
                                     "context": _selectedContext,
                                     "targetDate": _selectedDateFilter,
+                                    "saveFilter": _saveFilter,
                                   });
                                 },
                                 child: const Text("Apply Filter"),

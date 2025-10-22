@@ -164,6 +164,11 @@ class GoalListPageView extends StatelessWidget {
 
   // Edited to accept cubit and avoid reading from context inside the method.
   Future<void> _editFilters(BuildContext context, GoalCubit cubit) async {
+    // Check if there are existing saved filters
+    final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.goal);
+    final hasSavedFilters = savedFilters != null && 
+        (savedFilters['context'] != null || savedFilters['targetDate'] != null);
+    
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
       FilterGroupBottomSheet(
@@ -171,6 +176,7 @@ class GoalListPageView extends StatelessWidget {
         initialContext: cubit.currentContextFilter,
         initialDateFilter: cubit.currentTargetDateFilter,
         initialGrouping: cubit.currentGrouping,
+        initialSaveFilter: hasSavedFilters,
       ),
     );
 
@@ -179,6 +185,19 @@ class GoalListPageView extends StatelessWidget {
     if (result.containsKey('context') || result.containsKey('targetDate')) {
       final selectedContext = result['context'] as String?;
       final selectedTargetDate = result['targetDate'] as String?;
+      final saveFilter = result['saveFilter'] as bool? ?? false;
+      
+      // Save or clear filter preferences based on checkbox state
+      if (saveFilter) {
+        final filters = <String, String?>{
+          'context': selectedContext,
+          'targetDate': selectedTargetDate,
+        };
+        await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.goal, filters);
+      } else {
+        await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.goal);
+      }
+      
       // use passed cubit instead of context.read
       cubit.applyFilter(
         contextFilter: selectedContext,
@@ -575,7 +594,8 @@ class _FilterHeader extends StatelessWidget {
             child: Text(
               summary,
               style: Theme.of(context).textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
+              softWrap: true,
+              maxLines: 3,
             ),
           ),
           IconButton(

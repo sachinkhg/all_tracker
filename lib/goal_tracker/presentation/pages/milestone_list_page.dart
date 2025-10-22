@@ -166,6 +166,11 @@ class MilestoneListPageView extends StatelessWidget {
   }
 
   Future<void> _editFilters(BuildContext context, MilestoneCubit cubit) async {
+    // Check if there are existing saved filters
+    final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.milestone);
+    final hasSavedFilters = savedFilters != null && 
+        (savedFilters['context'] != null || savedFilters['targetDate'] != null);
+    
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
       FilterGroupBottomSheet(
@@ -174,6 +179,7 @@ class MilestoneListPageView extends StatelessWidget {
         initialDateFilter: cubit.currentTargetDateFilter,
         initialGrouping: null,
         goalOptions: _getGoalOptions(),
+        initialSaveFilter: hasSavedFilters,
       ),
     );
 
@@ -182,6 +188,19 @@ class MilestoneListPageView extends StatelessWidget {
     if (result.containsKey('context') || result.containsKey('targetDate')) {
       final selectedGoal = result['context'] as String?;
       final selectedTargetDate = result['targetDate'] as String?;
+      final saveFilter = result['saveFilter'] as bool? ?? false;
+      
+      // Save or clear filter preferences based on checkbox state
+      if (saveFilter) {
+        final filters = <String, String?>{
+          'context': selectedGoal,
+          'targetDate': selectedTargetDate,
+        };
+        await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.milestone, filters);
+      } else {
+        await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.milestone);
+      }
+      
       // use passed cubit instead of context.read
       cubit.applyFilter(
         goalId: selectedGoal,
@@ -604,7 +623,8 @@ class _FilterHeader extends StatelessWidget {
             child: Text(
               summary,
               style: Theme.of(context).textTheme.bodyMedium,
-              overflow: TextOverflow.ellipsis,
+              softWrap: true,
+              maxLines: 3,
             ),
           ),
           IconButton(
