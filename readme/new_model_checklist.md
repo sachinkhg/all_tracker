@@ -44,11 +44,13 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 * [ ] Annotate with `@HiveType(typeId: X)` (assign unique typeId, record in `migration_notes.md`)
 * [ ] Add `@HiveField(N)` for each field
 * [ ] Add `fromEntity()` and `toEntity()` converters
+* [ ] Add `part '<entity_name>_model.g.dart';` for code generation
 * [ ] Run codegen:
 
   ```bash
   flutter packages pub run build_runner build --delete-conflicting-outputs
   ```
+* [ ] **CRITICAL**: Update `migration_notes.md` with new TypeId and schema documentation
 
 ---
 
@@ -111,11 +113,13 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
   * `create_<entity>.dart`
   * `update_<entity>.dart`
   * `delete_<entity>.dart`
+* [ ] **Optional**: Add relationship-specific use cases (e.g., `get_<entity>s_by_goal_id.dart`)
 * [ ] Each wraps a repository call:
 
   ```dart
   Future<void> call(<Entity> entity);
   ```
+* [ ] **For complex entities**: Consider business rules (e.g., Task auto-assignment of goalId)
 
 ---
 
@@ -132,9 +136,11 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 * [ ] Create `lib/goal_tracker/presentation/bloc/<entity_name>_cubit.dart`
 
   * Inject use cases (getAll, create, update, delete)
+  * Inject preference services (ViewPreferencesService, FilterPreferencesService, SortPreferencesService)
   * Maintain master list `_all<Entity>s`
   * Implement methods for load, add, edit, remove
-  * Optionally handle filters/grouping
+  * Implement filtering, sorting, and view field management
+  * **For complex entities**: Handle business rules (e.g., auto-assignment logic)
 
 ---
 
@@ -151,6 +157,9 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 * [ ] Follow `goal_form_bottom_sheet.dart` and `goal_list_item.dart`
 * [ ] Adjust visible fields, labels, and bindings
 * [ ] Use goal name instead of goal ID where needed for readability
+* [ ] **For complex entities**: Implement business rule constraints (e.g., read-only fields, auto-assignment)
+* [ ] Add proper validation and error handling
+* [ ] Consider accessibility and responsive design
 
 ---
 
@@ -165,6 +174,9 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 * [ ] Wire up `BlocProvider` with `create<Entity>Cubit()`
 * [ ] Render entity list, handle add/edit/filter actions
 * [ ] Use reusable components (`PrimaryAppBar`, `LoadingView`, etc.)
+* [ ] Implement filtering and sorting UI
+* [ ] Add view field customization options
+* [ ] Handle empty states and error states
 
 ---
 
@@ -178,13 +190,21 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 
   * Add `create<Entity>Cubit()` factory
   * Register data source → repo → usecases → cubit chain
+  * Inject preference services (ViewPreferencesService, FilterPreferencesService, SortPreferencesService)
 * [ ] Example:
 
   ```dart
   final local = MilestoneLocalDataSourceImpl(box);
   final repo = MilestoneRepositoryImpl(local);
   final create = CreateMilestone(repo);
-  return MilestoneCubit(getAll: getAll, create: create, ...);
+  return MilestoneCubit(
+    getAll: getAll, 
+    create: create, 
+    viewPreferencesService: getViewPreferencesService(),
+    filterPreferencesService: getFilterPreferencesService(),
+    sortPreferencesService: getSortPreferencesService(),
+    ...
+  );
   ```
 
 ---
@@ -204,6 +224,7 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
     ```dart
     print('📦 <Entity>s Box (${box.length} entries)');
     ```
+* [ ] **CRITICAL**: Update `lib/goal_tracker/core/constants.dart` with new box name constant
 
 ---
 
@@ -229,14 +250,108 @@ This guide outlines the **end-to-end process** for adding a new model (e.g., *Mi
 
 ---
 
-### **13️⃣ Optional — Utility Additions**
+### **13️⃣ Testing — Unit & Widget Tests**
+
+**Purpose:** Ensure code quality and prevent regressions.
+
+#### Steps
+
+* [ ] Create `test/<entity_name>_repository_test.dart`
+  * Test all CRUD operations
+  * Test entity ↔ model conversion
+  * Test error handling
+* [ ] Create `test/<entity_name>_cubit_test.dart`
+  * Test state transitions (loading → loaded → error)
+  * Test business rules (e.g., auto-assignment logic)
+  * Test filtering and sorting
+* [ ] Create `test/<entity_name>_form_bottom_sheet_test.dart`
+  * Test form validation
+  * Test business rule constraints (e.g., read-only fields)
+  * Test user interactions
+
+---
+
+### **14️⃣ Import/Export — Data Portability**
+
+**Purpose:** Enable data import/export functionality.
+
+#### Steps
+
+* [ ] Create `lib/goal_tracker/features/<entity_name>_import_export.dart`
+* [ ] Implement CSV/Excel export functionality
+* [ ] Implement CSV/Excel import functionality
+* [ ] Add data validation for imports
+* [ ] Handle error cases and user feedback
+
+---
+
+### **15️⃣ Optional — Utility Additions**
 
 **Purpose:** Extend functionality.
 
-* [ ] Add `<entity>_import_export.dart` if needed
-* [ ] Extend cubit with advanced filters
-* [ ] Add repository and cubit unit tests
+* [ ] Add advanced filtering options
+* [ ] Add custom sorting options
+* [ ] Add view field customization
+* [ ] Add analytics and reporting features
 * [ ] Document new typeId and schema in `migration_notes.md`
+
+---
+
+### **🚨 Business Rules & Error Handling**
+
+**Purpose:** Implement complex business logic and proper error handling.
+
+#### Common Patterns
+
+* [ ] **Auto-Assignment Logic**: For entities with relationships (e.g., Task → Milestone → Goal)
+  * Implement in Cubit methods (not in UI)
+  * Fetch parent entity to derive relationships
+  * Handle missing parent entities gracefully
+* [ ] **Validation Rules**: Implement both client-side and server-side validation
+  * Required fields
+  * Data format validation
+  * Business rule validation
+* [ ] **Error Handling**: Implement comprehensive error handling
+  * Custom exception classes
+  * User-friendly error messages
+  * Graceful degradation
+* [ ] **Data Integrity**: Ensure data consistency
+  * Foreign key constraints
+  * Cascade operations
+  * Soft delete patterns
+
+#### Example: Task Auto-Assignment
+
+```dart
+// In TaskCubit
+Future<void> addTask({
+  required String name,
+  required String milestoneId,
+  // ... other fields
+}) async {
+  try {
+    // 1. Fetch milestone to get goalId
+    final milestone = await milestoneRepository.getMilestoneById(milestoneId);
+    if (milestone == null) {
+      throw MilestoneNotFoundException(milestoneId);
+    }
+    
+    // 2. Auto-assign goalId from milestone
+    final task = Task(
+      id: const Uuid().v4(),
+      name: name,
+      milestoneId: milestoneId,
+      goalId: milestone.goalId, // Auto-assigned
+      // ... other fields
+    );
+    
+    await create(task);
+    await loadTasks();
+  } catch (e) {
+    emit(TasksError(e.toString()));
+  }
+}
+```
 
 ---
 
@@ -300,3 +415,19 @@ goal_tracker/
 
 ✅ **Summary:**
 Follow this checklist sequentially whenever adding a new model. Each section ensures the model is correctly integrated from storage to UI while preserving the clean architecture boundaries and consistent project structure.
+
+**Key Updates in This Version:**
+- ✅ Added migration notes documentation requirements
+- ✅ Added preference services integration (View, Filter, Sort)
+- ✅ Added comprehensive testing patterns
+- ✅ Added import/export functionality
+- ✅ Added business rules and error handling patterns
+- ✅ Added constants management
+- ✅ Added complex entity relationship handling
+- ✅ Added accessibility and validation considerations
+
+**Critical Dependencies:**
+- `migration_notes.md` - Must be updated for every new model
+- `constants.dart` - Must include box name constants
+- Preference services - Required for filtering and view management
+- Comprehensive testing - Essential for code quality
