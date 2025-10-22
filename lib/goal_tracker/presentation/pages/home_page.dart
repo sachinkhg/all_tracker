@@ -21,14 +21,55 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../data/models/goal_model.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/task_model.dart';
+import '../../domain/entities/goal.dart';
+import '../../domain/entities/milestone.dart';
 import '../../core/constants.dart';
+import '../../core/injection.dart';
+import '../bloc/goal_cubit.dart';
+import '../bloc/goal_state.dart';
+import '../bloc/milestone_cubit.dart';
+import '../bloc/milestone_state.dart';
+import '../bloc/task_cubit.dart';
+import '../widgets/goal_form_bottom_sheet.dart';
+import '../widgets/milestone_form_bottom_sheet.dart';
+import '../widgets/task_form_bottom_sheet.dart';
 import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  late final GoalCubit _goalCubit;
+  late final MilestoneCubit _milestoneCubit;
+  late final TaskCubit _taskCubit;
+
+  @override
+  void initState() {
+    super.initState();
+    _goalCubit = createGoalCubit();
+    _milestoneCubit = createMilestoneCubit();
+    _taskCubit = createTaskCubit();
+    
+    // Load initial data
+    _goalCubit.loadGoals();
+    _milestoneCubit.loadMilestones();
+    _taskCubit.loadTasks();
+  }
+
+  @override
+  void dispose() {
+    _goalCubit.close();
+    _milestoneCubit.close();
+    _taskCubit.close();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +106,103 @@ class HomePage extends StatelessWidget {
                   ),
             ),
             const SizedBox(height: 16),
-            _QuickActionsSection(colorScheme: cs),
+            _QuickActionsSection(
+              colorScheme: cs,
+              onAddGoal: _addGoal,
+              onAddMilestone: _addMilestone,
+              onAddTask: _addTask,
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _addGoal() async {
+    await GoalFormBottomSheet.show(
+      context,
+      title: 'Add Goal',
+      onSubmit: (name, description, targetDate, context, isCompleted) async {
+        await _goalCubit.addGoal(name, description, targetDate, context, isCompleted);
+      },
+    );
+  }
+
+  Future<void> _addMilestone() async {
+    // Get goals for the dropdown
+    final goals = _goalCubit.state is GoalsLoaded 
+        ? ((_goalCubit.state as GoalsLoaded).goals)
+        : <Goal>[];
+    
+    final goalOptions = goals.map((goal) => '${goal.id}::${goal.name}').toList();
+    
+    if (goalOptions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please create a goal first before adding a milestone')),
+      );
+      return;
+    }
+
+    await MilestoneFormBottomSheet.show(
+      context,
+      title: 'Add Milestone',
+      goalOptions: goalOptions,
+      onSubmit: (name, description, plannedValue, actualValue, targetDate, goalId) async {
+        await _milestoneCubit.addMilestone(
+          name: name,
+          description: description,
+          plannedValue: plannedValue,
+          actualValue: actualValue,
+          targetDate: targetDate,
+          goalId: goalId,
+        );
+      },
+    );
+  }
+
+  Future<void> _addTask() async {
+    // Get milestones for the dropdown
+    final milestones = _milestoneCubit.state is MilestonesLoaded 
+        ? ((_milestoneCubit.state as MilestonesLoaded).milestones)
+        : <Milestone>[];
+    
+    final milestoneOptions = milestones.map((milestone) => '${milestone.id}::${milestone.name}').toList();
+    
+    if (milestoneOptions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please create a milestone first before adding a task')),
+      );
+      return;
+    }
+
+    // Create milestone to goal mapping for the task form
+    final milestoneGoalMap = <String, String>{};
+    for (final milestone in milestones) {
+      // Find the goal name for this milestone
+      final goals = _goalCubit.state is GoalsLoaded 
+          ? ((_goalCubit.state as GoalsLoaded).goals)
+          : <Goal>[];
+      try {
+        final goal = goals.firstWhere((g) => g.id == milestone.goalId);
+        milestoneGoalMap[milestone.id] = goal.name;
+      } catch (e) {
+        // Goal not found, skip this milestone
+      }
+    }
+
+    await TaskFormBottomSheet.show(
+      context,
+      title: 'Add Task',
+      milestoneOptions: milestoneOptions,
+      milestoneGoalMap: milestoneGoalMap,
+      onSubmit: (name, targetDate, milestoneId, status) async {
+        await _taskCubit.addTask(
+          name: name,
+          targetDate: targetDate,
+          milestoneId: milestoneId,
+          status: status,
+        );
+      },
     );
   }
 }
@@ -376,11 +510,19 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-/// Quick actions for direct navigation
+/// Quick actions for adding new items
 class _QuickActionsSection extends StatelessWidget {
-  const _QuickActionsSection({required this.colorScheme});
+  const _QuickActionsSection({
+    required this.colorScheme,
+    required this.onAddGoal,
+    required this.onAddMilestone,
+    required this.onAddTask,
+  });
 
   final ColorScheme colorScheme;
+  final VoidCallback onAddGoal;
+  final VoidCallback onAddMilestone;
+  final VoidCallback onAddTask;
 
   @override
   Widget build(BuildContext context) {
@@ -388,40 +530,28 @@ class _QuickActionsSection extends StatelessWidget {
       children: [
         Expanded(
           child: _ActionButton(
-            label: 'Goals',
-            icon: Icons.track_changes,
+            label: 'Add Goal',
+            icon: Icons.add,
             color: colorScheme.primary,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const GoalListPage()),
-              );
-            },
+            onPressed: onAddGoal,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _ActionButton(
-            label: 'Milestones',
-            icon: Icons.flag,
+            label: 'Add Milestone',
+            icon: Icons.add,
             color: colorScheme.secondary,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const MilestoneListPage()),
-              );
-            },
+            onPressed: onAddMilestone,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _ActionButton(
-            label: 'Tasks',
-            icon: Icons.task_alt,
+            label: 'Add Task',
+            icon: Icons.add,
             color: colorScheme.tertiary,
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const TaskListPage()),
-              );
-            },
+            onPressed: onAddTask,
           ),
         ),
       ],

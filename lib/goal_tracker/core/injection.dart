@@ -39,6 +39,7 @@ import '../presentation/bloc/task_cubit.dart';
 import 'constants.dart';
 import 'view_preferences_service.dart';
 import 'filter_preferences_service.dart';
+import 'sort_preferences_service.dart';
 
 /// Singleton instance of ViewPreferencesService.
 /// 
@@ -60,6 +61,17 @@ FilterPreferencesService? _filterPreferencesService;
 FilterPreferencesService getFilterPreferencesService() {
   _filterPreferencesService ??= FilterPreferencesService();
   return _filterPreferencesService!;
+}
+
+/// Singleton instance of SortPreferencesService.
+/// 
+/// Shared across all cubits to manage sort preferences.
+/// Created lazily on first access.
+SortPreferencesService? _sortPreferencesService;
+
+SortPreferencesService getSortPreferencesService() {
+  _sortPreferencesService ??= SortPreferencesService();
+  return _sortPreferencesService!;
 }
 
 /// Composition root for the goal_tracker feature.
@@ -158,6 +170,7 @@ GoalCubit createGoalCubit() {
   // - In this manual wiring approach we return a ready-to-use instance; callers (e.g., the UI) are responsible for disposing it.
   final viewPrefsService = getViewPreferencesService();
   final filterPrefsService = getFilterPreferencesService();
+  final sortPrefsService = getSortPreferencesService();
   
   return GoalCubit(
     getAll: getAll, 
@@ -166,6 +179,7 @@ GoalCubit createGoalCubit() {
     delete: delete, 
     viewPreferencesService: viewPrefsService,
     filterPreferencesService: filterPrefsService,
+    sortPreferencesService: sortPrefsService,
   );
 }
 
@@ -206,6 +220,7 @@ MilestoneCubit createMilestoneCubit() {
   // ---------------------------------------------------------------------------
   final viewPrefsService = getViewPreferencesService();
   final filterPrefsService = getFilterPreferencesService();
+  final sortPrefsService = getSortPreferencesService();
   
   return MilestoneCubit(
     getAll: getAll,
@@ -216,6 +231,7 @@ MilestoneCubit createMilestoneCubit() {
     delete: delete,
     viewPreferencesService: viewPrefsService,
     filterPreferencesService: filterPrefsService,
+    sortPreferencesService: sortPrefsService,
   );
 }
 
@@ -263,6 +279,7 @@ TaskCubit createTaskCubit() {
   // ---------------------------------------------------------------------------
   final viewPrefsService = getViewPreferencesService();
   final filterPrefsService = getFilterPreferencesService();
+  final sortPrefsService = getSortPreferencesService();
   
   return TaskCubit(
     getAll: getAll,
@@ -274,5 +291,6 @@ TaskCubit createTaskCubit() {
     milestoneRepository: milestoneRepo, // Required for goalId auto-assignment
     viewPreferencesService: viewPrefsService,
     filterPreferencesService: filterPrefsService,
+    sortPreferencesService: sortPrefsService,
   );
 }

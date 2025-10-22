@@ -15,6 +15,7 @@ import '../../data/models/goal_model.dart';
 import '../../data/models/milestone_model.dart';
 import '../../core/injection.dart'; // factory that wires everything (createTaskCubit)
 import '../../core/constants.dart'; // for goalBoxName, milestoneBoxName
+import '../../core/sort_preferences_service.dart'; // for SortEntityType
 import '../bloc/task_cubit.dart';
 import '../bloc/task_state.dart';
 import '../../features/task_import_export.dart';
@@ -96,6 +97,7 @@ class TaskListPageView extends StatelessWidget {
                       milestoneNameById: milestoneNameById,
                       goalNameById: goalNameById,
                       onEdit: (ctx, task) => _onEditTask(ctx, task, cubit),
+                      onEditFilters: () => _editFilters(context, cubit),
                       onClearFilters: () {
                         cubit.clearFilters();
                       },
@@ -147,53 +149,7 @@ class TaskListPageView extends StatelessWidget {
           cubit.setVisibleFields(fields);
         },
         onFilter: () async {
-          // Check if there are existing saved filters
-          final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.task);
-          final hasSavedFilters = savedFilters != null && 
-              (savedFilters['milestoneId'] != null || savedFilters['goalId'] != null || 
-               savedFilters['status'] != null || savedFilters['targetDate'] != null);
-          
-          final result = await showAppBottomSheet<Map<String, dynamic>?>(
-            context,
-            FilterGroupBottomSheet(
-              entity: FilterEntityType.task,
-              initialContext: cubit.currentMilestoneIdFilter,
-              initialDateFilter: cubit.currentTargetDateFilter,
-              initialStatus: cubit.currentStatusFilter,
-              milestoneOptions: _getMilestoneOptions(),
-              goalOptions: _getGoalOptions(),
-              initialSaveFilter: hasSavedFilters,
-            ),
-          );
-
-          if (result == null) return;
-
-          if (result.containsKey('milestoneId') || 
-              result.containsKey('goalId') || 
-              result.containsKey('status') || 
-              result.containsKey('targetDate')) {
-            final saveFilter = result['saveFilter'] as bool? ?? false;
-            
-            // Save or clear filter preferences based on checkbox state
-            if (saveFilter) {
-              final filters = <String, String?>{
-                'milestoneId': result['milestoneId'] as String?,
-                'goalId': result['goalId'] as String?,
-                'status': result['status'] as String?,
-                'targetDate': result['targetDate'] as String?,
-              };
-              await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.task, filters);
-            } else {
-              await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.task);
-            }
-            
-            cubit.applyFilter(
-              milestoneId: result['milestoneId'] as String?,
-              goalId: result['goalId'] as String?,
-              status: result['status'] as String?,
-              targetDateFilter: result['targetDate'] as String?,
-            );
-          }
+          await _editFilters(context, cubit);
         },
         onAdd: () => _onCreateTask(context, cubit),
         onMore: () => _showActionsSheet(context, cubit),
@@ -275,6 +231,83 @@ class TaskListPageView extends StatelessWidget {
       return goalMap;
     } catch (e) {
       return {};
+    }
+  }
+
+  Future<void> _editFilters(BuildContext context, TaskCubit cubit) async {
+    // Check if there are existing saved filters
+    final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.task);
+    final hasSavedFilters = savedFilters != null && 
+        (savedFilters['milestoneId'] != null || savedFilters['goalId'] != null || 
+         savedFilters['status'] != null || savedFilters['targetDate'] != null);
+    
+    // Check if there are existing saved sort preferences
+    final savedSort = cubit.sortPreferencesService.loadSortPreferences(SortEntityType.task);
+    final hasSavedSort = savedSort != null;
+    
+    final result = await showAppBottomSheet<Map<String, dynamic>?>(
+      context,
+      FilterGroupBottomSheet(
+        entity: FilterEntityType.task,
+        initialContext: cubit.currentMilestoneIdFilter,
+        initialDateFilter: cubit.currentTargetDateFilter,
+        initialStatus: cubit.currentStatusFilter,
+        milestoneOptions: _getMilestoneOptions(),
+        goalOptions: _getGoalOptions(),
+        initialSaveFilter: hasSavedFilters,
+        initialSaveSort: hasSavedSort,
+        initialSortOrder: cubit.currentSortOrder,
+        initialHideCompleted: cubit.hideCompleted,
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result.containsKey('milestoneId') || 
+        result.containsKey('goalId') || 
+        result.containsKey('status') || 
+        result.containsKey('targetDate')) {
+      final saveFilter = result['saveFilter'] as bool? ?? false;
+      
+      // Save or clear filter preferences based on checkbox state
+      if (saveFilter) {
+        final filters = <String, String?>{
+          'milestoneId': result['milestoneId'] as String?,
+          'goalId': result['goalId'] as String?,
+          'status': result['status'] as String?,
+          'targetDate': result['targetDate'] as String?,
+        };
+        await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.task, filters);
+      } else {
+        await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.task);
+      }
+      
+      cubit.applyFilter(
+        milestoneId: result['milestoneId'] as String?,
+        goalId: result['goalId'] as String?,
+        status: result['status'] as String?,
+        targetDateFilter: result['targetDate'] as String?,
+      );
+    }
+
+    if (result.containsKey('sortOrder') || result.containsKey('hideCompleted')) {
+      final sortOrder = result['sortOrder'] as String? ?? 'asc';
+      final hideCompleted = result['hideCompleted'] as bool? ?? false;
+      final saveSort = result['saveSort'] as bool? ?? false;
+      
+      // Save or clear sort preferences based on checkbox state
+      if (saveSort) {
+        final sortSettings = <String, dynamic>{
+          'sortOrder': sortOrder,
+          'hideCompleted': hideCompleted,
+        };
+        await cubit.sortPreferencesService.saveSortPreferences(SortEntityType.task, sortSettings);
+      } else {
+        await cubit.sortPreferencesService.clearSortPreferences(SortEntityType.task);
+      }
+      
+      // Apply sorting
+      cubit.applySorting(sortOrder: sortOrder, hideCompleted: hideCompleted);
     }
   }
 
@@ -583,6 +616,7 @@ class _TasksBody extends StatelessWidget {
   final Map<String, String> milestoneNameById;
   final Map<String, String> goalNameById;
   final Function(BuildContext, Task) onEdit;
+  final VoidCallback onEditFilters;
   final VoidCallback onClearFilters;
 
   const _TasksBody({
@@ -593,6 +627,7 @@ class _TasksBody extends StatelessWidget {
     required this.milestoneNameById,
     required this.goalNameById,
     required this.onEdit,
+    required this.onEditFilters,
     required this.onClearFilters,
   });
 
@@ -618,6 +653,11 @@ class _TasksBody extends StatelessWidget {
                     softWrap: true,
                     maxLines: 3,
                   ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: onEditFilters,
+                  tooltip: 'Edit filters',
                 ),
                 IconButton(
                   icon: const Icon(Icons.close),

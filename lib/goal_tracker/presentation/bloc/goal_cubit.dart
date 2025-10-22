@@ -7,6 +7,7 @@ import '../../domain/usecases/goal/update_goal.dart';
 import '../../domain/usecases/goal/delete_goal.dart';
 import '../../core/view_preferences_service.dart';
 import '../../core/filter_preferences_service.dart';
+import '../../core/sort_preferences_service.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import 'goal_state.dart';
@@ -45,12 +46,17 @@ class GoalCubit extends Cubit<GoalState> {
   final DeleteGoal delete;
   final ViewPreferencesService viewPreferencesService;
   final FilterPreferencesService filterPreferencesService;
+  final SortPreferencesService sortPreferencesService;
 
   // master copy of all goals fetched from the domain layer.
   List<Goal> _allGoals = []; // master copy of all goals
   String? _currentContextFilter;
   String? _currentTargetDateFilter;
   String? _currentGrouping; // e.g. 'context' or null
+  
+  // Sort-related state
+  String _sortOrder = 'asc';
+  bool _hideCompleted = false;
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -77,17 +83,21 @@ class GoalCubit extends Cubit<GoalState> {
   String? get currentContextFilter => _currentContextFilter;
   String? get currentTargetDateFilter => _currentTargetDateFilter;
   String? get currentGrouping => _currentGrouping;
+  String get currentSortOrder => _sortOrder;
+  bool get hideCompleted => _hideCompleted;
 
-  /// Returns true when any filter or grouping is active.
+  /// Returns true when any filter, grouping, or sort is active.
   bool get hasActiveFilters =>
       (_currentContextFilter != null && _currentContextFilter!.isNotEmpty) ||
       (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) ||
-      (_currentGrouping != null && _currentGrouping!.isNotEmpty);
+      (_currentGrouping != null && _currentGrouping!.isNotEmpty) ||
+      _sortOrder != 'asc' ||
+      _hideCompleted;
 
   /// Human-readable summary of active filters for UI consumption.
   ///
   /// Examples:
-  ///  - "Context: Work • Date: This Month • Group: context"
+  ///  - "Context: Work • Date: This Month • Sort: Descending • Hide Completed"
   ///  - "Filters applied" (when hasActiveFilters is true but no specific fields are set)
   String get filterSummary {
     final parts = <String>[];
@@ -100,6 +110,12 @@ class GoalCubit extends Cubit<GoalState> {
     }
     if (_currentGrouping != null && _currentGrouping!.isNotEmpty) {
       parts.add('Group: ${_currentGrouping!}');
+    }
+    if (_sortOrder != 'asc') {
+      parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
+    }
+    if (_hideCompleted) {
+      parts.add('Hide Completed');
     }
 
     if (parts.isEmpty) {
@@ -118,6 +134,7 @@ class GoalCubit extends Cubit<GoalState> {
     required this.delete,
     required this.viewPreferencesService,
     required this.filterPreferencesService,
+    required this.sortPreferencesService,
   }) : super(GoalsLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.goal);
@@ -131,6 +148,13 @@ class GoalCubit extends Cubit<GoalState> {
       _currentContextFilter = savedFilters['context'];
       _currentTargetDateFilter = savedFilters['targetDate'];
     }
+    
+    // Load saved sort preferences on initialization
+    final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.goal);
+    if (savedSort != null) {
+      _sortOrder = savedSort['sortOrder'] ?? 'asc';
+      _hideCompleted = savedSort['hideCompleted'] ?? false;
+    }
   }
 
   Future<void> loadGoals() async {
@@ -139,9 +163,10 @@ class GoalCubit extends Cubit<GoalState> {
       final data = await getAll();
       _allGoals = data;
       
-      // Apply any saved filters after loading data
+      // Apply any saved filters and sorting after loading data
       final filteredGoals = _filterGoals(_allGoals);
-      emit(GoalsLoaded(filteredGoals, visibleFields));
+      final sortedGoals = _sortGoals(filteredGoals);
+      emit(GoalsLoaded(sortedGoals, visibleFields));
     } catch (e) {
       emit(GoalsError(e.toString()));
     }
@@ -152,7 +177,17 @@ class GoalCubit extends Cubit<GoalState> {
     _currentTargetDateFilter = targetDateFilter;
 
     final filtered = _filterGoals(_allGoals);
-    emit(GoalsLoaded(filtered, visibleFields));
+    final sorted = _sortGoals(filtered);
+    emit(GoalsLoaded(sorted, visibleFields));
+  }
+
+  void applySorting({required String sortOrder, required bool hideCompleted}) {
+    _sortOrder = sortOrder;
+    _hideCompleted = hideCompleted;
+
+    final filtered = _filterGoals(_allGoals);
+    final sorted = _sortGoals(filtered);
+    emit(GoalsLoaded(sorted, visibleFields));
   }
 
   void applyGrouping({required String groupBy}) {
@@ -169,14 +204,17 @@ class GoalCubit extends Cubit<GoalState> {
       });
     }
 
-    print("📊 Grouped goals count: ${filtered.length}");
-    emit(GoalsLoaded(filtered, visibleFields));
+    final sorted = _sortGoals(filtered);
+    print("📊 Grouped goals count: ${sorted.length}");
+    emit(GoalsLoaded(sorted, visibleFields));
   }
 
   void clearFilters() {
     _currentContextFilter = null;
     _currentTargetDateFilter = null;
     _currentGrouping = null;
+    _sortOrder = 'asc';
+    _hideCompleted = false;
     emit(GoalsLoaded(List.from(_allGoals), visibleFields));
   }
 
@@ -184,6 +222,11 @@ class GoalCubit extends Cubit<GoalState> {
     final now = DateTime.now();
 
     return source.where((g) {
+      // Hide completed filter
+      if (_hideCompleted && g.isCompleted) {
+        return false;
+      }
+
       // Context filter
       if (_currentContextFilter != null && _currentContextFilter!.isNotEmpty) {
         if ((g.context ?? '') != _currentContextFilter) {
@@ -237,6 +280,25 @@ class GoalCubit extends Cubit<GoalState> {
 
       return true;
     }).toList();
+  }
+
+  List<Goal> _sortGoals(List<Goal> goals) {
+    final sorted = List<Goal>.from(goals);
+    
+    sorted.sort((a, b) {
+      // Handle null target dates - always place at end
+      if (a.targetDate == null && b.targetDate == null) return 0;
+      if (a.targetDate == null) return 1;
+      if (b.targetDate == null) return -1;
+      
+      // Compare target dates
+      final comparison = a.targetDate!.compareTo(b.targetDate!);
+      
+      // Apply sort order
+      return _sortOrder == 'desc' ? -comparison : comparison;
+    });
+    
+    return sorted;
   }
 
   Future<void> addGoal(String name, String description, DateTime? targetDate, String? context, bool isCompleted) async {

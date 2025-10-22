@@ -60,3 +60,10 @@ const String viewPreferencesBoxName = 'view_preferences_box';
 /// - Keys within this box: 'goal_filters', 'milestone_filters', 'task_filters'
 /// - Each key maps to a Map<String, String?> of filter key-value pairs.
 const String filterPreferencesBoxName = 'filter_preferences_box';
+
+/// Hive box name for sort preferences.
+///
+/// - Stores user preferences for sort settings across entity types.
+/// - Keys within this box: 'goal_sort', 'milestone_sort', 'task_sort'
+/// - Each key maps to a Map<String, dynamic> of sort order and hide completed settings.
+const String sortPreferencesBoxName = 'sort_preferences_box';

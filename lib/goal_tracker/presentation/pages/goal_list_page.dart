@@ -15,6 +15,7 @@ import '../../features/goal_import_export.dart';
 import '../bloc/goal_cubit.dart';
 import '../bloc/goal_state.dart';
 import '../../core/injection.dart'; // factory that wires everything
+import '../../core/sort_preferences_service.dart'; // for SortEntityType
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
 
@@ -92,11 +93,6 @@ class GoalListPageView extends StatelessWidget {
                       onEditFilters: () => _editFilters(context, cubit),
                       onClearFilters: () {
                         cubit.clearFilters();
-                        try {
-                          cubit.applyGrouping(groupBy: '');
-                        } catch (_) {
-                          // ignore if not supported
-                        }
                       },
                     );
                   }
@@ -169,6 +165,10 @@ class GoalListPageView extends StatelessWidget {
     final hasSavedFilters = savedFilters != null && 
         (savedFilters['context'] != null || savedFilters['targetDate'] != null);
     
+    // Check if there are existing saved sort preferences
+    final savedSort = cubit.sortPreferencesService.loadSortPreferences(SortEntityType.goal);
+    final hasSavedSort = savedSort != null;
+    
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
       FilterGroupBottomSheet(
@@ -177,6 +177,9 @@ class GoalListPageView extends StatelessWidget {
         initialDateFilter: cubit.currentTargetDateFilter,
         initialGrouping: cubit.currentGrouping,
         initialSaveFilter: hasSavedFilters,
+        initialSaveSort: hasSavedSort,
+        initialSortOrder: cubit.currentSortOrder,
+        initialHideCompleted: cubit.hideCompleted,
       ),
     );
 
@@ -203,6 +206,26 @@ class GoalListPageView extends StatelessWidget {
         contextFilter: selectedContext,
         targetDateFilter: selectedTargetDate,
       );
+    }
+
+    if (result.containsKey('sortOrder') || result.containsKey('hideCompleted')) {
+      final sortOrder = result['sortOrder'] as String? ?? 'asc';
+      final hideCompleted = result['hideCompleted'] as bool? ?? false;
+      final saveSort = result['saveSort'] as bool? ?? false;
+      
+      // Save or clear sort preferences based on checkbox state
+      if (saveSort) {
+        final sortSettings = <String, dynamic>{
+          'sortOrder': sortOrder,
+          'hideCompleted': hideCompleted,
+        };
+        await cubit.sortPreferencesService.saveSortPreferences(SortEntityType.goal, sortSettings);
+      } else {
+        await cubit.sortPreferencesService.clearSortPreferences(SortEntityType.goal);
+      }
+      
+      // Apply sorting
+      cubit.applySorting(sortOrder: sortOrder, hideCompleted: hideCompleted);
     }
 
     if (result['groupBy'] != null && (result['groupBy'] as String).isNotEmpty) {

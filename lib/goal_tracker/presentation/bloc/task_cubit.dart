@@ -39,6 +39,7 @@ import '../../domain/usecases/task/update_task.dart';
 import '../../domain/usecases/task/delete_task.dart';
 import '../../core/view_preferences_service.dart';
 import '../../core/filter_preferences_service.dart';
+import '../../core/sort_preferences_service.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
@@ -83,6 +84,9 @@ class TaskCubit extends Cubit<TaskState> {
   
   /// FilterPreferencesService for loading/saving filter preferences.
   final FilterPreferencesService filterPreferencesService;
+  
+  /// SortPreferencesService for loading/saving sort preferences.
+  final SortPreferencesService sortPreferencesService;
 
   // master copy of all tasks fetched from the domain layer.
   List<Task> _allTasks = [];
@@ -92,6 +96,10 @@ class TaskCubit extends Cubit<TaskState> {
   String? _currentGoalIdFilter;
   String? _currentStatusFilter;
   String? _currentTargetDateFilter;
+  
+  // Sort-related state
+  String _sortOrder = 'asc';
+  bool _hideCompleted = false;
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -123,14 +131,18 @@ class TaskCubit extends Cubit<TaskState> {
   String? get currentGoalIdFilter => _currentGoalIdFilter;
   String? get currentStatusFilter => _currentStatusFilter;
   String? get currentTargetDateFilter => _currentTargetDateFilter;
+  String get currentSortOrder => _sortOrder;
+  bool get hideCompleted => _hideCompleted;
 
-  /// Returns true when any filter is active.
+  /// Returns true when any filter or sort is active.
   bool get hasActiveFilters =>
       (_currentMilestoneIdFilter != null &&
           _currentMilestoneIdFilter!.isNotEmpty) ||
       (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) ||
       (_currentStatusFilter != null && _currentStatusFilter!.isNotEmpty) ||
-      (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty);
+      (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) ||
+      _sortOrder != 'asc' ||
+      _hideCompleted;
 
   /// Human-readable summary of active filters for UI consumption.
   String get filterSummary {
@@ -164,6 +176,12 @@ class TaskCubit extends Cubit<TaskState> {
         _currentTargetDateFilter!.isNotEmpty) {
       parts.add('Date: ${_currentTargetDateFilter!}');
     }
+    if (_sortOrder != 'asc') {
+      parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
+    }
+    if (_hideCompleted) {
+      parts.add('Hide Completed');
+    }
 
     if (parts.isEmpty) {
       return 'Filters applied';
@@ -182,6 +200,7 @@ class TaskCubit extends Cubit<TaskState> {
     required this.milestoneRepository,
     required this.viewPreferencesService,
     required this.filterPreferencesService,
+    required this.sortPreferencesService,
   }) : super(TasksLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.task);
@@ -197,6 +216,13 @@ class TaskCubit extends Cubit<TaskState> {
       _currentStatusFilter = savedFilters['status'];
       _currentTargetDateFilter = savedFilters['targetDate'];
     }
+    
+    // Load saved sort preferences on initialization
+    final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.task);
+    if (savedSort != null) {
+      _sortOrder = savedSort['sortOrder'] ?? 'asc';
+      _hideCompleted = savedSort['hideCompleted'] ?? false;
+    }
   }
 
   /// Load all tasks from repository.
@@ -206,9 +232,10 @@ class TaskCubit extends Cubit<TaskState> {
       final data = await getAll();
       _allTasks = data;
       
-      // Apply any saved filters after loading data
+      // Apply any saved filters and sorting after loading data
       final filteredTasks = _filterTasks(_allTasks);
-      emit(TasksLoaded(filteredTasks, visibleFields: visibleFields));
+      final sortedTasks = _sortTasks(filteredTasks);
+      emit(TasksLoaded(sortedTasks, visibleFields: visibleFields));
     } catch (e) {
       emit(TasksError(e.toString()));
     }
@@ -252,7 +279,20 @@ class TaskCubit extends Cubit<TaskState> {
     _currentTargetDateFilter = targetDateFilter;
 
     final filtered = _filterTasks(_allTasks);
-    emit(TasksLoaded(filtered,
+    final sorted = _sortTasks(filtered);
+    emit(TasksLoaded(sorted,
+        milestoneId: _currentMilestoneIdFilter,
+        goalId: _currentGoalIdFilter,
+        visibleFields: visibleFields));
+  }
+
+  void applySorting({required String sortOrder, required bool hideCompleted}) {
+    _sortOrder = sortOrder;
+    _hideCompleted = hideCompleted;
+
+    final filtered = _filterTasks(_allTasks);
+    final sorted = _sortTasks(filtered);
+    emit(TasksLoaded(sorted,
         milestoneId: _currentMilestoneIdFilter,
         goalId: _currentGoalIdFilter,
         visibleFields: visibleFields));
@@ -264,6 +304,8 @@ class TaskCubit extends Cubit<TaskState> {
     _currentGoalIdFilter = null;
     _currentStatusFilter = null;
     _currentTargetDateFilter = null;
+    _sortOrder = 'asc';
+    _hideCompleted = false;
     emit(TasksLoaded(List.from(_allTasks), visibleFields: visibleFields));
   }
 
@@ -271,6 +313,11 @@ class TaskCubit extends Cubit<TaskState> {
     final now = DateTime.now();
 
     return source.where((t) {
+      // Hide completed filter
+      if (_hideCompleted && t.status == 'Complete') {
+        return false;
+      }
+
       // Milestone filter
       if (_currentMilestoneIdFilter != null &&
           _currentMilestoneIdFilter!.isNotEmpty) {
@@ -332,6 +379,25 @@ class TaskCubit extends Cubit<TaskState> {
 
       return true;
     }).toList();
+  }
+
+  List<Task> _sortTasks(List<Task> tasks) {
+    final sorted = List<Task>.from(tasks);
+    
+    sorted.sort((a, b) {
+      // Handle null target dates - always place at end
+      if (a.targetDate == null && b.targetDate == null) return 0;
+      if (a.targetDate == null) return 1;
+      if (b.targetDate == null) return -1;
+      
+      // Compare target dates
+      final comparison = a.targetDate!.compareTo(b.targetDate!);
+      
+      // Apply sort order
+      return _sortOrder == 'desc' ? -comparison : comparison;
+    });
+    
+    return sorted;
   }
 
   /// Create a new task and reload list.

@@ -33,6 +33,7 @@ import '../../domain/usecases/milestone/update_milestone.dart';
 import '../../domain/usecases/milestone/delete_milestone.dart';
 import '../../core/view_preferences_service.dart';
 import '../../core/filter_preferences_service.dart';
+import '../../core/sort_preferences_service.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
 import '../widgets/view_field_bottom_sheet.dart';
@@ -53,6 +54,9 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   
   /// FilterPreferencesService for loading/saving filter preferences.
   final FilterPreferencesService filterPreferencesService;
+  
+  /// SortPreferencesService for loading/saving sort preferences.
+  final SortPreferencesService sortPreferencesService;
 
   // master copy of all milestones fetched from the domain layer.
   List<Milestone> _allMilestones = [];
@@ -60,6 +64,10 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   // Optional filters / context
   String? _currentGoalIdFilter;
   String? _currentTargetDateFilter;
+  
+  // Sort-related state
+  String _sortOrder = 'asc';
+  bool _hideCompleted = false;
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -87,11 +95,15 @@ class MilestoneCubit extends Cubit<MilestoneState> {
 
   String? get currentGoalIdFilter => _currentGoalIdFilter;
   String? get currentTargetDateFilter => _currentTargetDateFilter;
+  String get currentSortOrder => _sortOrder;
+  bool get hideCompleted => _hideCompleted;
 
-  /// Returns true when any filter is active.
+  /// Returns true when any filter or sort is active.
   bool get hasActiveFilters =>
       (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) ||
-      (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty);
+      (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) ||
+      _sortOrder != 'asc' ||
+      _hideCompleted;
 
   /// Human-readable summary of active filters for UI consumption.
   String get filterSummary {
@@ -110,6 +122,12 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     if (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) {
       parts.add('Date: ${_currentTargetDateFilter!}');
     }
+    if (_sortOrder != 'asc') {
+      parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
+    }
+    if (_hideCompleted) {
+      parts.add('Hide Completed');
+    }
 
     if (parts.isEmpty) {
       return 'Filters applied';
@@ -127,6 +145,7 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     required this.delete,
     required this.viewPreferencesService,
     required this.filterPreferencesService,
+    required this.sortPreferencesService,
   }) : super(MilestonesLoading()) {
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.milestone);
@@ -140,6 +159,13 @@ class MilestoneCubit extends Cubit<MilestoneState> {
       _currentGoalIdFilter = savedFilters['context']; // context is used for goalId in milestone filters
       _currentTargetDateFilter = savedFilters['targetDate'];
     }
+    
+    // Load saved sort preferences on initialization
+    final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.milestone);
+    if (savedSort != null) {
+      _sortOrder = savedSort['sortOrder'] ?? 'asc';
+      _hideCompleted = savedSort['hideCompleted'] ?? false;
+    }
   }
 
   /// Load all milestones from repository.
@@ -149,9 +175,10 @@ class MilestoneCubit extends Cubit<MilestoneState> {
       final data = await getAll();
       _allMilestones = data;
       
-      // Apply any saved filters after loading data
+      // Apply any saved filters and sorting after loading data
       final filteredMilestones = _filterMilestones(_allMilestones);
-      emit(MilestonesLoaded(filteredMilestones, visibleFields: visibleFields));
+      final sortedMilestones = _sortMilestones(filteredMilestones);
+      emit(MilestonesLoaded(sortedMilestones, visibleFields: visibleFields));
     } catch (e) {
       emit(MilestonesError(e.toString()));
     }
@@ -189,13 +216,25 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     _currentTargetDateFilter = targetDateFilter;
 
     final filtered = _filterMilestones(_allMilestones);
-    emit(MilestonesLoaded(filtered, goalId: _currentGoalIdFilter, visibleFields: visibleFields));
+    final sorted = _sortMilestones(filtered);
+    emit(MilestonesLoaded(sorted, goalId: _currentGoalIdFilter, visibleFields: visibleFields));
+  }
+
+  void applySorting({required String sortOrder, required bool hideCompleted}) {
+    _sortOrder = sortOrder;
+    _hideCompleted = hideCompleted;
+
+    final filtered = _filterMilestones(_allMilestones);
+    final sorted = _sortMilestones(filtered);
+    emit(MilestonesLoaded(sorted, goalId: _currentGoalIdFilter, visibleFields: visibleFields));
   }
 
   /// Clear applied filters and emit the full list.
   void clearFilters() {
     _currentGoalIdFilter = null;
     _currentTargetDateFilter = null;
+    _sortOrder = 'asc';
+    _hideCompleted = false;
     emit(MilestonesLoaded(List.from(_allMilestones), visibleFields: visibleFields));
   }
 
@@ -203,6 +242,15 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     final now = DateTime.now();
 
     return source.where((m) {
+      // Hide completed filter - milestone is considered completed if actualValue is not null and equals or exceeds plannedValue
+      if (_hideCompleted) {
+        if (m.actualValue != null && m.plannedValue != null) {
+          if (m.actualValue! >= m.plannedValue!) {
+            return false; // Hide completed milestones
+          }
+        }
+      }
+
       // Goal filter
       if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
         if (m.goalId != _currentGoalIdFilter) return false;
@@ -253,6 +301,25 @@ class MilestoneCubit extends Cubit<MilestoneState> {
 
       return true;
     }).toList();
+  }
+
+  List<Milestone> _sortMilestones(List<Milestone> milestones) {
+    final sorted = List<Milestone>.from(milestones);
+    
+    sorted.sort((a, b) {
+      // Handle null target dates - always place at end
+      if (a.targetDate == null && b.targetDate == null) return 0;
+      if (a.targetDate == null) return 1;
+      if (b.targetDate == null) return -1;
+      
+      // Compare target dates
+      final comparison = a.targetDate!.compareTo(b.targetDate!);
+      
+      // Apply sort order
+      return _sortOrder == 'desc' ? -comparison : comparison;
+    });
+    
+    return sorted;
   }
 
   /// Create a new milestone and reload list.

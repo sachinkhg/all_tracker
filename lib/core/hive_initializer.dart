@@ -75,6 +75,9 @@ class HiveInitializer {
     
     // Open filter preferences box (stores user filter settings)
     await Hive.openBox(filterPreferencesBoxName);
+    
+    // Open sort preferences box (stores user sort settings)
+    await Hive.openBox(sortPreferencesBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

@@ -54,6 +54,15 @@ class FilterGroupBottomSheet extends StatefulWidget {
   
   /// Whether the save filter checkbox should be initially checked
   final bool initialSaveFilter;
+  
+  /// Whether the save sort checkbox should be initially checked
+  final bool initialSaveSort;
+  
+  /// Initial sort order ('asc' or 'desc')
+  final String? initialSortOrder;
+  
+  /// Initial hide completed setting
+  final bool initialHideCompleted;
 
   const FilterGroupBottomSheet({
     super.key,
@@ -65,6 +74,9 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.goalOptions,
     this.milestoneOptions,
     this.initialSaveFilter = false,
+    this.initialSaveSort = false,
+    this.initialSortOrder,
+    this.initialHideCompleted = false,
   });
 
   @override
@@ -79,6 +91,11 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   bool _saveFilter = false; // Save filter preference
   late final List<MapEntry<String, String>> _goalPairs; // id -> title
   late final List<MapEntry<String, String>> _milestonePairs; // id -> title
+  
+  // Sort-related state
+  String _sortOrder = 'asc';
+  bool _hideCompleted = false;
+  bool _saveSort = false;
 
   @override
   void initState() {
@@ -90,6 +107,13 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     
     // Set initial save filter checkbox state
     _saveFilter = widget.initialSaveFilter;
+    
+    // Set initial save sort checkbox state
+    _saveSort = widget.initialSaveSort;
+    
+    // Initialize sort settings
+    _sortOrder = widget.initialSortOrder ?? 'asc';
+    _hideCompleted = widget.initialHideCompleted;
 
     // Parse goalOptions if provided (used when entity == milestone or task)
     final raws = (widget.goalOptions ?? [])
@@ -144,7 +168,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
               const TabBar(
                 tabs: [
                   Tab(text: 'Filter'),
-                  Tab(text: 'Group'),
+                  Tab(text: 'Sort'),
                 ],
               ),
               // Tab content
@@ -418,7 +442,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                       ],
                     ),
 
-                    // ===== GROUP TAB =====
+                    // ===== SORT TAB =====
                     Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -429,28 +453,80 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text("Grouping (TODO)", style: textTheme.bodySmall),
+                                // Sort Order Section
+                                Text("Sort Order", style: textTheme.bodySmall),
                                 const SizedBox(height: 8),
-                                const Text("This section will let you group goals later."),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: RadioListTile<String>(
+                                        title: const Text("Ascending"),
+                                        subtitle: const Text("Earliest first"),
+                                        value: 'asc',
+                                        groupValue: _sortOrder,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _sortOrder = value!;
+                                          });
+                                        },
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: RadioListTile<String>(
+                                        title: const Text("Descending"),
+                                        subtitle: const Text("Latest first"),
+                                        value: 'desc',
+                                        groupValue: _sortOrder,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            _sortOrder = value!;
+                                          });
+                                        },
+                                        dense: true,
+                                        contentPadding: EdgeInsets.zero,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                
+                                // Hide Completed Section
+                                Text("Display Options", style: textTheme.bodySmall),
+                                const SizedBox(height: 8),
+                                CheckboxListTile(
+                                  title: const Text("Hide Completed Items"),
+                                  subtitle: const Text("Don't show completed goals/milestones/tasks"),
+                                  value: _hideCompleted,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hideCompleted = value ?? false;
+                                    });
+                                  },
+                                  dense: true,
+                                  contentPadding: EdgeInsets.zero,
+                                ),
                               ],
                             ),
                           ),
                         ),
-                        // Save Filter checkbox
+
+                        // Save Sort checkbox
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                           child: Row(
                             children: [
                               Checkbox(
-                                value: _saveFilter,
+                                value: _saveSort,
                                 onChanged: (value) {
                                   setState(() {
-                                    _saveFilter = value ?? false;
+                                    _saveSort = value ?? false;
                                   });
                                 },
                               ),
                               const SizedBox(width: 8),
-                              const Text("Save Filter"),
+                              const Text("Save Sort"),
                             ],
                           ),
                         ),
@@ -467,15 +543,13 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               const SizedBox(width: 12),
                               ElevatedButton(
                                 onPressed: () {
-                                  // Currently mirrors the filter behavior; when grouping
-                                  // is implemented, this should return grouping choices.
                                   Navigator.of(context).pop({
-                                    "context": _selectedContext,
-                                    "targetDate": _selectedDateFilter,
-                                    "saveFilter": _saveFilter,
+                                    "sortOrder": _sortOrder,
+                                    "hideCompleted": _hideCompleted,
+                                    "saveSort": _saveSort,
                                   });
                                 },
-                                child: const Text("Apply Filter"),
+                                child: const Text("Apply Sort"),
                               ),
                             ],
                           ),
