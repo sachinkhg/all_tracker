@@ -1,6 +1,8 @@
 import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/task_model.dart';
+import 'package:all_tracker/goal_tracker/data/models/habit_model.dart';
+import 'package:all_tracker/goal_tracker/data/models/habit_completion_model.dart';
 import 'package:all_tracker/goal_tracker/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -63,12 +65,24 @@ class HiveInitializer {
       Hive.registerAdapter(TaskModelAdapter());
     }
 
+    final habitAdapterId = HabitModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(habitAdapterId)) {
+      Hive.registerAdapter(HabitModelAdapter());
+    }
+
+    final habitCompletionAdapterId = HabitCompletionModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(habitCompletionAdapterId)) {
+      Hive.registerAdapter(HabitCompletionModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
     var goalsBox = await Hive.openBox<GoalModel>(goalBoxName);
     var milestonesBox = await Hive.openBox<MilestoneModel>(milestoneBoxName);
     var tasksBox = await Hive.openBox<TaskModel>(taskBoxName);
+    var habitsBox = await Hive.openBox<HabitModel>(habitBoxName);
+    var habitCompletionsBox = await Hive.openBox<HabitCompletionModel>(habitCompletionBoxName);
     
     // Open view preferences box (stores user view field visibility settings)
     await Hive.openBox(viewPreferencesBoxName);
@@ -139,6 +153,8 @@ class HiveInitializer {
       goalsBox: goalsBox,
       milestonesBox: milestonesBox,
       tasksBox: tasksBox,
+      habitsBox: habitsBox,
+      habitCompletionsBox: habitCompletionsBox,
     );
   }
 }
@@ -158,10 +174,14 @@ class HiveBoxes {
   final Box<GoalModel> goalsBox;
   final Box<MilestoneModel> milestonesBox;
   final Box<TaskModel> tasksBox;
+  final Box<HabitModel> habitsBox;
+  final Box<HabitCompletionModel> habitCompletionsBox;
 
   HiveBoxes({
     required this.goalsBox,
     required this.milestonesBox,
     required this.tasksBox,
+    required this.habitsBox,
+    required this.habitCompletionsBox,
   });
 }

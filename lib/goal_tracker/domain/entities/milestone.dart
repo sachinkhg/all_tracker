@@ -93,6 +93,29 @@ class Milestone extends Equatable {
     required this.goalId,
   });
 
+  /// Creates a copy of this Milestone with the given fields replaced.
+  ///
+  /// Useful for updates where only certain fields change.
+  Milestone copyWith({
+    String? id,
+    String? name,
+    String? description,
+    double? plannedValue,
+    double? actualValue,
+    DateTime? targetDate,
+    String? goalId,
+  }) {
+    return Milestone(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      plannedValue: plannedValue ?? this.plannedValue,
+      actualValue: actualValue ?? this.actualValue,
+      targetDate: targetDate ?? this.targetDate,
+      goalId: goalId ?? this.goalId,
+    );
+  }
+
   @override
   List<Object?> get props =>
       [id, name, description, plannedValue, actualValue, targetDate, goalId];

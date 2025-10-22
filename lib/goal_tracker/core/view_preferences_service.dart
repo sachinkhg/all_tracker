@@ -103,6 +103,8 @@ class ViewPreferencesService {
         return 'milestone_view';
       case ViewEntityType.task:
         return 'task_view';
+      case ViewEntityType.habit:
+        return 'habit_view';
     }
   }
 }

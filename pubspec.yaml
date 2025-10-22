@@ -48,6 +48,8 @@ dependencies:
   excel: ^4.0.6    # read/write xlsx
   #file_picker: ^5.2.2 # choose versions from pub.dev
   share_plus: ^8.0.0   # optional
+  rrule: ^0.2.17    # recurrence rule parsing for habits
+  table_calendar: ^3.1.2  # calendar widget for habit tracking
   file_selector: ^1.0.4
   file_picker: ^8.0.7
   permission_handler: ^12.0.1

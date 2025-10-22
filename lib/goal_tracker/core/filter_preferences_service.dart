@@ -68,6 +68,8 @@ class FilterPreferencesService {
         return 'milestone_filters';
       case FilterEntityType.task:
         return 'task_filters';
+      case FilterEntityType.habit:
+        return 'habit_filters';
     }
   }
 }

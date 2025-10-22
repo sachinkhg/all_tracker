@@ -67,8 +67,10 @@ class SortPreferencesService {
         return 'milestone_sort';
       case SortEntityType.task:
         return 'task_sort';
+      case SortEntityType.habit:
+        return 'habit_sort';
     }
   }
 }
 
-enum SortEntityType { goal, milestone, task }
+enum SortEntityType { goal, milestone, task, habit }

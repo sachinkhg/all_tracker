@@ -21,6 +21,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../data/models/goal_model.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/task_model.dart';
+import '../../data/models/habit_model.dart';
 import '../../domain/entities/goal.dart';
 import '../../domain/entities/milestone.dart';
 import '../../core/constants.dart';
@@ -33,10 +34,13 @@ import '../bloc/task_cubit.dart';
 import '../widgets/goal_form_bottom_sheet.dart';
 import '../widgets/milestone_form_bottom_sheet.dart';
 import '../widgets/task_form_bottom_sheet.dart';
+import '../widgets/habit_form_bottom_sheet.dart';
 import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
+import 'habit_list_page.dart';
 import 'settings_page.dart';
+import '../bloc/habit_cubit.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
 class HomePage extends StatefulWidget {
@@ -50,6 +54,7 @@ class _HomePageState extends State<HomePage> {
   late final GoalCubit _goalCubit;
   late final MilestoneCubit _milestoneCubit;
   late final TaskCubit _taskCubit;
+  late final HabitCubit _habitCubit;
 
   @override
   void initState() {
@@ -57,6 +62,7 @@ class _HomePageState extends State<HomePage> {
     _goalCubit = createGoalCubit();
     _milestoneCubit = createMilestoneCubit();
     _taskCubit = createTaskCubit();
+    _habitCubit = createHabitCubit();
     
     // Load initial data
     _goalCubit.loadGoals();
@@ -69,6 +75,7 @@ class _HomePageState extends State<HomePage> {
     _goalCubit.close();
     _milestoneCubit.close();
     _taskCubit.close();
+    _habitCubit.close();
     super.dispose();
   }
 
@@ -122,6 +129,7 @@ class _HomePageState extends State<HomePage> {
               onAddGoal: _addGoal,
               onAddMilestone: _addMilestone,
               onAddTask: _addTask,
+              onAddHabit: _addHabit,
             ),
           ],
         ),
@@ -216,6 +224,47 @@ class _HomePageState extends State<HomePage> {
       },
     );
   }
+
+  Future<void> _addHabit() async {
+    // Build milestone options and milestone->goal map from Hive
+    final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+    final goalBox = Hive.box<GoalModel>(goalBoxName);
+
+    final milestones = milestoneBox.values.toList();
+    final goalMap = <String, String>{};
+    for (final m in milestones) {
+      final goal = goalBox.get(m.goalId);
+      if (goal != null) {
+        goalMap[m.id] = goal.name;
+      }
+    }
+
+    final milestoneOptions = milestones.map((m) => '${m.id}::${m.name}').toList();
+
+    if (milestoneOptions.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please create a milestone first before adding a habit')),
+      );
+      return;
+    }
+
+    await HabitFormBottomSheet.show(
+      context,
+      title: 'Add Habit',
+      milestoneOptions: milestoneOptions,
+      milestoneGoalMap: goalMap,
+      onSubmit: (name, description, milestoneId, rrule, targetCompletions, isActive) async {
+        await _habitCubit.addHabit(
+          name: name,
+          description: description,
+          milestoneId: milestoneId,
+          rrule: rrule,
+          targetCompletions: targetCompletions,
+          isActive: isActive,
+        );
+      },
+    );
+  }
 }
 
 /// Dashboard section showing insights and statistics
@@ -297,6 +346,14 @@ class _DashboardSection extends StatelessWidget {
                       onTap: () {
                         Navigator.of(context).push(
                           MaterialPageRoute(builder: (_) => const TaskListPage()),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    _HabitInsightCard(
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const HabitListPage()),
                         );
                       },
                     ),
@@ -544,42 +601,61 @@ class _QuickActionsSection extends StatelessWidget {
     required this.onAddGoal,
     required this.onAddMilestone,
     required this.onAddTask,
+    required this.onAddHabit,
   });
 
   final ColorScheme colorScheme;
   final VoidCallback onAddGoal;
   final VoidCallback onAddMilestone;
   final VoidCallback onAddTask;
+  final VoidCallback onAddHabit;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _ActionButton(
-            label: 'Add Goal',
-            icon: Icons.add,
-            color: colorScheme.primary,
-            onPressed: onAddGoal,
-          ),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionButton(
+                label: 'Add Goal',
+                icon: Icons.add,
+                color: colorScheme.primary,
+                onPressed: onAddGoal,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActionButton(
+                label: 'Add Milestone',
+                icon: Icons.add,
+                color: colorScheme.primary,
+                onPressed: onAddMilestone,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionButton(
-            label: 'Add Milestone',
-            icon: Icons.add,
-            color: colorScheme.primary,
-            onPressed: onAddMilestone,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _ActionButton(
-            label: 'Add Task',
-            icon: Icons.add,
-            color: colorScheme.primary,
-            onPressed: onAddTask,
-          ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _ActionButton(
+                label: 'Add Task',
+                icon: Icons.add,
+                color: colorScheme.primary,
+                onPressed: onAddTask,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActionButton(
+                label: 'Add Habit',
+                icon: Icons.add,
+                color: colorScheme.primary,
+                onPressed: onAddHabit,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -621,8 +697,8 @@ class _ActionButton extends StatelessWidget {
         backgroundColor: color,
         foregroundColor: fg,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.zero,
         ),
         elevation: 2,
       ),
@@ -637,6 +713,119 @@ class _ActionButton extends StatelessWidget {
             style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Insight card for Habits
+class _HabitInsightCard extends StatelessWidget {
+  const _HabitInsightCard({
+    required this.onTap,
+  });
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<Box<HabitModel>>(
+      valueListenable: Hive.box<HabitModel>(habitBoxName).listenable(),
+      builder: (context, box, _) {
+        final habits = box.values.toList();
+        final totalHabits = habits.length;
+        final activeHabits = habits.where((h) => h.isActive).length;
+        final inactiveHabits = habits.where((h) => !h.isActive).length;
+
+        return Card(
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.checklist,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Habits',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        '$totalHabits',
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      _buildStatChip(
+                        'Active',
+                        '$activeHabits',
+                        Theme.of(context).colorScheme.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatChip(
+                        'Inactive',
+                        '$inactiveHabits',
+                        Theme.of(context).colorScheme.outline,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatChip(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
             ),
           ),
         ],

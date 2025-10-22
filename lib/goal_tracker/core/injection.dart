@@ -36,6 +36,28 @@ import '../domain/usecases/task/update_task.dart';
 import '../domain/usecases/task/delete_task.dart';
 import '../presentation/bloc/task_cubit.dart';
 
+import '../data/datasources/habit_local_data_source.dart';
+import '../data/repositories/habit_repository_impl.dart';
+import '../data/models/habit_model.dart';
+import '../domain/usecases/habit/create_habit.dart';
+import '../domain/usecases/habit/get_all_habits.dart';
+import '../domain/usecases/habit/get_habit_by_id.dart';
+import '../domain/usecases/habit/get_habits_by_milestone_id.dart';
+import '../domain/usecases/habit/update_habit.dart';
+import '../domain/usecases/habit/delete_habit.dart';
+import '../presentation/bloc/habit_cubit.dart';
+
+import '../data/datasources/habit_completion_local_data_source.dart';
+import '../data/repositories/habit_completion_repository_impl.dart';
+import '../data/models/habit_completion_model.dart';
+import '../domain/usecases/habit_completion/create_completion.dart';
+import '../domain/usecases/habit_completion/get_all_completions.dart';
+import '../domain/usecases/habit_completion/get_completions_by_habit_id.dart';
+import '../domain/usecases/habit_completion/get_completions_by_date_range.dart';
+import '../domain/usecases/habit_completion/delete_completion.dart';
+import '../domain/usecases/habit_completion/toggle_completion_for_date.dart';
+import '../presentation/bloc/habit_completion_cubit.dart';
+
 import 'constants.dart';
 import 'view_preferences_service.dart';
 import 'filter_preferences_service.dart';
@@ -292,5 +314,114 @@ TaskCubit createTaskCubit() {
     viewPreferencesService: viewPrefsService,
     filterPreferencesService: filterPrefsService,
     sortPreferencesService: sortPrefsService,
+  );
+}
+
+/// Factory that constructs a fully-wired [HabitCubit].
+///
+/// Implementation details:
+/// - This function performs an *eager, manual wiring* of concrete implementations for the feature.
+/// - It assumes the Hive boxes have already been opened (typically in `main()`).
+/// - All objects created here are plain Dart instances (no DI container used).
+HabitCubit createHabitCubit() {
+  // IMPORTANT: Hive.box must be already opened (open in main.dart).
+  final Box<HabitModel> box = Hive.box<HabitModel>(habitBoxName);
+
+  // ---------------------------------------------------------------------------
+  // Data layer
+  // ---------------------------------------------------------------------------
+  final local = HabitLocalDataSourceImpl(habitBox: box);
+
+  // ---------------------------------------------------------------------------
+  // Repository layer
+  // ---------------------------------------------------------------------------
+  final repo = HabitRepositoryImpl(localDataSource: local);
+
+  // ---------------------------------------------------------------------------
+  // Use-cases (domain)
+  // ---------------------------------------------------------------------------
+  final getAll = GetAllHabits(repository: repo);
+  final getById = GetHabitById(repository: repo);
+  final getByMilestoneId = GetHabitsByMilestoneId(repository: repo);
+  final create = CreateHabit(repository: repo);
+  final update = UpdateHabit(repository: repo);
+  final delete = DeleteHabit(repository: repo);
+
+  // ---------------------------------------------------------------------------
+  // Presentation
+  // ---------------------------------------------------------------------------
+  final viewPrefsService = getViewPreferencesService();
+  final filterPrefsService = getFilterPreferencesService();
+  final sortPrefsService = getSortPreferencesService();
+  
+  // Get milestone repository for auto-assigning goalId
+  final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+  final milestoneLocal = MilestoneLocalDataSourceImpl(milestoneBox);
+  final milestoneRepo = MilestoneRepositoryImpl(milestoneLocal);
+  
+  return HabitCubit(
+    getAll: getAll,
+    getById: getById,
+    getByMilestoneId: getByMilestoneId,
+    create: create,
+    update: update,
+    delete: delete,
+    milestoneRepository: milestoneRepo,
+    viewPreferencesService: viewPrefsService,
+    filterPreferencesService: filterPrefsService,
+    sortPreferencesService: sortPrefsService,
+  );
+}
+
+/// Factory that constructs a fully-wired [HabitCompletionCubit].
+///
+/// Implementation details:
+/// - This function performs an *eager, manual wiring* of concrete implementations for the feature.
+/// - It assumes the Hive boxes have already been opened (typically in `main()`).
+/// - All objects created here are plain Dart instances (no DI container used).
+HabitCompletionCubit createHabitCompletionCubit() {
+  // IMPORTANT: Hive.box must be already opened (open in main.dart).
+  final Box<HabitCompletionModel> completionBox = Hive.box<HabitCompletionModel>(habitCompletionBoxName);
+  final Box<HabitModel> habitBox = Hive.box<HabitModel>(habitBoxName);
+  final Box<MilestoneModel> milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+
+  // ---------------------------------------------------------------------------
+  // Data layer
+  // ---------------------------------------------------------------------------
+  final completionLocal = HabitCompletionLocalDataSourceImpl(completionBox: completionBox);
+  final habitLocal = HabitLocalDataSourceImpl(habitBox: habitBox);
+  final milestoneLocal = MilestoneLocalDataSourceImpl(milestoneBox);
+
+  // ---------------------------------------------------------------------------
+  // Repository layer
+  // ---------------------------------------------------------------------------
+  final completionRepo = HabitCompletionRepositoryImpl(localDataSource: completionLocal);
+  final habitRepo = HabitRepositoryImpl(localDataSource: habitLocal);
+  final milestoneRepo = MilestoneRepositoryImpl(milestoneLocal);
+
+  // ---------------------------------------------------------------------------
+  // Use-cases (domain)
+  // ---------------------------------------------------------------------------
+  final getAllCompletions = GetAllCompletions(repository: completionRepo);
+  final getCompletionsByHabitId = GetCompletionsByHabitId(repository: completionRepo);
+  final getCompletionsByDateRange = GetCompletionsByDateRange(repository: completionRepo);
+  final createCompletion = CreateCompletion(repository: completionRepo);
+  final deleteCompletion = DeleteCompletion(repository: completionRepo);
+  final toggleCompletion = ToggleCompletionForDate(
+    completionRepository: completionRepo,
+    habitRepository: habitRepo,
+    milestoneRepository: milestoneRepo,
+  );
+
+  // ---------------------------------------------------------------------------
+  // Presentation
+  // ---------------------------------------------------------------------------
+  return HabitCompletionCubit(
+    getAllCompletions: getAllCompletions,
+    getCompletionsByHabitId: getCompletionsByHabitId,
+    getCompletionsByDateRange: getCompletionsByDateRange,
+    createCompletion: createCompletion,
+    deleteCompletion: deleteCompletion,
+    toggleCompletion: toggleCompletion,
   );
 }

@@ -40,7 +40,7 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
-enum ViewEntityType { goal, milestone, task }
+enum ViewEntityType { goal, milestone, task, habit }
 
 class ViewFieldsBottomSheet extends StatefulWidget {
   /// Which entity's fields are being configured (goal or milestone).
@@ -105,7 +105,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'actualValue': widget.initial?['actualValue'] ?? false,
         'remainingDays': widget.initial?['remainingDays'] ?? false,
       };
-    } else {
+    } else if (widget.entity == ViewEntityType.task) {
       // Task field set
       _fields = {
         'name': true, // Always enforced ON
@@ -114,6 +114,16 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'status': widget.initial?['status'] ?? true,
         'milestoneName': widget.initial?['milestoneName'] ?? false,
         'goalName': widget.initial?['goalName'] ?? false,
+      };
+    } else if (widget.entity == ViewEntityType.habit) {
+      // Habit field set
+      _fields = {
+        'name': true, // Always enforced ON
+        'description': widget.initial?['description'] ?? true,
+        'milestoneName': widget.initial?['milestoneName'] ?? false,
+        'goalName': widget.initial?['goalName'] ?? false,
+        'rrule': widget.initial?['rrule'] ?? false,
+        'targetCompletions': widget.initial?['targetCompletions'] ?? false,
       };
     }
   }
@@ -170,13 +180,20 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('plannedValue', 'Planned Value'),
               _buildToggle('actualValue', 'Actual Value'),
               _buildToggle('remainingDays', 'Remaining Days'),
-            ] else ...[
+            ] else if (widget.entity == ViewEntityType.task) ...[
               // Task fields
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('status', 'Status'),
               _buildToggle('milestoneName', 'Milestone'),
               _buildToggle('goalName', 'Goal'),
               _buildToggle('remainingDays', 'Remaining Days'),
+            ] else ...[
+              // Habit fields
+              _buildToggle('description', 'Description'),
+              _buildToggle('milestoneName', 'Milestone'),
+              _buildToggle('goalName', 'Goal'),
+              _buildToggle('rrule', 'Recurrence'),
+              _buildToggle('targetCompletions', 'Target Completion'),
             ],
             const SizedBox(height: 8),
             const Divider(),

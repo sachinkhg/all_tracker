@@ -56,7 +56,7 @@ Implements full clean architecture with domain-driven design (DDD) principles.
 - Defines entities, repository interfaces, and use cases.
 
 **Subfolders:**
-- `entities/` — Defines `Goal`, `Milestone`, `Task`, etc.
+- `entities/` — Defines `Goal`, `Milestone`, `Task`, `Habit`, `HabitCompletion`, etc.
 - `repositories/` — Abstract repository definitions.
 - `usecases/` — Application-specific business actions (AddGoal, GetAllGoals, UpdateGoal, etc.).
 
@@ -72,6 +72,13 @@ Implements full clean architecture with domain-driven design (DDD) principles.
 - `bloc/` — Cubits and Blocs for goal state management.
 - `pages/` — Goal screens such as List, Detail, and Add/Edit.
 - `widgets/` — Goal-specific widgets like `GoalListItem`, `GoalFormBottomSheet`, etc.
+
+#### Key Entity Relationships:
+- **Goal** → **Milestone** (one-to-many): Each goal can have multiple milestones
+- **Milestone** → **Task** (one-to-many): Each milestone can have multiple tasks
+- **Milestone** → **Habit** (one-to-many): Each milestone can have multiple habits
+- **Habit** → **HabitCompletion** (one-to-many): Each habit can have multiple completion records
+- **Habit** → **Milestone Progress**: Habit completions automatically increment milestone.actualValue
 
 ---
 

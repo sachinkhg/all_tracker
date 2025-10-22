@@ -32,7 +32,7 @@ import '../../core/constants.dart'; // path to kContextOptions
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
 
-enum FilterEntityType { goal, milestone, task }
+enum FilterEntityType { goal, milestone, task, habit }
 
 class FilterGroupBottomSheet extends StatefulWidget {
   /// Which entity this filter sheet applies to.
@@ -153,8 +153,9 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
 
     // Provide a TabController for TabBar & TabBarView
+    final bool isHabit = widget.entity == FilterEntityType.habit;
     return DefaultTabController(
-      length: 2,
+      length: isHabit ? 1 : 2,
       child: Padding(
         // respect keyboard insets but do NOT permanently add bottom safe padding
         padding: EdgeInsets.only(bottom: viewInsets),
@@ -165,10 +166,10 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
             children: [
               // little top handle space
               const SizedBox(height: 12),
-              const TabBar(
+              TabBar(
                 tabs: [
-                  Tab(text: 'Filter'),
-                  Tab(text: 'Sort'),
+                  const Tab(text: 'Filter'),
+                  if (!isHabit) const Tab(text: 'Sort'),
                 ],
               ),
               // Tab content
@@ -186,35 +187,37 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Filter by Target Date (always shown first)
-                                Text("Filter by Target Date", style: textTheme.bodySmall),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 8,
-                                  children: [
-                                    for (final option in [
-                                      "Today",
-                                      "Tomorrow",
-                                      "This Week",
-                                      "Next Week",
-                                      "This Month",
-                                      "Next Month",
-                                      "This Year",
-                                      "Next Year",
-                                    ])
-                                      ChoiceChip(
-                                        label: Text(option),
-                                        selected: _selectedDateFilter == option,
-                                        onSelected: (sel) {
-                                          setState(() {
-                                            _selectedDateFilter = sel ? option : null;
-                                          });
-                                        },
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(height: 16),
+                                // Filter by Target Date (hidden for habits)
+                                if (widget.entity != FilterEntityType.habit) ...[
+                                  Text("Filter by Target Date", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final option in [
+                                        "Today",
+                                        "Tomorrow",
+                                        "This Week",
+                                        "Next Week",
+                                        "This Month",
+                                        "Next Month",
+                                        "This Year",
+                                        "Next Year",
+                                      ])
+                                        ChoiceChip(
+                                          label: Text(option),
+                                          selected: _selectedDateFilter == option,
+                                          onSelected: (sel) {
+                                            setState(() {
+                                              _selectedDateFilter = sel ? option : null;
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                ],
                                 
                                 // Second filter section (Context/Goal/Milestone)
                                 if (widget.entity == FilterEntityType.goal) ...[
@@ -277,7 +280,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                         }),
                                     ],
                                   ),
-                                ] else ...[
+                                ] else if (widget.entity == FilterEntityType.task) ...[
                                   // Task filters
                                   Text("Filter by Milestone", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
@@ -379,6 +382,89 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                         ),
                                     ],
                                   ),
+                                ] else ...[
+                                  // Habit filters (no Status)
+                                  Text("Filter by Milestone", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final entry in _milestonePairs)
+                                        Builder(builder: (ctx2) {
+                                          final cs = Theme.of(ctx2).colorScheme;
+                                          final bool selected = _selectedContext == entry.key;
+                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
+                                          return InkWell(
+                                            borderRadius: BorderRadius.circular(16),
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedContext = selected ? null : entry.key;
+                                              });
+                                            },
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                decoration: BoxDecoration(
+                                                  color: selected ? cs.primary.withValues(alpha: 0.12) : null,
+                                                  border: Border.all(color: selected ? cs.primary : cs.outline.withValues(alpha: 0.30)),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: Text(
+                                                  entry.value,
+                                                  softWrap: true,
+                                                  style: TextStyle(
+                                                    color: selected ? cs.primary : cs.onSurface,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text("Filter by Goal", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final entry in _goalPairs)
+                                        Builder(builder: (ctx2) {
+                                          final cs = Theme.of(ctx2).colorScheme;
+                                          final bool selected = _selectedGoalId == entry.key;
+                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
+                                          return InkWell(
+                                            borderRadius: BorderRadius.circular(16),
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedGoalId = selected ? null : entry.key;
+                                              });
+                                            },
+                                            child: ConstrainedBox(
+                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                                decoration: BoxDecoration(
+                                                  color: selected ? cs.secondary.withValues(alpha: 0.12) : null,
+                                                  border: Border.all(color: selected ? cs.secondary : cs.outline.withValues(alpha: 0.30)),
+                                                  borderRadius: BorderRadius.circular(16),
+                                                ),
+                                                child: Text(
+                                                  entry.value,
+                                                  softWrap: true,
+                                                  style: TextStyle(
+                                                    color: selected ? cs.secondary : cs.onSurface,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                    ],
+                                  ),
                                 ],
                               ],
                             ),
@@ -426,10 +512,17 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                       "targetDate": _selectedDateFilter,
                                       "saveFilter": _saveFilter,
                                     });
-                                  } else {
+                                  } else if (widget.entity == FilterEntityType.goal || widget.entity == FilterEntityType.milestone) {
                                     Navigator.of(context).pop({
                                       "context": _selectedContext,
                                       "targetDate": _selectedDateFilter,
+                                      "saveFilter": _saveFilter,
+                                    });
+                                  } else {
+                                    // Habit entity — return milestone/goal only
+                                    Navigator.of(context).pop({
+                                      "milestoneId": _selectedContext,
+                                      "goalId": _selectedGoalId,
                                       "saveFilter": _saveFilter,
                                     });
                                   }
@@ -442,6 +535,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                       ],
                     ),
 
+                    if (!isHabit)
                     // ===== SORT TAB =====
                     Column(
                       mainAxisSize: MainAxisSize.min,

@@ -11,6 +11,8 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **0**  | GoalModel      | `goals_box`       | Active    | Initial    | Core goal entity                           |
 | **1**  | MilestoneModel | `milestones_box`  | Active    | Initial    | Milestone entity linked to Goal            |
 | **2**  | TaskModel      | `tasks_box`       | Active    | 2025-10-12 | Task entity linked to Milestone and Goal   |
+| **3**  | HabitModel     | `habits_box`      | Active    | 2025-01-27 | Habit entity linked to Milestone and Goal  |
+| **4**  | HabitCompletionModel | `habit_completions_box` | Active | 2025-01-27 | Habit completion tracking entity |
 
 ---
 
@@ -21,6 +23,8 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `goals_box`                 | Goal entities                     | GoalModel | Active    | Core goal storage                           |
 | `milestones_box`            | Milestone entities                | MilestoneModel | Active | Milestone storage linked to goals          |
 | `tasks_box`                 | Task entities                     | TaskModel | Active    | Task storage linked to milestones          |
+| `habits_box`                | Habit entities                    | HabitModel | Active    | Habit storage linked to milestones         |
+| `habit_completions_box`     | Habit completion entities         | HabitCompletionModel | Active | Habit completion tracking storage |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
@@ -112,6 +116,60 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 
 **Migration History:**
 - v1.0 (2025-10-12): Initial schema with 6 fields.
+
+---
+
+## 📦 Model: HabitModel (TypeId: 3)
+
+### Schema Version: 1.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name        | Type     | Nullable | Default | Notes                                           |
+|--------------|-------------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `id`              | String   | No       | -       | Unique identifier (GUID)                        |
+| 1            | `name`            | String   | No       | -       | Habit title                                     |
+| 2            | `description`     | String   | Yes      | null    | Optional description                             |
+| 3            | `milestoneId`     | String   | No       | -       | Foreign key to parent Milestone                 |
+| 4            | `goalId`          | String   | No       | -       | Foreign key to parent Goal (auto-assigned from Milestone) |
+| 5            | `rrule`           | String   | No       | -       | Recurrence rule (RFC 5545 RRULE format)         |
+| 6            | `targetCompletions` | int    | Yes      | null    | Optional weight for milestone contribution       |
+| 7            | `isActive`        | bool     | No       | true    | Whether habit is currently active               |
+
+**Business Rules:**
+- `goalId` is **auto-assigned** from the associated Milestone's `goalId` during create/update operations.
+- UI must **not** allow direct editing of `goalId`.
+- When a Milestone is selected, the UI displays the associated Goal name as read-only.
+- HabitCubit enforces this rule by fetching the Milestone before persisting the Habit.
+- `rrule` must follow RFC 5545 RRULE format for recurrence rules.
+- `targetCompletions` defaults to 1 if null when calculating milestone progress.
+
+**Migration History:**
+- v1.0 (2025-01-27): Initial schema with 8 fields.
+
+---
+
+## 📦 Model: HabitCompletionModel (TypeId: 4)
+
+### Schema Version: 1.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name      | Type     | Nullable | Default | Notes                                           |
+|--------------|-----------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `id`            | String   | No       | -       | Unique identifier (GUID)                        |
+| 1            | `habitId`       | String   | No       | -       | Foreign key to parent Habit                     |
+| 2            | `completionDate`| DateTime | No       | -       | Date when habit was completed (normalized to date-only) |
+| 3            | `note`          | String   | Yes      | null    | Optional completion note                         |
+
+**Business Rules:**
+- `completionDate` is normalized to date-only (midnight UTC) to avoid timezone issues.
+- Each completion increments the associated milestone's `actualValue` by the habit's `targetCompletions` (or 1 if null).
+- Deleting a completion decrements the milestone's `actualValue` by the same amount.
+- The milestone progress update is handled atomically in the `ToggleCompletionForDate` use case.
+
+**Migration History:**
+- v1.0 (2025-01-27): Initial schema with 4 fields.
 
 ---
 
@@ -241,12 +299,16 @@ try {
 - **0**: GoalModel
 - **1**: MilestoneModel  
 - **2**: TaskModel
-- **Next Available**: 3
+- **3**: HabitModel
+- **4**: HabitCompletionModel
+- **Next Available**: 5
 
 ### Current Box Names
 - `goals_box` - Goal entities
 - `milestones_box` - Milestone entities
 - `tasks_box` - Task entities
+- `habits_box` - Habit entities
+- `habit_completions_box` - Habit completion entities
 - `view_preferences_box` - UI preferences
 - `filter_preferences_box` - Filter preferences
 - `sort_preferences_box` - Sort preferences
