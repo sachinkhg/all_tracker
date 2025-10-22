@@ -58,7 +58,18 @@ class MilestoneListPageView extends StatelessWidget {
         state is MilestonesLoaded ? state.visibleFields ?? <String, bool>{} : <String, bool>{};
 
     return Scaffold(
-      appBar: const PrimaryAppBar(title: 'Milestones'),
+      appBar: PrimaryAppBar(
+        title: 'Milestones',
+        actions: [
+          IconButton(
+            tooltip: 'Dashboard',
+            icon: const Icon(Icons.dashboard),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(

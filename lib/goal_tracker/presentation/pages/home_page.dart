@@ -36,6 +36,7 @@ import '../widgets/task_form_bottom_sheet.dart';
 import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
+import 'settings_page.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
 class HomePage extends StatefulWidget {
@@ -78,6 +79,16 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('AllTracker'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            },
+          ),
+        ],
         backgroundColor: cs.primary,
         foregroundColor: cs.onPrimary,
         elevation: 0,
@@ -431,17 +442,14 @@ class _TaskInsightCard extends StatelessWidget {
                   _StatusChip(
                     label: 'To Do',
                     count: toDo,
-                    color: Colors.grey,
                   ),
                   _StatusChip(
                     label: 'In Progress',
                     count: inProgress,
-                    color: Colors.blue,
                   ),
                   _StatusChip(
                     label: 'Complete',
                     count: completed,
-                    color: Colors.green,
                   ),
                 ],
               ),
@@ -475,27 +483,46 @@ class _StatusChip extends StatelessWidget {
   const _StatusChip({
     required this.label,
     required this.count,
-    required this.color,
   });
 
   final String label;
   final int count;
-  final Color color;
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    // Map status label to ColorScheme tokens for background/foreground
+    Color background;
+    Color foreground;
+    switch (label) {
+      case 'Complete':
+        background = cs.tertiaryContainer;
+        foreground = cs.onTertiaryContainer;
+        break;
+      case 'In Progress':
+        background = cs.primaryContainer;
+        foreground = cs.onPrimaryContainer;
+        break;
+      case 'To Do':
+      default:
+        background = cs.secondaryContainer;
+        foreground = cs.onSecondaryContainer;
+        break;
+    }
+
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.2),
+            color: background,
             borderRadius: BorderRadius.circular(16),
           ),
           child: Text(
             '$count',
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: color,
+                  color: foreground,
                   fontWeight: FontWeight.bold,
                 ),
           ),
@@ -541,7 +568,7 @@ class _QuickActionsSection extends StatelessWidget {
           child: _ActionButton(
             label: 'Add Milestone',
             icon: Icons.add,
-            color: colorScheme.secondary,
+            color: colorScheme.primary,
             onPressed: onAddMilestone,
           ),
         ),
@@ -550,7 +577,7 @@ class _QuickActionsSection extends StatelessWidget {
           child: _ActionButton(
             label: 'Add Task',
             icon: Icons.add,
-            color: colorScheme.tertiary,
+            color: colorScheme.primary,
             onPressed: onAddTask,
           ),
         ),
@@ -575,10 +602,24 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    // Determine foreground color based on which scheme color is used for background
+    Color fg;
+    if (color == cs.primary) {
+      fg = cs.onPrimary;
+    } else if (color == cs.secondary) {
+      fg = cs.onSecondary;
+    } else if (color == cs.tertiary) {
+      fg = cs.onTertiary;
+    } else {
+      fg = cs.onPrimary;
+    }
+
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
-        foregroundColor: Colors.white,
+        foregroundColor: fg,
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),

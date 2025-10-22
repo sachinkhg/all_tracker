@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+// If you want to supply GoogleFonts, do it from the Theme layer and pass the
+// resolved fontFamily into [AppTypography.textTheme]. Avoid hard-coding a
+// specific font here so Settings can switch fonts dynamically.
 
 /// App theme tokens and helpers — typography portion.
 ///
@@ -34,11 +36,6 @@ import 'package:google_fonts/google_fonts.dart';
 /// - This file is intentionally focused on typography tokens. Do not register colors or shapes here — keep theme composition at a higher level.
 /// - Module authors should extend or merge these styles rather than copy them to avoid drift.
 class AppTypography {
-  // Primary font family used across the app.
-  // Using GoogleFonts ensures a consistent font across platforms; the `.fontFamily` value is used in TextStyle.
-  static final String primaryFontFamily = GoogleFonts.lato().fontFamily!;
-  // Example: add secondary font family when a module needs a different visual tone.
-  // static final String secondaryFontFamily = GoogleFonts.openSans().fontFamily!;
 
   /// Build a [TextTheme] that picks colors from the provided [colorScheme].
   ///
@@ -51,46 +48,48 @@ class AppTypography {
   /// - Sizes chosen here are modest and subject to system text scaling; prefer testing with `textScaleFactor`.
   /// - Contrast decisions should be validated against WCAG; using `colorScheme.primary` for titles emphasizes brand color,
   ///   but ensure sufficient contrast against background in each theme variant.
-  static TextTheme textTheme(ColorScheme colorScheme) {
+  /// Optionally provide [fontFamily] to enforce a specific font across the
+  /// returned [TextTheme]. When `null`, the theme’s current font will be used.
+  static TextTheme textTheme(ColorScheme colorScheme, {String? fontFamily}) {
     return TextTheme(
       // Headline for small screens / secondary headings. Using primary color for brand emphasis.
       headlineSmall: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 24,
         color: colorScheme.primary,
       ),
       // TitleLarge used for prominent in-screen titles.
       // .w500 gives moderate emphasis without being too heavy for accessibility.
       titleLarge: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 20,
         fontWeight: FontWeight.w500,
         color: colorScheme.primary, // titles use primary to keep consistent brand color
       ),
       // BodyLarge — primary readable body text. Keep weight slightly elevated for legibility.
       bodyLarge: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 16,
         fontWeight: FontWeight.w500,
         color: colorScheme.primary,
       ),
       // BodyMedium — used for secondary body copy; italic signals emphasis but should be used sparingly.
       bodyMedium: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 14,
         fontStyle: FontStyle.italic,
         color: colorScheme.primary,
       ),
       // Labels (e.g., chips, small buttons) use the secondary color to provide contrast and semantic separation.
       labelLarge: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 14,
         fontWeight: FontWeight.bold,
         color: colorScheme.primary,
       ),
       // BodySmall for helper text or captions. Slight opacity reduces visual weight while keeping color linked to scheme.
       bodySmall: TextStyle(
-        fontFamily: primaryFontFamily,
+        fontFamily: fontFamily,
         fontSize: 14,
         color: colorScheme.primary.withOpacity(0.8),
       ),

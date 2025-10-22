@@ -1,101 +1,103 @@
-// import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-// import 'app_typography.dart';
-// class AppTheme {
-//   static const Color primaryLight = Color(0xFFFDFFFC);
-//   static const Color primaryDark = Color(0xFF011627);
-//   static const Color primaryGreen = Color(0xFF2EC4B6);
-//   static const Color primaryRed = Color(0xFFE71D36);
-//   static const Color primaryYellow = Color(0xFFFF9F1C);
-  
+/// Central app theme definitions: named color presets and font presets.
+///
+/// This file exposes simple APIs to build ThemeData instances from a seed
+/// color and optional font family and to query available presets by key.
+class AppTheme {
+  /// Named color presets users can pick from in Settings.
+  static const Map<String, Color> colorPresets = {
+    'Blue': Colors.blue,
+    'Green': Colors.green,
+    'Purple': Colors.purple,
+    'Amber': Colors.amber,
+    'Teal': Colors.teal,
+    'Indigo': Colors.indigo,
+  };
 
-//   static final ColorScheme lightColorScheme = ColorScheme(
-//     brightness: Brightness.light,
-//     primary: primaryLight,
-//     onPrimary: primaryDark,  
-//     secondary: primaryLight,
-//     onSecondary: primaryDark, 
-//     error: primaryLight, 
-//     onError: primaryRed, 
-//     surface: primaryLight, 
-//     onSurface: primaryYellow,
-//   );
+  /// Named font presets using Google Fonts. `null` means use the system/default font.
+  static const Map<String, String?> fontPresets = {
+    'System': null,
+    'Lato': 'Lato',
+    'Roboto': 'Roboto',
+    'Poppins': 'Poppins',
+    'Open Sans': 'Open Sans',
+    'Montserrat': 'Montserrat',
+    'Geo': 'Geo',
+  };
 
-//   static final ColorScheme darkColorScheme = ColorScheme(
-//     brightness: Brightness.dark,
-//     primary: primaryDark,
-//     onPrimary: primaryLight,  
-//     secondary: primaryDark,
-//     onSecondary: primaryLight, 
-//     error: primaryLight, 
-//     onError: primaryRed, 
-//     surface: primaryLight, 
-//     onSurface: primaryYellow,
-//   );
+  /// Builds a ThemeData from a seed color, brightness and optional font.
+  static ThemeData buildTheme({
+    required Color seed,
+    required Brightness brightness,
+    String? fontFamily,
+  }) {
+    final cs = ColorScheme.fromSeed(seedColor: seed, brightness: brightness);
 
-//   static final ColorScheme greenColorScheme = ColorScheme(
-//     brightness: Brightness.light,
-//     primary: primaryLight,
-//     onPrimary: primaryGreen,
-//     secondary: primaryLight,
-//     onSecondary: primaryGreen,
-//     error: primaryLight, 
-//     onError: primaryRed, 
-//     surface: primaryLight, 
-//     onSurface: primaryYellow,
-//   );
+    ThemeData base = ThemeData.from(colorScheme: cs, useMaterial3: true);
+    if (fontFamily != null && fontFamily.isNotEmpty) {
+      // Apply Google Fonts text theme based on the selected font
+      TextTheme googleTextTheme;
+      TextTheme googlePrimaryTextTheme;
+      
+      switch (fontFamily) {
+        case 'Lato':
+          googleTextTheme = GoogleFonts.latoTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.latoTextTheme(base.primaryTextTheme);
+          break;
+        case 'Roboto':
+          googleTextTheme = GoogleFonts.robotoTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.robotoTextTheme(base.primaryTextTheme);
+          break;
+        case 'Inter':
+          googleTextTheme = GoogleFonts.interTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.interTextTheme(base.primaryTextTheme);
+          break;
+        case 'Poppins':
+          googleTextTheme = GoogleFonts.poppinsTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.poppinsTextTheme(base.primaryTextTheme);
+          break;
+        case 'Open Sans':
+          googleTextTheme = GoogleFonts.openSansTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.openSansTextTheme(base.primaryTextTheme);
+          break;
+        case 'Montserrat':
+          googleTextTheme = GoogleFonts.montserratTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.montserratTextTheme(base.primaryTextTheme);
+          break;
+        case 'Press Start 2P':
+          googleTextTheme = GoogleFonts.pressStart2pTextTheme(base.textTheme);
+          googlePrimaryTextTheme = GoogleFonts.pressStart2pTextTheme(base.primaryTextTheme);
+          break;
+        default:
+          // Fallback to applying font family directly
+          googleTextTheme = base.textTheme.apply(fontFamily: fontFamily);
+          googlePrimaryTextTheme = base.primaryTextTheme.apply(fontFamily: fontFamily);
+      }
+      
+      base = base.copyWith(
+        textTheme: googleTextTheme,
+        primaryTextTheme: googlePrimaryTextTheme,
+      );
+    }
 
-//   static final ThemeData lightTheme = ThemeData(
-//     brightness: Brightness.light,
-//     colorScheme: lightColorScheme,
-//     primaryColor: lightColorScheme.primary,
-//     scaffoldBackgroundColor: lightColorScheme.surface,
-//     appBarTheme: AppBarTheme(
-//       backgroundColor: lightColorScheme.primary,
-//       foregroundColor: lightColorScheme.onPrimary,
-//     ),
-//     textTheme: AppTypography.textTheme,
-//     buttonTheme: ButtonThemeData(
-//       buttonColor: lightColorScheme.primary,
-//       textTheme: ButtonTextTheme.primary,
-//     ),
-//   );
-
-//   static final ThemeData darkTheme = ThemeData(
-//     brightness: Brightness.dark,
-//     colorScheme: darkColorScheme,
-//     primaryColor: darkColorScheme.primary,
-//     scaffoldBackgroundColor: darkColorScheme.surface,
-//     appBarTheme: AppBarTheme(
-//       backgroundColor: darkColorScheme.primary,
-//       foregroundColor: darkColorScheme.onPrimary,
-//     ),
-//     textTheme: AppTypography.textTheme,
-//     buttonTheme: ButtonThemeData(
-//       buttonColor: darkColorScheme.primary,
-//       textTheme: ButtonTextTheme.primary,
-//     ),
-//   );
-
-//   static final ThemeData greenTheme = ThemeData(
-//     brightness: Brightness.light,
-//     colorScheme: greenColorScheme,
-//     primaryColor: greenColorScheme.primary,
-//     scaffoldBackgroundColor: greenColorScheme.surface,
-//     appBarTheme: AppBarTheme(
-//       backgroundColor: greenColorScheme.primary,
-//       foregroundColor: greenColorScheme.onPrimary,
-//     ),
-//     textTheme: AppTypography.textTheme,
-//     buttonTheme: ButtonThemeData(
-//       buttonColor: greenColorScheme.primary,
-//       textTheme: ButtonTextTheme.primary,
-//     ),
-//   );
-
-//   static final themes = <String, ThemeData>{
-//     'Light': lightTheme,
-//     'Dark': darkTheme,
-//     'Green': greenTheme,
-//   };
-// }
+    return base.copyWith(
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: cs.primary,
+          foregroundColor: cs.onPrimary,
+        ),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: cs.primary,
+        foregroundColor: cs.onPrimary,
+        elevation: 2,
+      ),
+      iconTheme: IconThemeData(color: cs.onSurface),
+      inputDecorationTheme: const InputDecorationTheme(
+        border: OutlineInputBorder(),
+      ),
+    );
+  }
+}

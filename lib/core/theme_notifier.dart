@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'app_theme.dart';
+import 'theme_preferences_service.dart';
 
 /// App-wide theme provider and helpers.
 ///
@@ -40,19 +42,48 @@ import 'package:flutter/material.dart';
 ///
 /// Keep this file focused on theme construction; persistence and user-settings live in a separate preferences layer.
 class ThemeNotifier extends ChangeNotifier {
+  final ThemePreferencesService _prefs = ThemePreferencesService();
+
   bool _isDark = false;
+  String _themeKey = 'Blue';
+  String _fontKey = 'System';
 
-  /// Exposed ThemeData based on current mode.
-  ///
-  /// Modules should not directly modify this returned ThemeData; instead extend it via `copyWith`
-  /// so the app-wide tokens remain intact.
-  ThemeData get currentTheme => _isDark ? _darkTheme : _lightTheme;
+  Future<void> init() async {
+    await _prefs.init();
+    _themeKey = _prefs.loadThemeKey() ?? _themeKey;
+    _fontKey = _prefs.loadFontKey() ?? _fontKey;
+    _isDark = _prefs.loadIsDark();
+    notifyListeners();
+  }
 
-  /// Toggle between light and dark and notify listeners.
-  ///
-  /// Note: persistence (saving the choice) should be handled by the caller or a ThemeRepository.
-  void toggleTheme() {
-    _isDark = !_isDark;
+  ThemeData get currentTheme {
+    final seed = AppTheme.colorPresets[_themeKey] ?? Colors.blue;
+    final font = AppTheme.fontPresets[_fontKey];
+    final brightness = _isDark ? Brightness.dark : Brightness.light;
+    return AppTheme.buildTheme(seed: seed, brightness: brightness, fontFamily: font);
+  }
+
+  String get themeKey => _themeKey;
+  String get fontKey => _fontKey;
+  bool get isDark => _isDark;
+
+  Future<void> setTheme(String key) async {
+    if (!AppTheme.colorPresets.containsKey(key)) return;
+    _themeKey = key;
+    await _prefs.saveThemeKey(key);
+    notifyListeners();
+  }
+
+  Future<void> setFont(String key) async {
+    if (!AppTheme.fontPresets.containsKey(key)) return;
+    _fontKey = key;
+    await _prefs.saveFontKey(key);
+    notifyListeners();
+  }
+
+  Future<void> toggleDark(bool value) async {
+    _isDark = value;
+    await _prefs.saveIsDark(value);
     notifyListeners();
   }
 
@@ -96,8 +127,7 @@ class ThemeNotifier extends ChangeNotifier {
     );
   }
 
-  // Change the seed color here if you want a different base color (green, indigo, etc.)
-  // Exposing these as getters makes it easy to add alternative seeds or themed variants later.
+  // Legacy getters retained for compatibility; not used when presets are active.
   ThemeData get _lightTheme => _themeFromSeed(Colors.blue, brightness: Brightness.light);
   ThemeData get _darkTheme => _themeFromSeed(Colors.green, brightness: Brightness.dark);
 }

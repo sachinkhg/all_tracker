@@ -50,7 +50,7 @@ Future<void> main() async {
   /// This allows the app to listen for and react to theme changes globally.
   runApp(
     ChangeNotifierProvider(
-      create: (_) => ThemeNotifier(),
+      create: (_) => ThemeNotifier()..init(),
       child: const MyApp(),
     ),
   );
@@ -70,9 +70,19 @@ class MyApp extends StatelessWidget {
 
     /// Merge typography definitions (from `core/app_typography.dart`)
     /// with the current ThemeData for consistent font styling across app.
+    // Determine the selected font family from currentTheme.textTheme; if the
+    // theme layer (AppTheme) set a custom font, pass it through.
+    final String? selectedFontFamily = themeProvider.currentTheme.textTheme.bodyMedium?.fontFamily;
+
     final ThemeData mergedTheme = themeProvider.currentTheme.copyWith(
-      textTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
-      primaryTextTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+      textTheme: AppTypography.textTheme(
+        themeProvider.currentTheme.colorScheme,
+        fontFamily: selectedFontFamily,
+      ),
+      primaryTextTheme: AppTypography.textTheme(
+        themeProvider.currentTheme.colorScheme,
+        fontFamily: selectedFontFamily,
+      ),
     );
 
     return MaterialApp(
@@ -85,8 +95,14 @@ class MyApp extends StatelessWidget {
       /// Optional: Dark theme configuration
       /// You can define a separate dark theme in `ThemeNotifier` if desired.
       darkTheme: themeProvider.currentTheme.copyWith(
-        textTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
-        primaryTextTheme: AppTypography.textTheme(themeProvider.currentTheme.colorScheme),
+        textTheme: AppTypography.textTheme(
+          themeProvider.currentTheme.colorScheme,
+          fontFamily: selectedFontFamily,
+        ),
+        primaryTextTheme: AppTypography.textTheme(
+          themeProvider.currentTheme.colorScheme,
+          fontFamily: selectedFontFamily,
+        ),
       ),
 
       /// Current initial route → HomePage

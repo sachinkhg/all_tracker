@@ -53,7 +53,18 @@ class GoalListPageView extends StatelessWidget {
         state is GoalsLoaded ? state.visibleFields : <String, bool>{};
 
     return Scaffold(
-      appBar: const PrimaryAppBar(title: 'Goal Tracker'),
+      appBar: PrimaryAppBar(
+        title: 'Goal Tracker',
+        actions: [
+          IconButton(
+            tooltip: 'Dashboard',
+            icon: const Icon(Icons.dashboard),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(

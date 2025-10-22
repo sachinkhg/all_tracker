@@ -1,0 +1,26 @@
+import 'package:hive_flutter/hive_flutter.dart';
+
+const String _themePrefsBox = 'theme_preferences_box';
+const String _kThemeKey = 'theme_key';
+const String _kFontKey = 'font_key';
+const String _kIsDark = 'is_dark';
+
+class ThemePreferencesService {
+  Future<void> init() async {
+    if (!Hive.isBoxOpen(_themePrefsBox)) {
+      await Hive.openBox(_themePrefsBox);
+    }
+  }
+
+  Box get _box => Hive.box(_themePrefsBox);
+
+  String? loadThemeKey() => _box.get(_kThemeKey) as String?;
+  String? loadFontKey() => _box.get(_kFontKey) as String?;
+  bool loadIsDark() => (_box.get(_kIsDark) as bool?) ?? false;
+
+  Future<void> saveThemeKey(String key) async => _box.put(_kThemeKey, key);
+  Future<void> saveFontKey(String key) async => _box.put(_kFontKey, key);
+  Future<void> saveIsDark(bool isDark) async => _box.put(_kIsDark, isDark);
+}
+
+

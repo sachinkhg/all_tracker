@@ -56,7 +56,18 @@ class TaskListPageView extends StatelessWidget {
         state is TasksLoaded ? state.visibleFields ?? <String, bool>{} : <String, bool>{};
 
     return Scaffold(
-      appBar: const PrimaryAppBar(title: 'Tasks'),
+      appBar: PrimaryAppBar(
+        title: 'Tasks',
+        actions: [
+          IconButton(
+            tooltip: 'Dashboard',
+            icon: const Icon(Icons.dashboard),
+            onPressed: () {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+            },
+          ),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
