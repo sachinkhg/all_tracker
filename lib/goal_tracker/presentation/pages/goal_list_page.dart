@@ -15,12 +15,14 @@ import '../../features/goal_import_export.dart';
 import '../bloc/goal_cubit.dart';
 import '../bloc/goal_state.dart';
 import '../../core/injection.dart'; // factory that wires everything
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../../core/sort_preferences_service.dart'; // for SortEntityType
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/goal_list_item.dart';
 import '../../../widgets/loading_view.dart';
@@ -387,7 +389,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const MilestoneListPage()),
                 );
               },
-              child: const Icon(Icons.flag),
+              child: const Icon(AppIcons.milestone),
             ),
             const SizedBox(width: 8),
             FloatingActionButton.small(
@@ -399,7 +401,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const TaskListPage()),
                 );
               },
-              child: const Icon(Icons.task_alt),
+              child: const Icon(AppIcons.task),
             ),
           ],
         ),

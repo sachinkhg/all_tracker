@@ -24,6 +24,7 @@ import 'milestone_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../widgets/task_list_item.dart';
 import '../../../widgets/loading_view.dart';
 import '../../../widgets/error_view.dart';
@@ -513,7 +514,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const GoalListPage()),
                 );
               },
-              child: const Icon(Icons.track_changes),
+              child: const Icon(AppIcons.habit),
             ),
             const SizedBox(width: 8),
             FloatingActionButton.small(
@@ -525,7 +526,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const MilestoneListPage()),
                 );
               },
-              child: const Icon(Icons.flag),
+              child: const Icon(AppIcons.milestone),
             ),
           ],
         ),
@@ -591,7 +592,7 @@ class _EmptyTasks extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.task_alt, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
+          Icon(AppIcons.task, size: 64, color: Theme.of(context).colorScheme.onSurfaceVariant),
           const SizedBox(height: 16),
           Text(
             filterActive ? 'No tasks match your filters' : 'No tasks yet',

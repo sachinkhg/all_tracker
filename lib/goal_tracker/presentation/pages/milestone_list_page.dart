@@ -22,6 +22,7 @@ import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/milestone_list_item.dart';
 import '../../../widgets/loading_view.dart';
@@ -412,7 +413,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const GoalListPage()),
                 );
               },
-              child: const Icon(Icons.track_changes),
+              child: const Icon(AppIcons.habit),
             ),
             const SizedBox(width: 8),
             FloatingActionButton.small(
@@ -424,7 +425,7 @@ class _ActionsFab extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const TaskListPage()),
                 );
               },
-              child: const Icon(Icons.task_alt),
+              child: const Icon(AppIcons.task),
             ),
           ],
         ),

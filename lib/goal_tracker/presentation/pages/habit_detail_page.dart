@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/injection.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
@@ -231,7 +232,7 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
                   Row(
                     children: [
                       Icon(
-                        Icons.flag,
+                        AppIcons.milestone,
                         size: 16,
                         color: theme.colorScheme.primary,
                       ),
@@ -254,7 +255,7 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
                     Row(
                       children: [
                         Icon(
-                          Icons.track_changes,
+                          AppIcons.goal,
                           size: 16,
                           color: theme.colorScheme.secondary,
                         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'design_tokens.dart';
 
 /// Central app theme definitions: named color presets and font presets.
 ///
@@ -83,10 +84,19 @@ class AppTheme {
     }
 
     return base.copyWith(
+      cardTheme: const CardThemeData(
+        elevation: AppElevations.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(AppRadii.card)),
+        ),
+      ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: cs.primary,
           foregroundColor: cs.onPrimary,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(AppRadii.button)),
+          ),
         ),
       ),
       appBarTheme: AppBarTheme(

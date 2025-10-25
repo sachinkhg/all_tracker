@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:all_tracker/core/app_icons.dart';
 import 'package:intl/intl.dart';
 
 /// ---------------------------------------------------------------------------
@@ -188,7 +189,7 @@ class TaskListItem extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.flag, size: 14, color: cs.onSurfaceVariant),
+                    Icon(AppIcons.milestone, size: 14, color: cs.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
@@ -208,7 +209,7 @@ class TaskListItem extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.track_changes, size: 14, color: cs.onSurfaceVariant),
+                    Icon(AppIcons.goal, size: 14, color: cs.onSurfaceVariant),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(

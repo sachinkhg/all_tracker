@@ -71,82 +71,91 @@ class ContextDropdownBottomSheet {
         final cs = Theme.of(ctx).colorScheme;
         final textTheme = Theme.of(ctx).textTheme;
 
-        return Padding(
-          padding: EdgeInsets.only(
-            left: 16,
-            right: 16,
-            top: 20,
-            // Include viewInsets.bottom so the sheet moves above the keyboard
-            // when present — important for accessibility on smaller screens.
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-          ),
-          child: StatefulBuilder(
-            // StatefulBuilder is used to manage selection state locally inside
-            // the sheet without forcing a larger StatefulWidget. Keeps this
-            // component simple and focused on UI concerns only.
-            builder: (ctx2, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        return DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          builder: (ctx3, scrollController) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 20,
+                // Include viewInsets.bottom so the sheet moves above the keyboard
+                // when present — important for accessibility on smaller screens.
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+              ),
+              child: StatefulBuilder(
+                // StatefulBuilder is used to manage selection state locally inside
+                // the sheet without forcing a larger StatefulWidget. Keeps this
+                // component simple and focused on UI concerns only.
+                builder: (ctx2, setState) {
+                  return ListView(
+                    controller: scrollController,
+                    shrinkWrap: true,
                     children: [
-                      Text(title, style: textTheme.titleLarge),
-                      IconButton(
-                        icon: Icon(Icons.close, color: cs.onSurfaceVariant),
-                        onPressed: () => Navigator.pop(ctx2, null), // cancel => null
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(title, style: textTheme.titleLarge),
+                          IconButton(
+                            icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                            onPressed: () => Navigator.pop(ctx2, null), // cancel => null
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Options from constants (or override)
+                      // Each option updates the local `selected` variable. Note that we
+                      // only update UI state here; persisting is the caller's duty after
+                      // the sheet returns a non-null / empty-string value.
+                      ...opts.map((opt) {
+                        // Compare using equality; if you later change option types
+                        // (e.g. to an object), update comparison logic accordingly.
+                        final isSelected = opt == selected;
+                        return ListTile(
+                          title: Text(opt),
+                          trailing: isSelected ? Icon(Icons.check, color: cs.primary) : null,
+                          onTap: () => setState(() => selected = opt),
+                        );
+                      }).toList(),
+
+                      const Divider(),
+
+                      // Clear, Cancel, Done buttons row
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            // Explicit clear -> return empty string. Caller should treat
+                            // empty string as a deliberate cleared-value (different from null).
+                            onPressed: () => Navigator.pop(ctx2, ''), // explicit clear -> return empty string
+                            child: const Text('Clear'),
+                          ),
+                          const SizedBox(width: 8),
+                          TextButton(
+                            // Cancel -> null. This signals "no change" to the caller.
+                            onPressed: () => Navigator.pop(ctx2, null), // cancel -> null
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            // Done -> return the currently selected value (may be null).
+                            // Callers should validate and persist as needed.
+                            onPressed: () => Navigator.pop(ctx2, selected),
+                            child: const Text('Done'),
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Options from constants (or override)
-                  // Each option updates the local `selected` variable. Note that we
-                  // only update UI state here; persisting is the caller's duty after
-                  // the sheet returns a non-null / empty-string value.
-                  ...opts.map((opt) {
-                    // Compare using equality; if you later change option types
-                    // (e.g. to an object), update comparison logic accordingly.
-                    final isSelected = opt == selected;
-                    return ListTile(
-                      title: Text(opt),
-                      trailing: isSelected ? Icon(Icons.check, color: cs.primary) : null,
-                      onTap: () => setState(() => selected = opt),
-                    );
-                  }).toList(),
-
-                  const Divider(),
-
-                  // Clear, Cancel, Done buttons row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        // Explicit clear -> return empty string. Caller should treat
-                        // empty string as a deliberate cleared-value (different from null).
-                        onPressed: () => Navigator.pop(ctx2, ''), // explicit clear -> return empty string
-                        child: const Text('Clear'),
-                      ),
-                      const SizedBox(width: 8),
-                      TextButton(
-                        // Cancel -> null. This signals "no change" to the caller.
-                        onPressed: () => Navigator.pop(ctx2, null), // cancel -> null
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 8),
-                      ElevatedButton(
-                        // Done -> return the currently selected value (may be null).
-                        // Callers should validate and persist as needed.
-                        onPressed: () => Navigator.pop(ctx2, selected),
-                        child: const Text('Done'),
-                      ),
-                    ],
-                  ),
-                ],
-              );
-            },
-          ),
+                  );
+                },
+              ),
+            );
+          },
         );
       },
     );

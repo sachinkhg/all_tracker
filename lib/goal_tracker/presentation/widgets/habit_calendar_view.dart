@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../domain/entities/habit.dart';
@@ -130,7 +131,7 @@ class _HabitCalendarViewState extends State<HabitCalendarView> {
           Row(
             children: [
               Icon(
-                Icons.track_changes,
+                AppIcons.habit,
                 color: theme.colorScheme.primary,
                 size: 20,
               ),

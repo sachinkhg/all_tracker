@@ -16,6 +16,9 @@
 */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../core/design_tokens.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../data/models/goal_model.dart';
@@ -85,7 +88,7 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('AllTracker'),
+        title: const Text('All Tracker'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -101,20 +104,20 @@ class _HomePageState extends State<HomePage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(AppSpacing.m),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Dashboard Section
-            Text(
-              'Dashboard',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            const _DashboardSection(),
-            const SizedBox(height: 32),
+            // Text(
+            //   'Dashboard',
+            //   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            //         fontWeight: FontWeight.bold,
+            //       ),
+            // ),
+            const SizedBox(height: AppSpacing.s),
+            const _DashboardSection().animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
+            const SizedBox(height: AppSpacing.l),
 
             // Quick Actions Section
             Text(
@@ -123,14 +126,14 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                   ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.s),
             _QuickActionsSection(
               colorScheme: cs,
               onAddGoal: _addGoal,
               onAddMilestone: _addMilestone,
               onAddTask: _addTask,
               onAddHabit: _addHabit,
-            ),
+            ).animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
           ],
         ),
       ),
@@ -311,7 +314,7 @@ class _DashboardSection extends StatelessWidget {
                             title: 'Goals',
                             total: totalGoals,
                             completed: completedGoals,
-                            icon: Icons.track_changes,
+                            icon: AppIcons.goal,
                             color: Theme.of(context).colorScheme.primary,
                             onTap: () {
                               Navigator.of(context).push(
@@ -320,13 +323,13 @@ class _DashboardSection extends StatelessWidget {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: AppSpacing.m),
                         Expanded(
                           child: _InsightCard(
                             title: 'Milestones',
                             total: totalMilestones,
                             completed: completedMilestones,
-                            icon: Icons.flag,
+                            icon: AppIcons.milestone,
                             color: Theme.of(context).colorScheme.secondary,
                             onTap: () {
                               Navigator.of(context).push(
@@ -337,7 +340,7 @@ class _DashboardSection extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.m),
                     _TaskInsightCard(
                       total: totalTasks,
                       completed: completedTasks,
@@ -349,7 +352,7 @@ class _DashboardSection extends StatelessWidget {
                         );
                       },
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.m),
                     _HabitInsightCard(
                       onTap: () {
                         Navigator.of(context).push(
@@ -389,14 +392,12 @@ class _InsightCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final progress = total > 0 ? completed / total : 0.0;
-    
-    return Card(
-      elevation: 2,
+    final card = Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(AppSpacing.m),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -412,12 +413,12 @@ class _InsightCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.s),
               Text(
                 title,
                 style: Theme.of(context).textTheme.bodySmall,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.m),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
@@ -439,6 +440,11 @@ class _InsightCard extends StatelessWidget {
         ),
       ),
     );
+
+    return card
+        .animate()
+        .fade(duration: AppAnimations.micro, curve: AppAnimations.ease)
+        .moveY(begin: 8, end: 0, duration: AppAnimations.micro, curve: AppAnimations.ease);
   }
 }
 
@@ -462,21 +468,19 @@ class _TaskInsightCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final toDo = total - completed - inProgress;
     final progress = total > 0 ? completed / total : 0.0;
-    
-    return Card(
-      elevation: 2,
+    final card = Card(
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(AppRadii.card),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(AppSpacing.m),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.task_alt, color: color, size: 28),
-                  const SizedBox(width: 12),
+                  Icon(AppIcons.task, color: color, size: 28),
+                  const SizedBox(width: AppSpacing.m),
                   Text(
                     'Tasks',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -492,7 +496,7 @@ class _TaskInsightCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.m),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -510,7 +514,7 @@ class _TaskInsightCard extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.m),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
@@ -532,6 +536,11 @@ class _TaskInsightCard extends StatelessWidget {
         ),
       ),
     );
+
+    return card
+        .animate()
+        .fade(duration: AppAnimations.micro, curve: AppAnimations.ease)
+        .moveY(begin: 8, end: 0, duration: AppAnimations.micro, curve: AppAnimations.ease);
   }
 }
 
@@ -612,47 +621,48 @@ class _QuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Row(
           children: [
             Expanded(
-              child: _ActionButton(
+              child: _GradientActionTile(
                 label: 'Add Goal',
-                icon: Icons.add,
-                color: colorScheme.primary,
-                onPressed: onAddGoal,
+                icon: AppIcons.goal,
+                gradient: AppGradients.primary(cs),
+                onTap: onAddGoal,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.m),
             Expanded(
-              child: _ActionButton(
+              child: _GradientActionTile(
                 label: 'Add Milestone',
-                icon: Icons.add,
-                color: colorScheme.primary,
-                onPressed: onAddMilestone,
+                icon: AppIcons.milestone,
+                gradient: AppGradients.secondary(cs),
+                onTap: onAddMilestone,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.m),
         Row(
           children: [
             Expanded(
-              child: _ActionButton(
+              child: _GradientActionTile(
                 label: 'Add Task',
-                icon: Icons.add,
-                color: colorScheme.primary,
-                onPressed: onAddTask,
+                icon: AppIcons.task,
+                gradient: AppGradients.tertiary(cs),
+                onTap: onAddTask,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.m),
             Expanded(
-              child: _ActionButton(
+              child: _GradientActionTile(
                 label: 'Add Habit',
-                icon: Icons.add,
-                color: colorScheme.primary,
-                onPressed: onAddHabit,
+                icon: AppIcons.habit,
+                gradient: AppGradients.primary(cs),
+                onTap: onAddHabit,
               ),
             ),
           ],
@@ -663,61 +673,56 @@ class _QuickActionsSection extends StatelessWidget {
 }
 
 /// Action button widget
-class _ActionButton extends StatelessWidget {
-  const _ActionButton({
+class _GradientActionTile extends StatelessWidget {
+  const _GradientActionTile({
     required this.label,
     required this.icon,
-    required this.color,
-    required this.onPressed,
+    required this.gradient,
+    required this.onTap,
   });
 
   final String label;
   final IconData icon;
-  final Color color;
-  final VoidCallback onPressed;
+  final Gradient gradient;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-
-    // Determine foreground color based on which scheme color is used for background
-    Color fg;
-    if (color == cs.primary) {
-      fg = cs.onPrimary;
-    } else if (color == cs.secondary) {
-      fg = cs.onSecondary;
-    } else if (color == cs.tertiary) {
-      fg = cs.onTertiary;
-    } else {
-      fg = cs.onPrimary;
-    }
-
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: color,
-        foregroundColor: fg,
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.zero,
+    final fg = cs.onPrimary;
+    final tile = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(AppRadii.card),
+      child: Ink(
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(AppRadii.card),
         ),
-        elevation: 2,
-      ),
-      onPressed: onPressed,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 22, color: fg),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: fg,
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
+
+    return tile
+        .animate()
+        .fade(duration: AppAnimations.micro, curve: AppAnimations.ease)
+        .scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1), duration: AppAnimations.micro, curve: AppAnimations.ease);
   }
 }
 
@@ -739,27 +744,23 @@ class _HabitInsightCard extends StatelessWidget {
         final activeHabits = habits.where((h) => h.isActive).length;
         final inactiveHabits = habits.where((h) => !h.isActive).length;
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+        final card = Card(
           child: InkWell(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(AppRadii.card),
             onTap: onTap,
             child: Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.m),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
                       Icon(
-                        Icons.checklist,
+                        AppIcons.habit,
                         color: Theme.of(context).colorScheme.primary,
                         size: 24,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.s),
                       Text(
                         'Habits',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -776,7 +777,7 @@ class _HabitInsightCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.s),
                   Row(
                     children: [
                       _buildStatChip(
@@ -784,7 +785,7 @@ class _HabitInsightCard extends StatelessWidget {
                         '$activeHabits',
                         Theme.of(context).colorScheme.primary,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: AppSpacing.s),
                       _buildStatChip(
                         'Inactive',
                         '$inactiveHabits',
@@ -797,6 +798,10 @@ class _HabitInsightCard extends StatelessWidget {
             ),
           ),
         );
+        return card
+            .animate()
+            .fade(duration: AppAnimations.micro, curve: AppAnimations.ease)
+            .moveY(begin: 8, end: 0, duration: AppAnimations.micro, curve: AppAnimations.ease);
       },
     );
   }
