@@ -1,18 +1,17 @@
 import 'package:hive_flutter/hive_flutter.dart';
-
-const String _themePrefsBox = 'theme_preferences_box';
+import '../goal_tracker/core/constants.dart';
 const String _kThemeKey = 'theme_key';
 const String _kFontKey = 'font_key';
 const String _kIsDark = 'is_dark';
 
 class ThemePreferencesService {
   Future<void> init() async {
-    if (!Hive.isBoxOpen(_themePrefsBox)) {
-      await Hive.openBox(_themePrefsBox);
+    if (!Hive.isBoxOpen(themePreferencesBoxName)) {
+      await Hive.openBox(themePreferencesBoxName);
     }
   }
 
-  Box get _box => Hive.box(_themePrefsBox);
+  Box get _box => Hive.box(themePreferencesBoxName);
 
   String? loadThemeKey() => _box.get(_kThemeKey) as String?;
   String? loadFontKey() => _box.get(_kFontKey) as String?;

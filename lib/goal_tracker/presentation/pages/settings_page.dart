@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/theme_notifier.dart';
+import '../../features/backup_restore.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -67,6 +68,31 @@ class SettingsPage extends StatelessWidget {
             title: const Text('Dark Mode'),
             value: notifier.isDark,
             onChanged: (val) => notifier.toggleDark(val),
+          ),
+          const Divider(height: 32),
+          Text('Backup & Restore', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          ListTile(
+            leading: const Icon(Icons.backup_outlined),
+            title: const Text('Backup data'),
+            subtitle: const Text('Export all data and preferences to a .zip'),
+            onTap: () async {
+              final path = await createBackupZip(context);
+              if (path != null) {
+                // Feedback handled inside helper; provide quick confirmation
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Backup saved to: $path')),
+                );
+              }
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.restore_outlined),
+            title: const Text('Restore data'),
+            subtitle: const Text('Restore from a backup .zip file'),
+            onTap: () async {
+              await restoreFromBackupZip(context);
+            },
           ),
         ],
       ),
