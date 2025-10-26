@@ -136,7 +136,15 @@ Future<String?> createBackupZip(BuildContext context) async {
     // Try desktop-like save dialog
     try {
       final FileSaveLocation? saveLoc = await getSaveLocation(
-        acceptedTypeGroups: [const XTypeGroup(label: 'zip', extensions: ['zip'])],
+        acceptedTypeGroups: [
+          const XTypeGroup(
+            label: 'zip',
+            extensions: ['zip'],
+            // iOS requires UTIs; include common identifiers for ZIP archives
+            uniformTypeIdentifiers: ['com.pkware.zip-archive', 'public.zip-archive'],
+            mimeTypes: ['application/zip'],
+          ),
+        ],
         suggestedName: suggested,
       );
       if (saveLoc != null) {
@@ -170,7 +178,13 @@ Future<String?> createBackupZip(BuildContext context) async {
 /// Restore from a previously created JSON + Zip backup.
 Future<void> restoreFromBackupZip(BuildContext context) async {
   try {
-    final XTypeGroup zipGroup = const XTypeGroup(label: 'zip', extensions: ['zip']);
+    const XTypeGroup zipGroup = XTypeGroup(
+      label: 'zip',
+      extensions: ['zip'],
+      // iOS requires UTIs; include common identifiers for ZIP archives
+      uniformTypeIdentifiers: ['com.pkware.zip-archive', 'public.zip-archive'],
+      mimeTypes: ['application/zip'],
+    );
     final XFile? picked = await openFile(acceptedTypeGroups: <XTypeGroup>[zipGroup]);
     if (picked == null) return;
 

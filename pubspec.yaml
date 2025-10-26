@@ -46,7 +46,6 @@ dependencies:
   path_provider: ^2.1.5
   equatable: ^2.0.7
   excel: ^4.0.6    # read/write xlsx
-  #file_picker: ^5.2.2 # choose versions from pub.dev
   share_plus: ^8.0.0   # optional
   rrule: ^0.2.17    # recurrence rule parsing for habits
   table_calendar: ^3.1.2  # calendar widget for habit tracking
@@ -61,6 +60,10 @@ dev_dependencies:
     sdk: flutter
   hive_generator: any
   build_runner: any
+  mocktail: ^1.0.3
+  bloc_test: ^10.0.0
+  golden_toolkit: ^0.15.0
+  fake_async: ^1.3.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

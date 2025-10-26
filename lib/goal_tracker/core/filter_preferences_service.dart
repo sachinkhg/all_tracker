@@ -1,4 +1,4 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'box_provider.dart';
 import '../presentation/widgets/filter_group_bottom_sheet.dart';
 import 'constants.dart';
 
@@ -21,10 +21,13 @@ import 'constants.dart';
 /// ---------------------------------------------------------------------------
 
 class FilterPreferencesService {
+  final BoxProvider boxes;
+
+  FilterPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
   /// Save filter preferences for a specific entity type
   Future<void> saveFilterPreferences(FilterEntityType entityType, Map<String, String?> filters) async {
     try {
-      final box = Hive.box(filterPreferencesBoxName);
+      final box = boxes.box(filterPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       await box.put(key, filters);
     } catch (e) {
@@ -36,7 +39,7 @@ class FilterPreferencesService {
   /// Load saved filter preferences for a specific entity type
   Map<String, String?>? loadFilterPreferences(FilterEntityType entityType) {
     try {
-      final box = Hive.box(filterPreferencesBoxName);
+      final box = boxes.box(filterPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       final saved = box.get(key);
       return saved != null ? Map<String, String?>.from(saved) : null;
@@ -50,7 +53,7 @@ class FilterPreferencesService {
   /// Clear filter preferences for a specific entity type
   Future<void> clearFilterPreferences(FilterEntityType entityType) async {
     try {
-      final box = Hive.box(filterPreferencesBoxName);
+      final box = boxes.box(filterPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       await box.delete(key);
     } catch (e) {

@@ -1,4 +1,4 @@
-import 'package:hive_flutter/hive_flutter.dart';
+import 'box_provider.dart';
 import 'constants.dart';
 
 /// ---------------------------------------------------------------------------
@@ -20,10 +20,13 @@ import 'constants.dart';
 /// ---------------------------------------------------------------------------
 
 class SortPreferencesService {
+  final BoxProvider boxes;
+
+  SortPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
   /// Save sort preferences for a specific entity type
   Future<void> saveSortPreferences(SortEntityType entityType, Map<String, dynamic> sortSettings) async {
     try {
-      final box = Hive.box(sortPreferencesBoxName);
+      final box = boxes.box(sortPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       await box.put(key, sortSettings);
     } catch (e) {
@@ -35,7 +38,7 @@ class SortPreferencesService {
   /// Load saved sort preferences for a specific entity type
   Map<String, dynamic>? loadSortPreferences(SortEntityType entityType) {
     try {
-      final box = Hive.box(sortPreferencesBoxName);
+      final box = boxes.box(sortPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       final saved = box.get(key);
       return saved != null ? Map<String, dynamic>.from(saved) : null;
@@ -49,7 +52,7 @@ class SortPreferencesService {
   /// Clear sort preferences for a specific entity type
   Future<void> clearSortPreferences(SortEntityType entityType) async {
     try {
-      final box = Hive.box(sortPreferencesBoxName);
+      final box = boxes.box(sortPreferencesBoxName);
       final key = _getKeyForEntity(entityType);
       await box.delete(key);
     } catch (e) {

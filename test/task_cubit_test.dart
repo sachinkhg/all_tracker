@@ -1,3 +1,4 @@
+void main() {}
 // /*
 //  * Unit tests for TaskCubit
 //  *

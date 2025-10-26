@@ -1,17 +1,22 @@
 import 'package:hive_flutter/hive_flutter.dart';
 import '../goal_tracker/core/constants.dart';
+import '../goal_tracker/core/box_provider.dart';
 const String _kThemeKey = 'theme_key';
 const String _kFontKey = 'font_key';
 const String _kIsDark = 'is_dark';
 
 class ThemePreferencesService {
+  final BoxProvider boxes;
+
+  ThemePreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
+
   Future<void> init() async {
-    if (!Hive.isBoxOpen(themePreferencesBoxName)) {
-      await Hive.openBox(themePreferencesBoxName);
+    if (!boxes.isBoxOpen(themePreferencesBoxName)) {
+      await boxes.openBox(themePreferencesBoxName);
     }
   }
 
-  Box get _box => Hive.box(themePreferencesBoxName);
+  Box<dynamic> get _box => boxes.box(themePreferencesBoxName);
 
   String? loadThemeKey() => _box.get(_kThemeKey) as String?;
   String? loadFontKey() => _box.get(_kFontKey) as String?;

@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'box_provider.dart';
 import '../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
 import 'constants.dart';
 
@@ -29,6 +29,9 @@ import 'constants.dart';
 /// ---------------------------------------------------------------------------
 
 class ViewPreferencesService {
+  final BoxProvider boxes;
+
+  ViewPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
   /// Loads saved view preferences for a given entity type.
   ///
   /// Returns:
@@ -38,7 +41,7 @@ class ViewPreferencesService {
   /// This allows the caller to fall back to their own defaults when null is returned.
   Map<String, bool>? loadViewPreferences(ViewEntityType entity) {
     try {
-      final box = Hive.box(viewPreferencesBoxName);
+      final box = boxes.box(viewPreferencesBoxName);
       final key = _keyForEntity(entity);
       final jsonString = box.get(key) as String?;
       
@@ -67,7 +70,7 @@ class ViewPreferencesService {
     Map<String, bool> fields,
   ) async {
     try {
-      final box = Hive.box(viewPreferencesBoxName);
+      final box = boxes.box(viewPreferencesBoxName);
       final key = _keyForEntity(entity);
       final jsonString = jsonEncode(fields);
       await box.put(key, jsonString);
@@ -83,7 +86,7 @@ class ViewPreferencesService {
   /// indicating they want to reset to defaults on the next app launch.
   Future<void> clearViewPreferences(ViewEntityType entity) async {
     try {
-      final box = Hive.box(viewPreferencesBoxName);
+      final box = boxes.box(viewPreferencesBoxName);
       final key = _keyForEntity(entity);
       await box.delete(key);
     } catch (e) {
