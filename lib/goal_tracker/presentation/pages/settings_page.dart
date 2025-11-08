@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/theme_notifier.dart';
 import '../../features/backup_restore.dart';
+import '../../features/backup/presentation/pages/backup_settings_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -72,27 +73,90 @@ class SettingsPage extends StatelessWidget {
           const Divider(height: 32),
           Text('Backup & Restore', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
-          ListTile(
-            leading: const Icon(Icons.backup_outlined),
-            title: const Text('Backup data'),
-            subtitle: const Text('Export all data and preferences to a .zip'),
-            onTap: () async {
-              final path = await createBackupZip(context);
-              if (path != null) {
-                // Feedback handled inside helper; provide quick confirmation
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Backup saved to: $path')),
-                );
-              }
-            },
+          
+          // Local Backup Section (Existing Implementation)
+          ExpansionTile(
+            title: const Text('Local Backup'),
+            subtitle: const Text('Export to .zip file'),
+            leading: const Icon(Icons.folder_outlined),
+            initiallyExpanded: true,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.backup_outlined),
+                title: const Text('Backup data'),
+                subtitle: const Text('Export all data and preferences to a .zip'),
+                onTap: () async {
+                  final path = await createBackupZip(context);
+                  if (path != null) {
+                    // Feedback handled inside helper; provide quick confirmation
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Backup saved to: $path')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.restore_outlined),
+                title: const Text('Restore data'),
+                subtitle: const Text('Restore from a backup .zip file'),
+                onTap: () async {
+                  await restoreFromBackupZip(context);
+                },
+              ),
+            ],
           ),
-          ListTile(
-            leading: const Icon(Icons.restore_outlined),
-            title: const Text('Restore data'),
-            subtitle: const Text('Restore from a backup .zip file'),
-            onTap: () async {
-              await restoreFromBackupZip(context);
-            },
+          
+          const SizedBox(height: 8),
+          
+          // Cloud Backup Section (New Implementation)
+          ExpansionTile(
+            title: const Text('Cloud Backup'),
+            subtitle: const Text('Automatic Google Drive backup'),
+            leading: const Icon(Icons.cloud_outlined),
+            initiallyExpanded: false,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.settings_backup_restore),
+                title: const Text('Configure Cloud Backup'),
+                subtitle: const Text('Set up Google Drive automatic backup'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const BackupSettingsPage()),
+                  );
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text('About Cloud Backup'),
+                subtitle: const Text('Encrypted backups with E2EE or device key'),
+                onTap: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Cloud Backup'),
+                      content: const Text(
+                        'Cloud Backup provides automatic encrypted backups to Google Drive.\n\n'
+                        'Features:\n'
+                        '• AES-256-GCM encryption\n'
+                        '• End-to-end encryption (E2EE) with passphrase\n'
+                        '• Device key mode for convenience\n'
+                        '• Cross-platform restore\n'
+                        '• Automatic periodic backups\n\n'
+                        'Your data is encrypted before being uploaded to Google Drive.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('OK'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ],
       ),

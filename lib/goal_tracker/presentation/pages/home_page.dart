@@ -411,6 +411,12 @@ class _InsightCard extends StatelessWidget {
                           fontWeight: FontWeight.bold,
                         ),
                   ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(
+                    Icons.visibility_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 18,
+                  ),
                 ],
               ),
               const SizedBox(height: AppSpacing.s),
@@ -493,6 +499,12 @@ class _TaskInsightCard extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(
+                    Icons.visibility_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 18,
                   ),
                 ],
               ),
@@ -622,50 +634,42 @@ class _QuickActionsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Column(
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: _GradientActionTile(
-                label: 'Add Goal',
-                icon: AppIcons.goal,
-                gradient: AppGradients.primary(cs),
-                onTap: onAddGoal,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(
-              child: _GradientActionTile(
-                label: 'Add Milestone',
-                icon: AppIcons.milestone,
-                gradient: AppGradients.secondary(cs),
-                onTap: onAddMilestone,
-              ),
-            ),
-          ],
+        Expanded(
+          child: _GradientActionTile(
+            icon: AppIcons.goal,
+            gradient: AppGradients.primary(cs),
+            accentColor: cs.primary,
+            onTap: onAddGoal,
+          ),
         ),
-        const SizedBox(height: AppSpacing.m),
-        Row(
-          children: [
-            Expanded(
-              child: _GradientActionTile(
-                label: 'Add Task',
-                icon: AppIcons.task,
-                gradient: AppGradients.tertiary(cs),
-                onTap: onAddTask,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.m),
-            Expanded(
-              child: _GradientActionTile(
-                label: 'Add Habit',
-                icon: AppIcons.habit,
-                gradient: AppGradients.primary(cs),
-                onTap: onAddHabit,
-              ),
-            ),
-          ],
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: _GradientActionTile(
+            icon: AppIcons.milestone,
+            gradient: AppGradients.secondary(cs),
+            accentColor: cs.secondary,
+            onTap: onAddMilestone,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: _GradientActionTile(
+            icon: AppIcons.task,
+            gradient: AppGradients.tertiary(cs),
+            accentColor: cs.tertiary,
+            onTap: onAddTask,
+          ),
+        ),
+        const SizedBox(width: AppSpacing.m),
+        Expanded(
+          child: _GradientActionTile(
+            icon: AppIcons.habit,
+            gradient: AppGradients.primary(cs),
+            accentColor: cs.primary,
+            onTap: onAddHabit,
+          ),
         ),
       ],
     );
@@ -675,15 +679,15 @@ class _QuickActionsSection extends StatelessWidget {
 /// Action button widget
 class _GradientActionTile extends StatelessWidget {
   const _GradientActionTile({
-    required this.label,
     required this.icon,
     required this.gradient,
+    required this.accentColor,
     required this.onTap,
   });
 
-  final String label;
   final IconData icon;
   final Gradient gradient;
+  final Color accentColor;
   final VoidCallback onTap;
 
   @override
@@ -699,21 +703,13 @@ class _GradientActionTile extends StatelessWidget {
           borderRadius: BorderRadius.circular(AppRadii.card),
         ),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.m),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 22, color: fg),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: fg,
-                ),
-              ),
-            ],
+          padding: const EdgeInsets.all(AppSpacing.m),
+          child: Center(
+            child: _AddOverlayIcon(
+              icon: icon,
+              foregroundColor: fg,
+              accentColor: accentColor,
+            ),
           ),
         ),
       ),
@@ -723,6 +719,62 @@ class _GradientActionTile extends StatelessWidget {
         .animate()
         .fade(duration: AppAnimations.micro, curve: AppAnimations.ease)
         .scale(begin: const Offset(0.98, 0.98), end: const Offset(1, 1), duration: AppAnimations.micro, curve: AppAnimations.ease);
+  }
+}
+
+class _AddOverlayIcon extends StatelessWidget {
+  const _AddOverlayIcon({
+    required this.icon,
+    required this.foregroundColor,
+    required this.accentColor,
+  });
+
+  final IconData icon;
+  final Color foregroundColor;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 36,
+      width: 36,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Align(
+            alignment: Alignment.center,
+            child: Icon(
+              icon,
+              size: 26,
+              color: foregroundColor,
+            ),
+          ),
+          Positioned(
+            bottom: -2,
+            right: -2,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: foregroundColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.add,
+                size: 12,
+                color: accentColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -775,6 +827,12 @@ class _HabitInsightCard extends StatelessWidget {
                           color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Icon(
+                    Icons.visibility_outlined,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    size: 18,
+                  ),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.s),

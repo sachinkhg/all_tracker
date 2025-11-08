@@ -48,6 +48,8 @@ const String milestoneBoxName = 'milestones_box';
 const String taskBoxName = 'tasks_box';
 const String habitBoxName = 'habits_box';
 const String habitCompletionBoxName = 'habit_completions_box';
+const String backupMetadataBoxName = 'backup_metadata_box';
+const String backupPreferencesBoxName = 'backup_preferences_box';
 
 /// Hive box name for view field preferences.
 ///

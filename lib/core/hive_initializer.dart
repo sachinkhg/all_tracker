@@ -3,6 +3,7 @@ import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/task_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/habit_model.dart';
 import 'package:all_tracker/goal_tracker/data/models/habit_completion_model.dart';
+import 'package:all_tracker/goal_tracker/features/backup/data/models/backup_metadata_model.dart';
 import 'package:all_tracker/goal_tracker/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
@@ -75,6 +76,11 @@ class HiveInitializer {
       Hive.registerAdapter(HabitCompletionModelAdapter());
     }
 
+    final backupMetadataAdapterId = BackupMetadataModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(backupMetadataAdapterId)) {
+      Hive.registerAdapter(BackupMetadataModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
@@ -83,6 +89,12 @@ class HiveInitializer {
     var tasksBox = await Hive.openBox<TaskModel>(taskBoxName);
     var habitsBox = await Hive.openBox<HabitModel>(habitBoxName);
     var habitCompletionsBox = await Hive.openBox<HabitCompletionModel>(habitCompletionBoxName);
+    
+    // Open backup metadata box (stores backup metadata)
+    await Hive.openBox<BackupMetadataModel>(backupMetadataBoxName);
+    
+    // Open backup preferences box (stores backup settings like retention count, auto-backup enabled, etc.)
+    await Hive.openBox(backupPreferencesBoxName);
     
     // Open view preferences box (stores user view field visibility settings)
     await Hive.openBox(viewPreferencesBoxName);
