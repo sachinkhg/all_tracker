@@ -9,12 +9,12 @@ import 'design_tokens.dart';
 class AppTheme {
   /// Named color presets users can pick from in Settings.
   static const Map<String, Color> colorPresets = {
-    'Blue': Colors.blue,
-    'Green': Colors.green,
-    'Purple': Colors.purple,
-    'Amber': Colors.amber,
-    'Teal': Colors.teal,
-    'Indigo': Colors.indigo,
+    'Blue': Colors.lightBlue,
+    'Green': Colors.lightGreen,
+    'Purple': Colors.deepPurple,
+    'Amber': Colors.yellowAccent,
+    'Teal': Colors.tealAccent,
+    'Red': Colors.redAccent,
   };
 
   /// Named font presets using Google Fonts. `null` means use the system/default font.

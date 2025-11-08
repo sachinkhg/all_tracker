@@ -181,9 +181,14 @@ class _MilestoneFormBottomSheetState extends State<MilestoneFormBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title, style: textTheme.titleLarge),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: textTheme.titleLarge,
+                  ),
+                ),
                 if (widget.onDelete != null)
                   IconButton(
                     icon: Icon(Icons.delete, color: cs.error),
@@ -192,6 +197,11 @@ class _MilestoneFormBottomSheetState extends State<MilestoneFormBottomSheet> {
                       await widget.onDelete!();
                     },
                   ),
+                IconButton(
+                  icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
             const SizedBox(height: 16),
@@ -373,55 +383,44 @@ class _MilestoneFormBottomSheetState extends State<MilestoneFormBottomSheet> {
 
             const SizedBox(height: 20),
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: cs.primary,
-                    foregroundColor: cs.onPrimary,
-                  ),
-                  onPressed: () async {
-                    final name = nameCtrl.text.trim();
-                    final desc = descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim();
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () async {
+                  final name = nameCtrl.text.trim();
+                  final desc = descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim();
 
-                    if (name.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a milestone name')),
-                      );
-                      return;
-                    }
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a milestone name')),
+                    );
+                    return;
+                  }
 
-                    if (selectedGoalId == null || selectedGoalId!.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please select a goal')),
-                      );
-                      return;
-                    }
+                  if (selectedGoalId == null || selectedGoalId!.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please select a goal')),
+                    );
+                    return;
+                  }
 
-                    final gid = selectedGoalId!;
-                    if (gid.trim().isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Invalid goal selection')),
-                      );
-                      return;
-                    }
+                  final gid = selectedGoalId!;
+                  if (gid.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Invalid goal selection')),
+                    );
+                    return;
+                  }
 
-                    final planned = parseDoubleOrNull(plannedCtrl.text);
-                    final actual = parseDoubleOrNull(actualCtrl.text);
+                  final planned = parseDoubleOrNull(plannedCtrl.text);
+                  final actual = parseDoubleOrNull(actualCtrl.text);
 
-                    await widget.onSubmit(name, desc, planned, actual, selectedDate, gid);
-                    if (!mounted) return;
-                    Navigator.pop(context);
-                  },
-                  child: const Text('Save'),
-                ),
-              ],
+                  await widget.onSubmit(name, desc, planned, actual, selectedDate, gid);
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                },
+                child: const Text('Save'),
+              ),
             ),
           ],
         ),

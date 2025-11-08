@@ -222,9 +222,14 @@ class _HabitFormBottomSheetState extends State<HabitFormBottomSheet> {
           children: [
             // Header
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title, style: textTheme.titleLarge),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: textTheme.titleLarge,
+                  ),
+                ),
                 if (widget.onDelete != null)
                   IconButton(
                     icon: Icon(Icons.delete, color: cs.error),
@@ -233,6 +238,11 @@ class _HabitFormBottomSheetState extends State<HabitFormBottomSheet> {
                       await widget.onDelete!();
                     },
                   ),
+                IconButton(
+                  icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
             const SizedBox(height: 16),

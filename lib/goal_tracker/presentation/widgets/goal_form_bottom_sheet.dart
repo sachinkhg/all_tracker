@@ -109,11 +109,16 @@ class GoalFormBottomSheet {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     // --- Header ---
-                    // Displays the form title and optional delete button.
+                    // Displays the form title with optional delete and close buttons.
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(title, style: textTheme.titleLarge),
+                        Expanded(
+                          child: Text(
+                            title,
+                            style: textTheme.titleLarge,
+                          ),
+                        ),
                         if (onDelete != null)
                           IconButton(
                             icon: Icon(Icons.delete, color: cs.error),
@@ -122,6 +127,11 @@ class GoalFormBottomSheet {
                               await onDelete();
                             },
                           ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(ctx2),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -286,32 +296,21 @@ class GoalFormBottomSheet {
                     const SizedBox(height: 20),
 
                     // --- Action Buttons ---
-                    // Provides Cancel and Save controls aligned to the right.
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx2),
-                          child: const Text('Cancel'),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: cs.primary,
-                            foregroundColor: cs.onPrimary,
-                          ),
-                          onPressed: () async {
-                            final name = nameCtrl.text.trim();
-                            final desc = descCtrl.text.trim();
-                            // Minimal validation: name required.
-                            if (name.isEmpty) return;
-                            await onSubmit(name, desc, selectedDate, selectedContext, isCompleted);
-                            // ignore: use_build_context_synchronously
-                            Navigator.pop(ctx2);
-                          },
-                          child: const Text('Save'),
-                        ),
-                      ],
+                    // Provides a single primary Save action.
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () async {
+                          final name = nameCtrl.text.trim();
+                          final desc = descCtrl.text.trim();
+                          // Minimal validation: name required.
+                          if (name.isEmpty) return;
+                          await onSubmit(name, desc, selectedDate, selectedContext, isCompleted);
+                          // ignore: use_build_context_synchronously
+                          Navigator.pop(ctx2);
+                        },
+                        child: const Text('Save'),
+                      ),
                     ),
                   ],
                 ),

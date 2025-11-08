@@ -171,9 +171,14 @@ class _TaskFormBottomSheetState extends State<TaskFormBottomSheet> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title, style: textTheme.titleLarge),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: textTheme.titleLarge,
+                  ),
+                ),
                 if (widget.onDelete != null)
                   IconButton(
                     icon: Icon(Icons.delete, color: cs.error),
@@ -182,6 +187,11 @@ class _TaskFormBottomSheetState extends State<TaskFormBottomSheet> {
                       await widget.onDelete!();
                     },
                   ),
+                IconButton(
+                  icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                  tooltip: 'Close',
+                  onPressed: () => Navigator.pop(context),
+                ),
               ],
             ),
             const SizedBox(height: 16),

@@ -13,6 +13,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **2**  | TaskModel      | `tasks_box`       | Active    | 2025-10-12 | Task entity linked to Milestone and Goal   |
 | **3**  | HabitModel     | `habits_box`      | Active    | 2025-01-27 | Habit entity linked to Milestone and Goal  |
 | **4**  | HabitCompletionModel | `habit_completions_box` | Active | 2025-01-27 | Habit completion tracking entity |
+| **5**  | BackupMetadataModel | `backup_metadata_box` | Active | 2025-10-27 | Cloud backup metadata tracking |
 
 ---
 
@@ -25,6 +26,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `tasks_box`                 | Task entities                     | TaskModel | Active    | Task storage linked to milestones          |
 | `habits_box`                | Habit entities                    | HabitModel | Active    | Habit storage linked to milestones         |
 | `habit_completions_box`     | Habit completion entities         | HabitCompletionModel | Active | Habit completion tracking storage |
+| `backup_metadata_box`       | Backup metadata tracking          | BackupMetadataModel  | Active | Cloud backup metadata storage             |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
