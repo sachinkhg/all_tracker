@@ -17,6 +17,11 @@ import '../../domain/entities/restore_result.dart';
 import '../../domain/entities/backup_progress.dart';
 import '../../domain/entities/backup_mode.dart';
 import '../../domain/repositories/backup_repository.dart';
+import '../../../../data/models/goal_model.dart';
+import '../../../../data/models/milestone_model.dart';
+import '../../../../data/models/task_model.dart';
+import '../../../../data/models/habit_model.dart';
+import '../../../../data/models/habit_completion_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Implementation of BackupRepository.
@@ -201,18 +206,19 @@ class BackupRepositoryImpl implements BackupRepository {
     try {
       _emitProgress('Downloading backup', 0.2);
 
-      // Download from Drive
+      // Download from Drive - if this fails, don't clear boxes
       final backupBytes = await _driveApi.downloadFile(backupId);
       final backupJson = jsonDecode(utf8.decode(backupBytes)) as Map<String, dynamic>;
 
       _emitProgress('Decrypting backup', 0.4);
 
-      // Get metadata to determine encryption mode
-      final localMetadata = await _metadataDataSource.getAll();
-      final metadata = localMetadata.firstWhere((m) => m.id == backupId);
+      // Determine encryption mode from the backup manifest
+      // If kdf is present in manifest, it's E2EE; otherwise it's device key mode
+      final manifest = BackupManifest.fromJson(backupJson['manifest'] as Map<String, dynamic>);
+      final isE2EE = manifest.kdf != null;
 
-      // Decrypt
-      final key = metadata.isE2EE && passphrase != null
+      // Decrypt - if this fails, don't clear boxes
+      final key = isE2EE && passphrase != null
           ? await _derivePassphraseKey(backupJson, passphrase)
           : await _encryptionService.generateDeviceKey();
 
@@ -224,22 +230,49 @@ class BackupRepositoryImpl implements BackupRepository {
 
       final decryptedData = await _encryptionService.decryptData(encryptionResult, key);
 
-      _emitProgress('Restoring data', 0.7);
+      _emitProgress('Parsing backup data', 0.6);
 
-      // Parse and import
+      // Parse snapshot - if this fails, don't clear boxes
       final snapshot = jsonDecode(utf8.decode(decryptedData)) as Map<String, dynamic>;
 
-      // Clear existing boxes
+      // Validate snapshot structure before clearing boxes
+      if (!snapshot.containsKey('goals') || 
+          !snapshot.containsKey('milestones') || 
+          !snapshot.containsKey('tasks') ||
+          !snapshot.containsKey('habits') ||
+          !snapshot.containsKey('habit_completions')) {
+        throw Exception('Invalid backup format: missing required data sections');
+      }
+
+      _emitProgress('Restoring data', 0.7);
+
+      // Only clear boxes AFTER successful download, decrypt, and validation
+      // This ensures we don't lose data if restore fails
       await _clearAllBoxes();
 
-      // Import data (reusing logic from backup_restore.dart)
+      // Import data - if this fails, data is already cleared but at least we tried
       await _importData(snapshot);
 
       _emitProgress('Completed', 1.0);
 
       return RestoreSuccess();
+    } on Exception catch (e) {
+      // Check if this is an authentication error
+      final errorMessage = e.toString();
+      if (errorMessage.contains('Not authenticated') || 
+          errorMessage.contains('401') ||
+          errorMessage.contains('unauthorized')) {
+        // Auth error - don't clear boxes, preserve existing data
+        return RestoreFailure(
+          error: 'Authentication failed. Please sign in again and try restoring the backup.',
+        );
+      }
+      // Return failure without clearing boxes if error occurs before clearing
+      // This preserves existing data if restore fails early
+      return RestoreFailure(error: errorMessage);
     } catch (e) {
-      return RestoreFailure(error: e.toString());
+      // Catch any other errors
+      return RestoreFailure(error: 'Restore failed: ${e.toString()}');
     }
   }
 
@@ -254,20 +287,137 @@ class BackupRepositoryImpl implements BackupRepository {
   }
 
   Future<void> _clearAllBoxes() async {
-    await Hive.box<dynamic>(goalBoxName).clear();
-    await Hive.box<dynamic>(milestoneBoxName).clear();
-    await Hive.box<dynamic>(taskBoxName).clear();
-    await Hive.box<dynamic>(habitBoxName).clear();
-    await Hive.box<dynamic>(habitCompletionBoxName).clear();
+    // Use typed boxes - they should already be open from initialization
+    // Hive.box<T>() returns the already-opened box, it doesn't try to open it again
+    final goalBox = Hive.box<GoalModel>(goalBoxName);
+    final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+    final taskBox = Hive.box<TaskModel>(taskBoxName);
+    final habitBox = Hive.box<HabitModel>(habitBoxName);
+    final completionBox = Hive.box<HabitCompletionModel>(habitCompletionBoxName);
+    
+    await goalBox.clear();
+    await milestoneBox.clear();
+    await taskBox.clear();
+    await habitBox.clear();
+    await completionBox.clear();
   }
 
   Future<void> _importData(Map<String, dynamic> snapshot) async {
-    // TODO: Implement full import logic
-    // This would involve parsing all entity types from the snapshot
-    // and importing them into Hive boxes using the existing mappers
-    // from lib/goal_tracker/features/import_export_mappers.dart
-    
-    throw UnimplementedError('Data import functionality needs to be implemented');
+    // Import Goals
+    final goals = snapshot['goals'] as List<dynamic>? ?? [];
+    final goalBox = Hive.box<GoalModel>(goalBoxName);
+    for (final g in goals) {
+      final m = g as Map<String, dynamic>;
+      final model = GoalModel(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        description: m['description'] as String?,
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
+        context: m['context'] as String?,
+        isCompleted: (m['isCompleted'] as bool?) ?? false,
+      );
+      await goalBox.put(model.id, model);
+    }
+
+    // Import Milestones
+    final milestones = snapshot['milestones'] as List<dynamic>? ?? [];
+    final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+    for (final ms in milestones) {
+      final m = ms as Map<String, dynamic>;
+      final model = MilestoneModel(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        description: m['description'] as String?,
+        plannedValue: (m['plannedValue'] as num?)?.toDouble(),
+        actualValue: (m['actualValue'] as num?)?.toDouble(),
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
+        goalId: m['goalId'] as String,
+      );
+      await milestoneBox.put(model.id, model);
+    }
+
+    // Import Tasks
+    final tasks = snapshot['tasks'] as List<dynamic>? ?? [];
+    final taskBox = Hive.box<TaskModel>(taskBoxName);
+    for (final t in tasks) {
+      final m = t as Map<String, dynamic>;
+      final model = TaskModel(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
+        milestoneId: m['milestoneId'] as String,
+        goalId: m['goalId'] as String,
+        status: (m['status'] as String?) ?? 'To Do',
+      );
+      await taskBox.put(model.id, model);
+    }
+
+    // Import Habits
+    final habits = snapshot['habits'] as List<dynamic>? ?? [];
+    final habitBox = Hive.box<HabitModel>(habitBoxName);
+    for (final h in habits) {
+      final m = h as Map<String, dynamic>;
+      final model = HabitModel(
+        id: m['id'] as String,
+        name: m['name'] as String,
+        description: m['description'] as String?,
+        milestoneId: m['milestoneId'] as String,
+        goalId: m['goalId'] as String,
+        rrule: m['rrule'] as String,
+        targetCompletions: (m['targetCompletions'] as num?)?.toInt(),
+        isActive: (m['isActive'] as bool?) ?? true,
+      );
+      await habitBox.put(model.id, model);
+    }
+
+    // Import Habit Completions
+    final completions = snapshot['habit_completions'] as List<dynamic>? ?? [];
+    final completionBox = Hive.box<HabitCompletionModel>(habitCompletionBoxName);
+    for (final c in completions) {
+      final m = c as Map<String, dynamic>;
+      final model = HabitCompletionModel(
+        id: m['id'] as String,
+        habitId: m['habitId'] as String,
+        completionDate: DateTime.tryParse(m['completionDate'] as String) ?? DateTime.now(),
+        note: m['note'] as String?,
+      );
+      await completionBox.put(model.id, model);
+    }
+
+    // Import Preferences (optional - don't fail if missing)
+    final viewPrefs = snapshot['view_preferences'] as Map<String, dynamic>? ?? {};
+    final viewBox = Hive.box(viewPreferencesBoxName);
+    await viewBox.clear();
+    for (final entry in viewPrefs.entries) {
+      final key = entry.key;
+      final val = entry.value;
+      if (val is String) {
+        await viewBox.put(key, val);
+      }
+    }
+
+    final filterPrefs = snapshot['filter_preferences'] as Map<String, dynamic>? ?? {};
+    final filterBox = Hive.box(filterPreferencesBoxName);
+    await filterBox.clear();
+    for (final entry in filterPrefs.entries) {
+      await filterBox.put(entry.key, entry.value);
+    }
+
+    final sortPrefs = snapshot['sort_preferences'] as Map<String, dynamic>? ?? {};
+    final sortBox = Hive.box(sortPreferencesBoxName);
+    await sortBox.clear();
+    for (final entry in sortPrefs.entries) {
+      await sortBox.put(entry.key, entry.value);
+    }
+
+    final themePrefs = snapshot['theme_preferences'] as Map<String, dynamic>? ?? {};
+    final themeBox = Hive.box(themePreferencesBoxName);
+    await themeBox.clear();
+    if (themePrefs.isNotEmpty) {
+      if (themePrefs['theme_key'] != null) await themeBox.put('theme_key', themePrefs['theme_key']);
+      if (themePrefs['font_key'] != null) await themeBox.put('font_key', themePrefs['font_key']);
+      if (themePrefs['is_dark'] != null) await themeBox.put('is_dark', themePrefs['is_dark']);
+    }
   }
 
   @override

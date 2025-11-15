@@ -1,10 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/goal.dart';
+import '../../domain/entities/milestone.dart';
 import '../../domain/usecases/goal/get_all_goals.dart';
 import '../../domain/usecases/goal/create_goal.dart';
 import '../../domain/usecases/goal/update_goal.dart';
 import '../../domain/usecases/goal/delete_goal.dart';
+import '../../domain/usecases/milestone/get_all_milestones.dart';
 import '../../core/view_preferences_service.dart';
 import '../../core/filter_preferences_service.dart';
 import '../../core/sort_preferences_service.dart';
@@ -44,6 +46,7 @@ class GoalCubit extends Cubit<GoalState> {
   final CreateGoal create;
   final UpdateGoal update;
   final DeleteGoal delete;
+  final GetAllMilestones getAllMilestones;
   final ViewPreferencesService viewPreferencesService;
   final FilterPreferencesService filterPreferencesService;
   final SortPreferencesService sortPreferencesService;
@@ -58,25 +61,33 @@ class GoalCubit extends Cubit<GoalState> {
   String _sortOrder = 'asc';
   bool _hideCompleted = false;
 
-  // Visible fields configuration for presentation layer
-  Map<String, bool> _visibleFields = const {
+  static const Map<String, bool> _defaultVisibleFieldConfig = {
     'name': true,
     'description': true,
     'targetDate': false,
     'context': false,
     'remainingDays': false,
+    'milestoneSummary': true,
   };
 
+  // Visible fields configuration for presentation layer
+  Map<String, bool> _visibleFields = Map<String, bool>.from(_defaultVisibleFieldConfig);
+  Map<String, GoalMilestoneStats> _milestoneSummaries = const {};
+
   Map<String, bool> get visibleFields => Map<String, bool>.unmodifiable(_visibleFields);
+  Map<String, GoalMilestoneStats> get milestoneSummaries =>
+      Map<String, GoalMilestoneStats>.unmodifiable(_milestoneSummaries);
 
   void setVisibleFields(Map<String, bool> fields) {
-    _visibleFields = Map<String, bool>.from(fields);
+    _visibleFields = Map<String, bool>.from(_defaultVisibleFieldConfig);
+    _visibleFields.addAll(fields);
+    _visibleFields['name'] = true;
     // Re-emit current view to trigger UI rebuild with new visibility
     if (state is GoalsLoaded) {
       final current = state as GoalsLoaded;
-      emit(GoalsLoaded(List<Goal>.from(current.goals), visibleFields));
+      emit(GoalsLoaded(List<Goal>.from(current.goals), visibleFields, milestoneSummaries));
     } else {
-      emit(GoalsLoaded(List<Goal>.from(_allGoals), visibleFields));
+      emit(GoalsLoaded(List<Goal>.from(_allGoals), visibleFields, milestoneSummaries));
     }
   }
 
@@ -91,13 +102,12 @@ class GoalCubit extends Cubit<GoalState> {
       (_currentContextFilter != null && _currentContextFilter!.isNotEmpty) ||
       (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) ||
       (_currentGrouping != null && _currentGrouping!.isNotEmpty) ||
-      _sortOrder != 'asc' ||
-      _hideCompleted;
+      _sortOrder != 'asc';
 
   /// Human-readable summary of active filters for UI consumption.
   ///
   /// Examples:
-  ///  - "Context: Work • Date: This Month • Sort: Descending • Hide Completed"
+  ///  - "Context: Work • Date: This Month • Sort: Descending"
   ///  - "Filters applied" (when hasActiveFilters is true but no specific fields are set)
   String get filterSummary {
     final parts = <String>[];
@@ -114,9 +124,6 @@ class GoalCubit extends Cubit<GoalState> {
     if (_sortOrder != 'asc') {
       parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
     }
-    if (_hideCompleted) {
-      parts.add('Hide Completed');
-    }
 
     if (parts.isEmpty) {
       // If there are active filters (hasActiveFilters true) but no specific labels,
@@ -132,14 +139,16 @@ class GoalCubit extends Cubit<GoalState> {
     required this.create,
     required this.update,
     required this.delete,
+    required this.getAllMilestones,
     required this.viewPreferencesService,
     required this.filterPreferencesService,
     required this.sortPreferencesService,
   }) : super(GoalsLoading()) {
+    _visibleFields = Map<String, bool>.from(_defaultVisibleFieldConfig);
     // Load saved view preferences on initialization
     final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.goal);
     if (savedPrefs != null) {
-      _visibleFields = savedPrefs;
+      _visibleFields.addAll(savedPrefs);
     }
     
     // Load saved filter preferences on initialization
@@ -160,13 +169,15 @@ class GoalCubit extends Cubit<GoalState> {
   Future<void> loadGoals() async {
     try {
       emit(GoalsLoading());
-      final data = await getAll();
-      _allGoals = data;
+      final goals = await getAll();
+      final milestones = await getAllMilestones();
+      _allGoals = goals;
+      _milestoneSummaries = _buildMilestoneSummaries(goals, milestones);
       
       // Apply any saved filters and sorting after loading data
       final filteredGoals = _filterGoals(_allGoals);
       final sortedGoals = _sortGoals(filteredGoals);
-      emit(GoalsLoaded(sortedGoals, visibleFields));
+      emit(GoalsLoaded(sortedGoals, visibleFields, milestoneSummaries));
     } catch (e) {
       emit(GoalsError(e.toString()));
     }
@@ -178,7 +189,7 @@ class GoalCubit extends Cubit<GoalState> {
 
     final filtered = _filterGoals(_allGoals);
     final sorted = _sortGoals(filtered);
-    emit(GoalsLoaded(sorted, visibleFields));
+    emit(GoalsLoaded(sorted, visibleFields, milestoneSummaries));
   }
 
   void applySorting({required String sortOrder, required bool hideCompleted}) {
@@ -187,7 +198,7 @@ class GoalCubit extends Cubit<GoalState> {
 
     final filtered = _filterGoals(_allGoals);
     final sorted = _sortGoals(filtered);
-    emit(GoalsLoaded(sorted, visibleFields));
+    emit(GoalsLoaded(sorted, visibleFields, milestoneSummaries));
   }
 
   void applyGrouping({required String groupBy}) {
@@ -206,7 +217,7 @@ class GoalCubit extends Cubit<GoalState> {
 
     final sorted = _sortGoals(filtered);
     print("📊 Grouped goals count: ${sorted.length}");
-    emit(GoalsLoaded(sorted, visibleFields));
+    emit(GoalsLoaded(sorted, visibleFields, milestoneSummaries));
   }
 
   void clearFilters() {
@@ -215,7 +226,7 @@ class GoalCubit extends Cubit<GoalState> {
     _currentGrouping = null;
     _sortOrder = 'asc';
     _hideCompleted = false;
-    emit(GoalsLoaded(List.from(_allGoals), visibleFields));
+    emit(GoalsLoaded(List.from(_allGoals), visibleFields, milestoneSummaries));
   }
 
   List<Goal> _filterGoals(List<Goal> source) {
@@ -331,5 +342,46 @@ class GoalCubit extends Cubit<GoalState> {
   Future<void> removeGoal(String id) async {
     await delete(id);
     await loadGoals();
+  }
+
+  Map<String, GoalMilestoneStats> _buildMilestoneSummaries(List<Goal> goals, List<Milestone> milestones) {
+    final byGoal = <String, List<Milestone>>{};
+    for (final milestone in milestones) {
+      byGoal.putIfAbsent(milestone.goalId, () => <Milestone>[]).add(milestone);
+    }
+
+    final result = <String, GoalMilestoneStats>{};
+
+    for (final goal in goals) {
+      final goalMilestones = byGoal[goal.id] ?? const <Milestone>[];
+      final total = goalMilestones.length;
+      if (total == 0) {
+        result[goal.id] = const GoalMilestoneStats(
+          openCount: 0,
+          totalCount: 0,
+          completionPercent: 0,
+        );
+        continue;
+      }
+
+      final completed = goalMilestones.where(_isMilestoneCompleted).length;
+      final open = total - completed;
+      final completionPercent = total == 0 ? 0.0 : (completed / total) * 100;
+
+      result[goal.id] = GoalMilestoneStats(
+        openCount: open,
+        totalCount: total,
+        completionPercent: completionPercent,
+      );
+    }
+
+    return result;
+  }
+
+  bool _isMilestoneCompleted(Milestone milestone) {
+    if (milestone.actualValue != null && milestone.plannedValue != null) {
+      return milestone.actualValue! >= milestone.plannedValue!;
+    }
+    return false;
   }
 }

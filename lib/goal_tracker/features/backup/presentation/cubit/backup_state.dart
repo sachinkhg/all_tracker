@@ -20,14 +20,16 @@ class BackupSignedOut extends BackupState {}
 class BackupSignedIn extends BackupState {
   final String accountEmail;
   final List<BackupMetadata> backups;
+  final String? errorMessage; // Optional error message to display
 
   BackupSignedIn({
     required this.accountEmail,
     this.backups = const [],
+    this.errorMessage,
   });
 
   @override
-  List<Object?> get props => [accountEmail, backups];
+  List<Object?> get props => [accountEmail, backups, errorMessage];
 }
 
 /// Backup operation is in progress.

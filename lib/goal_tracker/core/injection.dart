@@ -69,7 +69,6 @@ import '../features/backup/core/device_info_service.dart';
 import '../features/backup/data/datasources/google_auth_datasource.dart';
 import '../features/backup/data/datasources/drive_api_client.dart';
 import '../features/backup/data/datasources/backup_metadata_local_datasource.dart';
-import '../features/backup/core/backup_preferences_service.dart';
 import '../features/backup/data/services/backup_builder_service.dart';
 import '../features/backup/data/repositories/backup_repository_impl.dart';
 import '../features/backup/data/models/backup_metadata_model.dart';
@@ -78,6 +77,7 @@ import '../features/backup/domain/usecases/list_backups.dart';
 import '../features/backup/domain/usecases/restore_backup.dart';
 import '../features/backup/domain/usecases/delete_backup.dart';
 import '../features/backup/core/backup_preferences_service.dart';
+import '../features/backup/core/backup_scheduler_service.dart';
 import '../features/backup/presentation/cubit/backup_cubit.dart';
 
 /// Singleton instance of ViewPreferencesService.
@@ -174,6 +174,7 @@ GoalCubit createGoalCubit() {
   // Side-effect risk: calling Hive.box(...) when the box is not open will throw.
   // Opening boxes is an app-level startup concern and should be performed before calling this factory.
   final Box<GoalModel> box = Hive.box<GoalModel>(goalBoxName);
+  final Box<MilestoneModel> milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
 
   // ---------------------------------------------------------------------------
   // Data layer
@@ -182,6 +183,7 @@ GoalCubit createGoalCubit() {
   // - This is a lightweight object that holds a reference to the opened box.
   // - It does not itself open the box here to avoid double-initialization and to keep startup ordering explicit.
   final local = GoalLocalDataSourceImpl(box);
+  final milestoneLocal = MilestoneLocalDataSourceImpl(milestoneBox);
 
   // ---------------------------------------------------------------------------
   // Repository layer
@@ -190,6 +192,7 @@ GoalCubit createGoalCubit() {
   // - If the repository needed both local and remote data sources, we would construct both above and pass them in here.
   // - Keep repositories thin: orchestration and local/remote decision logic belongs here.
   final repo = GoalRepositoryImpl(local);
+  final milestoneRepo = MilestoneRepositoryImpl(milestoneLocal);
 
   // ---------------------------------------------------------------------------
   // Use-cases (domain)
@@ -200,6 +203,7 @@ GoalCubit createGoalCubit() {
   final create = CreateGoal(repo);
   final update = UpdateGoal(repo);
   final delete = DeleteGoal(repo);
+  final getAllMilestones = GetAllMilestones(milestoneRepo);
 
   // ---------------------------------------------------------------------------
   // Presentation
@@ -216,6 +220,7 @@ GoalCubit createGoalCubit() {
     create: create, 
     update: update, 
     delete: delete, 
+    getAllMilestones: getAllMilestones,
     viewPreferencesService: viewPrefsService,
     filterPreferencesService: filterPrefsService,
     sortPreferencesService: sortPrefsService,
@@ -548,6 +553,40 @@ BackupCubit createBackupCubit() {
     restoreBackup: restoreBackup,
     deleteBackup: deleteBackup,
     preferencesService: backupPrefsService,
+    googleAuth: googleAuth,
+  );
+}
+
+/// Create a BackupSchedulerService instance for automatic backups.
+///
+/// This service checks if automatic backups should run and executes them
+/// when enabled and the 24-hour interval has passed.
+BackupSchedulerService createBackupSchedulerService() {
+  final backupPrefsService = BackupPreferencesService();
+  
+  // Create repository and use case for backup creation
+  final encryptionService = EncryptionService();
+  final deviceInfoService = DeviceInfoService();
+  final googleAuth = GoogleAuthDataSource();
+  final driveApi = DriveApiClient(googleAuth);
+  final backupBox = Hive.box<BackupMetadataModel>(backupMetadataBoxName);
+  final metadataDataSource = BackupMetadataLocalDataSourceImpl(backupBox);
+  final backupBuilder = BackupBuilderService();
+  
+  final repository = BackupRepositoryImpl(
+    googleAuth: googleAuth,
+    driveApi: driveApi,
+    encryptionService: encryptionService,
+    backupBuilder: backupBuilder,
+    metadataDataSource: metadataDataSource,
+    deviceInfoService: deviceInfoService,
+  );
+  
+  final createBackup = CreateBackup(repository);
+  
+  return BackupSchedulerService(
+    preferencesService: backupPrefsService,
+    createBackupUseCase: createBackup,
     googleAuth: googleAuth,
   );
 }

@@ -29,21 +29,66 @@ class _BackupSettingsContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<BackupCubit, BackupState>(
-      builder: (context, state) {
-        return ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            _buildGoogleSignInSection(context, state),
-            const Divider(height: 32),
-            _buildBackupSettingsSection(context, state),
-            const Divider(height: 32),
-            _buildManualBackupSection(context, state),
-            const Divider(height: 32),
-            _buildBackupListSection(context, state),
-          ],
-        );
+    return BlocListener<BackupCubit, BackupState>(
+      listenWhen: (previous, current) {
+        // Only listen to state changes that involve errors or success
+        return (current is BackupSignedIn && current.errorMessage != null) ||
+            (current is BackupError) ||
+            (current is RestoreOperationSuccess) ||
+            (current is BackupOperationSuccess);
       },
+      listener: (context, state) {
+        // Show error messages via SnackBar
+        if (state is BackupSignedIn && state.errorMessage != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.errorMessage!),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        } else if (state is BackupError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        } else if (state is RestoreOperationSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Backup restored successfully'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else if (state is BackupOperationSuccess) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Backup created successfully (${(state.sizeBytes / 1024).toStringAsFixed(1)} KB)'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<BackupCubit, BackupState>(
+        builder: (context, state) {
+          return ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              _buildGoogleSignInSection(context, state),
+              const Divider(height: 32),
+              _buildBackupSettingsSection(context, state),
+              const Divider(height: 32),
+              _buildManualBackupSection(context, state),
+              const Divider(height: 32),
+              _buildBackupListSection(context, state),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -84,6 +129,34 @@ class _BackupSettingsContent extends StatelessWidget {
                       ),
                     ],
                   ),
+                  if (state.errorMessage != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: Theme.of(context).colorScheme.onErrorContainer,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              state.errorMessage!,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onErrorContainer,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
                   OutlinedButton.icon(
                     onPressed: () => cubit.signOut(),

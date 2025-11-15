@@ -49,13 +49,22 @@ class GoalListItem extends StatelessWidget {
   /// Optional contextual category or tag label.
   final String? contextValue;
 
+  /// Number of open milestones associated with this goal.
+  final int? openMilestoneCount;
+
+  /// Total milestones associated with this goal.
+  final int? totalMilestoneCount;
+
+  /// Completion percentage (0-100) of milestones (calculated as completed / total).
+  final double? milestoneCompletionPercent;
+
   /// Triggered when the user taps the item (usually opens the edit screen).
   final VoidCallback onEdit;
 
   /// Map of visibility flags that determines which fields are displayed.
   ///
   /// Expected keys:
-  /// 'name', 'description', 'targetDate', 'context', 'remainingDays'
+  /// 'name', 'description', 'targetDate', 'context', 'remainingDays', 'milestoneSummary'
   ///
   /// If `null`, defaults are:
   /// - name = true
@@ -75,6 +84,9 @@ class GoalListItem extends StatelessWidget {
     this.description,
     this.targetDate,
     this.contextValue,
+    this.openMilestoneCount,
+    this.totalMilestoneCount,
+    this.milestoneCompletionPercent,
     required this.onEdit,
     this.visibleFields,
     this.filterActive = false,
@@ -106,6 +118,14 @@ class GoalListItem extends StatelessWidget {
       return (key == 'name' || key == 'description');
     }
     return visibleFields![key] ?? false;
+  }
+
+  String _formatPercent(double value) {
+    if (value.isNaN || value.isInfinite) return '0';
+    if (value % 1 == 0) {
+      return value.toStringAsFixed(0);
+    }
+    return value.toStringAsFixed(1);
   }
 
   @override
@@ -221,6 +241,27 @@ class GoalListItem extends StatelessWidget {
                   ),
                 ];
               }(),
+
+              // --- Milestone Summary ---
+              if (_visible('milestoneSummary')) ...[
+                const SizedBox(height: 8),
+                Text(
+                  () {
+                    final open = openMilestoneCount ?? 0;
+                    final total = totalMilestoneCount ?? 0;
+                    final percent = milestoneCompletionPercent ??
+                        (total == 0 ? 0 : ((total - open) / total) * 100);
+                    return 'Total Milestone: $open/$total (${_formatPercent(percent)}%)';
+                  }(),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ],
             ],
           ),
         ),

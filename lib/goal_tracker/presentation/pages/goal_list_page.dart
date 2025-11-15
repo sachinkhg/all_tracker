@@ -22,7 +22,6 @@ import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/goal_list_item.dart';
 import '../../../widgets/loading_view.dart';
@@ -81,6 +80,7 @@ class GoalListPageView extends StatelessWidget {
                   if (state is GoalsLoaded) {
                     final goals = state.goals;
                     final visible = state.visibleFields;
+                    final milestoneSummaries = state.milestoneSummaries;
 
                     // use the cubit captured from outer scope; do NOT call context.read here
                     final bool filterActive = cubit.hasActiveFilters;
@@ -99,6 +99,7 @@ class GoalListPageView extends StatelessWidget {
                     return _GoalsBody(
                       goals: goals,
                       visibleFields: visible,
+                      milestoneSummaries: milestoneSummaries,
                       filterActive: filterActive,
                       filterSummary: filterSummary,
                       // pass the cubit into the edit handler so nested closures don't call context.read
@@ -349,7 +350,6 @@ class _ActionsFab extends StatelessWidget {
     required this.onAdd,
     required this.onMore,
     this.initialVisibleFields = const <String, bool>{},
-    super.key,
   });
 
   /// Callback invoked when the 'view' FAB is tapped.
@@ -462,6 +462,7 @@ class _GoalsBody extends StatelessWidget {
   const _GoalsBody({
     required this.goals,
     required this.visibleFields,
+    required this.milestoneSummaries,
     required this.filterActive,
     required this.filterSummary,
     required this.onEdit,
@@ -471,6 +472,7 @@ class _GoalsBody extends StatelessWidget {
 
   final List<Goal> goals;
   final Map<String, bool> visibleFields;
+  final Map<String, GoalMilestoneStats> milestoneSummaries;
   final bool filterActive;
   final String filterSummary;
 
@@ -498,6 +500,7 @@ class _GoalsBody extends StatelessWidget {
           child: _GoalsList(
             goals: goals,
             visibleFields: visibleFields,
+            milestoneSummaries: milestoneSummaries,
             filterActive: filterActive,
             onEdit: onEdit,
           ),
@@ -519,13 +522,14 @@ class _GoalsList extends StatelessWidget {
   const _GoalsList({
     required this.goals,
     required this.visibleFields,
+    required this.milestoneSummaries,
     required this.filterActive,
     required this.onEdit,
-    super.key,
   });
 
   final List<Goal> goals;
   final Map<String, bool> visibleFields;
+  final Map<String, GoalMilestoneStats> milestoneSummaries;
   final bool filterActive;
 
   /// Same signature as before: caller provides how to open edit sheet, etc.
@@ -539,6 +543,7 @@ class _GoalsList extends StatelessWidget {
       separatorBuilder: (_, __) => const Divider(height: 1),
       itemBuilder: (context, index) {
         final g = goals[index];
+        final stats = milestoneSummaries[g.id];
 
         // IMPORTANT: Do not call context.read(...) or access cubit here.
         // onEdit is provided by parent and will handle cubit interactions.
@@ -551,6 +556,9 @@ class _GoalsList extends StatelessWidget {
           contextValue: g.context,
           visibleFields: visibleFields,
           filterActive: filterActive,
+          openMilestoneCount: stats?.openCount,
+          totalMilestoneCount: stats?.totalCount,
+          milestoneCompletionPercent: stats?.completionPercent,
           onEdit: () => onEdit(context, g),
         );
       },

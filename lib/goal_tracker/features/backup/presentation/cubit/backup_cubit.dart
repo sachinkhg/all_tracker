@@ -90,7 +90,12 @@ class BackupCubit extends Cubit<BackupState> {
         backups: backups,
       ));
     } catch (e) {
-      emit(BackupError(message: 'Failed to load backups: $e'));
+      // Even if loading backups fails, preserve signed-in state
+      emit(BackupSignedIn(
+        accountEmail: account.email,
+        backups: const [],
+        errorMessage: 'Failed to load backups: $e',
+      ));
     }
   }
 
@@ -131,12 +136,67 @@ class BackupCubit extends Cubit<BackupState> {
       );
 
       if (result is domain.RestoreSuccess) {
+        // Show success state briefly, then restore signed-in state
         emit(RestoreOperationSuccess());
+        // Reload backups to restore signed-in state
+        await loadBackups();
       } else if (result is domain.RestoreFailure) {
-        emit(BackupError(message: result.error));
+        // Check if user is still signed in and preserve that state
+        final isSignedIn = await _googleAuth.isSignedIn();
+        if (isSignedIn) {
+          // User is still signed in - preserve signed-in state with error message
+          final account = await _googleAuth.getCurrentAccount();
+          if (account != null) {
+            try {
+              final backups = await _listBackups.call();
+              emit(BackupSignedIn(
+                accountEmail: account.email,
+                backups: backups,
+                errorMessage: result.error, // Include error in signed-in state
+              ));
+            } catch (e) {
+              // If loading backups fails, still preserve signed-in state
+              emit(BackupSignedIn(
+                accountEmail: account.email,
+                backups: const [],
+                errorMessage: result.error,
+              ));
+            }
+          } else {
+            emit(BackupSignedOut());
+          }
+        } else {
+          // User is actually signed out
+          emit(BackupSignedOut());
+        }
       }
     } catch (e) {
-      emit(BackupError(message: 'Restore failed: $e'));
+      // Check if user is still signed in after error
+      final isSignedIn = await _googleAuth.isSignedIn();
+      if (isSignedIn) {
+        // Preserve signed-in state even after error
+        final account = await _googleAuth.getCurrentAccount();
+        if (account != null) {
+          try {
+            final backups = await _listBackups.call();
+            emit(BackupSignedIn(
+              accountEmail: account.email,
+              backups: backups,
+              errorMessage: 'Restore failed: $e',
+            ));
+          } catch (loadError) {
+            emit(BackupSignedIn(
+              accountEmail: account.email,
+              backups: const [],
+              errorMessage: 'Restore failed: $e',
+            ));
+          }
+        } else {
+          emit(BackupSignedOut());
+        }
+      } else {
+        emit(BackupError(message: 'Restore failed: $e'));
+      }
     }
   }
 

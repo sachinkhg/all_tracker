@@ -93,6 +93,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'targetDate': widget.initial?['targetDate'] ?? false,
         'context': widget.initial?['context'] ?? false,
         'remainingDays': widget.initial?['remainingDays'] ?? false,
+        'milestoneSummary': widget.initial?['milestoneSummary'] ?? true,
       };
     } else if (widget.entity == ViewEntityType.milestone) {
       // Milestone field set
@@ -173,6 +174,7 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('context', 'Context'),
               _buildToggle('remainingDays', 'Remaining Days'),
+              _buildToggle('milestoneSummary', 'Milestones'),
             ] else if (widget.entity == ViewEntityType.milestone) ...[
               _buildToggle('description', 'Description'),
               _buildToggle('targetDate', 'Target Date'),

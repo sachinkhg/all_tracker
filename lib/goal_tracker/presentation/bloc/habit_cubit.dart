@@ -106,8 +106,7 @@ class HabitCubit extends Cubit<HabitState> {
   bool get hasActiveFilters =>
       (_currentMilestoneIdFilter != null && _currentMilestoneIdFilter!.isNotEmpty) ||
       (_currentStatusFilter != null && _currentStatusFilter != 'All') ||
-      _sortOrder != 'asc' ||
-      _hideInactive;
+      _sortOrder != 'asc';
 
   /// Human-readable summary of active filters for UI consumption.
   String get filterSummary {
@@ -128,9 +127,6 @@ class HabitCubit extends Cubit<HabitState> {
     }
     if (_sortOrder != 'asc') {
       parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
-    }
-    if (_hideInactive) {
-      parts.add('Hide Inactive');
     }
 
     if (parts.isEmpty) {

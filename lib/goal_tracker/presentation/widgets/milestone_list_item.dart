@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 
 /// ---------------------------------------------------------------------------
 /// MilestoneListItem
@@ -144,23 +145,23 @@ class MilestoneListItem extends StatelessWidget {
                 ],
               ),
 
-              // Goal name badge (instead of goalId)
+              // Goal name (simple text, similar to task card)
               if (_visible('goalName') && goalName != null && goalName!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: cs.secondaryContainer,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    goalName!,
-                    style: TextStyle(
-                      color: cs.onSecondaryContainer,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(AppIcons.goal, size: 14, color: cs.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Goal: $goalName',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
               ],
 

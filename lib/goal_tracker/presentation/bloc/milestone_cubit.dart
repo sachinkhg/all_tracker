@@ -102,8 +102,7 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   bool get hasActiveFilters =>
       (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) ||
       (_currentTargetDateFilter != null && _currentTargetDateFilter!.isNotEmpty) ||
-      _sortOrder != 'asc' ||
-      _hideCompleted;
+      _sortOrder != 'asc';
 
   /// Human-readable summary of active filters for UI consumption.
   String get filterSummary {
@@ -124,9 +123,6 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     }
     if (_sortOrder != 'asc') {
       parts.add('Sort: ${_sortOrder == 'desc' ? 'Descending' : 'Ascending'}');
-    }
-    if (_hideCompleted) {
-      parts.add('Hide Completed');
     }
 
     if (parts.isEmpty) {

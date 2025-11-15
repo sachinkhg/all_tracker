@@ -32,6 +32,21 @@ abstract class GoalState extends Equatable {
   List<Object?> get props => [];
 }
 
+class GoalMilestoneStats extends Equatable {
+  final int openCount;
+  final int totalCount;
+  final double completionPercent;
+
+  const GoalMilestoneStats({
+    required this.openCount,
+    required this.totalCount,
+    required this.completionPercent,
+  });
+
+  @override
+  List<Object?> get props => [openCount, totalCount, completionPercent];
+}
+
 // Loading state — emitted when goal data is being fetched.
 class GoalsLoading extends GoalState {}
 
@@ -39,11 +54,12 @@ class GoalsLoading extends GoalState {}
 class GoalsLoaded extends GoalState {
   final List<Goal> goals;
   final Map<String, bool> visibleFields;
+  final Map<String, GoalMilestoneStats> milestoneSummaries;
 
-  const GoalsLoaded(this.goals, this.visibleFields);
+  const GoalsLoaded(this.goals, this.visibleFields, this.milestoneSummaries);
 
   @override
-  List<Object?> get props => [goals, visibleFields];
+  List<Object?> get props => [goals, visibleFields, milestoneSummaries];
 }
 
 // Error state — emitted when fetching or modifying goals fails.
