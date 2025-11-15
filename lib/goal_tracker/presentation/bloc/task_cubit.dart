@@ -99,7 +99,7 @@ class TaskCubit extends Cubit<TaskState> {
   
   // Sort-related state
   String _sortOrder = 'asc';
-  bool _hideCompleted = false;
+  bool _hideCompleted = true; // Default to true (hide completed items by default)
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -217,7 +217,7 @@ class TaskCubit extends Cubit<TaskState> {
     final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.task);
     if (savedSort != null) {
       _sortOrder = savedSort['sortOrder'] ?? 'asc';
-      _hideCompleted = savedSort['hideCompleted'] ?? false;
+      _hideCompleted = savedSort['hideCompleted'] ?? true;
     }
   }
 
@@ -268,11 +268,15 @@ class TaskCubit extends Cubit<TaskState> {
     String? goalId,
     String? status,
     String? targetDateFilter,
+    bool? hideCompleted,
   }) {
     _currentMilestoneIdFilter = milestoneId;
     _currentGoalIdFilter = goalId;
     _currentStatusFilter = status;
     _currentTargetDateFilter = targetDateFilter;
+    if (hideCompleted != null) {
+      _hideCompleted = hideCompleted;
+    }
 
     final filtered = _filterTasks(_allTasks);
     final sorted = _sortTasks(filtered);
@@ -301,7 +305,7 @@ class TaskCubit extends Cubit<TaskState> {
     _currentStatusFilter = null;
     _currentTargetDateFilter = null;
     _sortOrder = 'asc';
-    _hideCompleted = false;
+    _hideCompleted = true; // Reset to default (hide completed)
     emit(TasksLoaded(List.from(_allTasks), visibleFields: visibleFields));
   }
 

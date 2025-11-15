@@ -52,6 +52,12 @@ class FilterGroupBottomSheet extends StatefulWidget {
   /// "<id>::<title>" or a single string (used as both id and title).
   final List<String>? milestoneOptions;
   
+  /// For tasks: map of milestoneId -> goalId for filtering milestones by goal
+  final Map<String, String>? milestoneToGoalMap;
+  
+  /// For tasks: initial goalId filter (used when goal is selected without milestone)
+  final String? initialGoalId;
+  
   /// Whether the save filter checkbox should be initially checked
   final bool initialSaveFilter;
   
@@ -73,10 +79,12 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.initialStatus,
     this.goalOptions,
     this.milestoneOptions,
+    this.milestoneToGoalMap,
+    this.initialGoalId,
     this.initialSaveFilter = false,
     this.initialSaveSort = false,
     this.initialSortOrder,
-    this.initialHideCompleted = false,
+    this.initialHideCompleted = true,
   });
 
   @override
@@ -91,10 +99,11 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   bool _saveFilter = false; // Save filter preference
   late final List<MapEntry<String, String>> _goalPairs; // id -> title
   late final List<MapEntry<String, String>> _milestonePairs; // id -> title
+  late final Map<String, String> _milestoneToGoalMap; // milestoneId -> goalId
   
   // Sort-related state
   String _sortOrder = 'asc';
-  bool _hideCompleted = false;
+  bool _hideCompleted = true; // Default to true (hide completed items by default)
   bool _saveSort = false;
 
   @override
@@ -140,14 +149,45 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
       }
       return MapEntry(raw, raw);
     }).toList(growable: false);
+    
+    // Initialize milestone-to-goal mapping for tasks and habits
+    _milestoneToGoalMap = widget.milestoneToGoalMap ?? {};
+    
+    // Initialize goal filter for tasks and habits
+    if (widget.entity == FilterEntityType.task || widget.entity == FilterEntityType.habit) {
+      // First, check if there's an explicit initial goalId
+      if (widget.initialGoalId != null) {
+        _selectedGoalId = widget.initialGoalId;
+      }
+      // If there's an initial milestone selected, find its goal (unless goalId already set)
+      else if (widget.initialContext != null) {
+        final milestoneId = widget.initialContext;
+        if (_milestoneToGoalMap.containsKey(milestoneId)) {
+          _selectedGoalId = _milestoneToGoalMap[milestoneId];
+        }
+      }
+    }
+  }
+  
+  /// Get filtered milestone pairs based on selected goal
+  List<MapEntry<String, String>> get _filteredMilestonePairs {
+    if (_selectedGoalId == null) {
+      // Show all milestones when "All Goals" is selected
+      return _milestonePairs;
+    }
+    // Filter milestones to show only those belonging to the selected goal
+    return _milestonePairs.where((entry) {
+      return _milestoneToGoalMap[entry.key] == _selectedGoalId;
+    }).toList();
   }
 
 
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     // Limit sheet height so it doesn't cover the entire screen on large devices.
-    final maxHeight = MediaQuery.of(context).size.height * 0.40;
+    final maxHeight = MediaQuery.of(context).size.height * 0.65;
     // Respect keyboard insets so interactive controls remain visible when the
     // keyboard appears (e.g., if later expanded to include text inputs).
     final viewInsets = MediaQuery.of(context).viewInsets.bottom;
@@ -242,126 +282,176 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                 ] else if (widget.entity == FilterEntityType.milestone) ...[
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final entry in _goalPairs)
-                                        Builder(builder: (ctx2) {
-                                          final cs = Theme.of(ctx2).colorScheme;
-                                          final bool selected = _selectedContext == entry.key;
-                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
-                                          return InkWell(
-                                            borderRadius: BorderRadius.circular(16),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedContext = selected ? null : entry.key;
-                                              });
-                                            },
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: selected ? cs.primary.withValues(alpha: 0.12) : null,
-                                                  border: Border.all(color: selected ? cs.primary : cs.outline.withValues(alpha: 0.30)),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: Text(
-                                                  entry.value,
-                                                  softWrap: true,
-                                                  style: TextStyle(
-                                                    color: selected ? cs.primary : cs.onSurface,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedContext,
+                                    isExpanded: true,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    hint: Text(
+                                      "All Goals",
+                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      ..._goalPairs.map((entry) => DropdownMenuItem<String>(
+                                        value: entry.key,
+                                        child: Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      )),
                                     ],
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                        ..._goalPairs.map((entry) => Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        )),
+                                      ];
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedContext = value;
+                                      });
+                                    },
                                   ),
                                 ] else if (widget.entity == FilterEntityType.task) ...[
-                                  // Task filters
-                                  Text("Filter by Milestone", style: textTheme.bodySmall),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final entry in _milestonePairs)
-                                        Builder(builder: (ctx2) {
-                                          final cs = Theme.of(ctx2).colorScheme;
-                                          final bool selected = _selectedContext == entry.key;
-                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
-                                          return InkWell(
-                                            borderRadius: BorderRadius.circular(16),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedContext = selected ? null : entry.key;
-                                              });
-                                            },
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: selected ? cs.primary.withValues(alpha: 0.12) : null,
-                                                  border: Border.all(color: selected ? cs.primary : cs.outline.withValues(alpha: 0.30)),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: Text(
-                                                  entry.value,
-                                                  softWrap: true,
-                                                  style: TextStyle(
-                                                    color: selected ? cs.primary : cs.onSurface,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
+                                  // Task filters - Cascading dropdowns: Goal first, then Milestone
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final entry in _goalPairs)
-                                        Builder(builder: (ctx2) {
-                                          final cs = Theme.of(ctx2).colorScheme;
-                                          final bool selected = _selectedGoalId == entry.key;
-                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
-                                          return InkWell(
-                                            borderRadius: BorderRadius.circular(16),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedGoalId = selected ? null : entry.key;
-                                              });
-                                            },
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: selected ? cs.secondary.withValues(alpha: 0.12) : null,
-                                                  border: Border.all(color: selected ? cs.secondary : cs.outline.withValues(alpha: 0.30)),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: Text(
-                                                  entry.value,
-                                                  softWrap: true,
-                                                  style: TextStyle(
-                                                    color: selected ? cs.secondary : cs.onSurface,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedGoalId,
+                                    isExpanded: true,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    hint: Text(
+                                      "All Goals",
+                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      ..._goalPairs.map((entry) => DropdownMenuItem<String>(
+                                        value: entry.key,
+                                        child: Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      )),
                                     ],
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                        ..._goalPairs.map((entry) => Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        )),
+                                      ];
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedGoalId = value;
+                                        // Clear milestone selection when goal changes
+                                        // unless the selected milestone belongs to the new goal
+                                        if (_selectedContext != null) {
+                                          final milestoneGoalId = _milestoneToGoalMap[_selectedContext];
+                                          if (milestoneGoalId != value) {
+                                            _selectedContext = null;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text("Filter by Milestone", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedContext,
+                                    isExpanded: true,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    hint: Text(
+                                      "All Milestones",
+                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text(
+                                          "All Milestones",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      ..._filteredMilestonePairs.map((entry) => DropdownMenuItem<String>(
+                                        value: entry.key,
+                                        child: Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      )),
+                                    ],
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        Text(
+                                          "All Milestones",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                        ..._filteredMilestonePairs.map((entry) => Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        )),
+                                      ];
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedContext = value;
+                                      });
+                                    },
                                   ),
                                   const SizedBox(height: 16),
                                   Text("Filter by Status", style: textTheme.bodySmall),
@@ -383,87 +473,123 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ],
                                   ),
                                 ] else ...[
-                                  // Habit filters (no Status)
-                                  Text("Filter by Milestone", style: textTheme.bodySmall),
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final entry in _milestonePairs)
-                                        Builder(builder: (ctx2) {
-                                          final cs = Theme.of(ctx2).colorScheme;
-                                          final bool selected = _selectedContext == entry.key;
-                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
-                                          return InkWell(
-                                            borderRadius: BorderRadius.circular(16),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedContext = selected ? null : entry.key;
-                                              });
-                                            },
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: selected ? cs.primary.withValues(alpha: 0.12) : null,
-                                                  border: Border.all(color: selected ? cs.primary : cs.outline.withValues(alpha: 0.30)),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: Text(
-                                                  entry.value,
-                                                  softWrap: true,
-                                                  style: TextStyle(
-                                                    color: selected ? cs.primary : cs.onSurface,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 16),
+                                  // Habit filters - Cascading dropdowns: Goal first, then Milestone
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 8,
-                                    runSpacing: 8,
-                                    children: [
-                                      for (final entry in _goalPairs)
-                                        Builder(builder: (ctx2) {
-                                          final cs = Theme.of(ctx2).colorScheme;
-                                          final bool selected = _selectedGoalId == entry.key;
-                                          final double maxChipWidth = MediaQuery.of(ctx2).size.width - 48;
-                                          return InkWell(
-                                            borderRadius: BorderRadius.circular(16),
-                                            onTap: () {
-                                              setState(() {
-                                                _selectedGoalId = selected ? null : entry.key;
-                                              });
-                                            },
-                                            child: ConstrainedBox(
-                                              constraints: BoxConstraints(maxWidth: maxChipWidth),
-                                              child: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                                decoration: BoxDecoration(
-                                                  color: selected ? cs.secondary.withValues(alpha: 0.12) : null,
-                                                  border: Border.all(color: selected ? cs.secondary : cs.outline.withValues(alpha: 0.30)),
-                                                  borderRadius: BorderRadius.circular(16),
-                                                ),
-                                                child: Text(
-                                                  entry.value,
-                                                  softWrap: true,
-                                                  style: TextStyle(
-                                                    color: selected ? cs.secondary : cs.onSurface,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        }),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedGoalId,
+                                    isExpanded: true,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    hint: Text(
+                                      "All Goals",
+                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      ..._goalPairs.map((entry) => DropdownMenuItem<String>(
+                                        value: entry.key,
+                                        child: Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      )),
                                     ],
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        Text(
+                                          "All Goals",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                        ..._goalPairs.map((entry) => Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        )),
+                                      ];
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedGoalId = value;
+                                        // Clear milestone selection when goal changes
+                                        // unless the selected milestone belongs to the new goal
+                                        if (_selectedContext != null) {
+                                          final milestoneGoalId = _milestoneToGoalMap[_selectedContext];
+                                          if (milestoneGoalId != value) {
+                                            _selectedContext = null;
+                                          }
+                                        }
+                                      });
+                                    },
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text("Filter by Milestone", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  DropdownButtonFormField<String>(
+                                    value: _selectedContext,
+                                    isExpanded: true,
+                                    style: TextStyle(color: colorScheme.onSurface),
+                                    decoration: InputDecoration(
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                                    ),
+                                    hint: Text(
+                                      "All Milestones",
+                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                    ),
+                                    items: [
+                                      DropdownMenuItem<String>(
+                                        value: null,
+                                        child: Text(
+                                          "All Milestones",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      ),
+                                      ..._filteredMilestonePairs.map((entry) => DropdownMenuItem<String>(
+                                        value: entry.key,
+                                        child: Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                      )),
+                                    ],
+                                    selectedItemBuilder: (context) {
+                                      return [
+                                        Text(
+                                          "All Milestones",
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        ),
+                                        ..._filteredMilestonePairs.map((entry) => Text(
+                                          entry.value,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: colorScheme.onSurface),
+                                        )),
+                                      ];
+                                    },
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedContext = value;
+                                      });
+                                    },
                                   ),
                                 ],
                               ],
@@ -473,7 +599,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
 
                         // Save Filter checkbox
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                           child: Row(
                             children: [
                               Checkbox(
@@ -485,7 +611,26 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                 },
                               ),
                               const SizedBox(width: 8),
-                              const Text("Save Filter"),
+                              const Text("Save Filter Settings"),
+                            ],
+                          ),
+                        ),
+
+                        // Hide completed items checkbox
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                          child: Row(
+                            children: [
+                              Checkbox(
+                                value: _hideCompleted,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _hideCompleted = value ?? false;
+                                  });
+                                },
+                              ),
+                              const SizedBox(width: 8),
+                              const Text("Hide completed items"),
                             ],
                           ),
                         ),
@@ -511,12 +656,14 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                       "status": _selectedStatus,
                                       "targetDate": _selectedDateFilter,
                                       "saveFilter": _saveFilter,
+                                      "hideCompleted": _hideCompleted,
                                     });
                                   } else if (widget.entity == FilterEntityType.goal || widget.entity == FilterEntityType.milestone) {
                                     Navigator.of(context).pop({
                                       "context": _selectedContext,
                                       "targetDate": _selectedDateFilter,
                                       "saveFilter": _saveFilter,
+                                      "hideCompleted": _hideCompleted,
                                     });
                                   } else {
                                     // Habit entity — return milestone/goal only
@@ -524,6 +671,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                       "milestoneId": _selectedContext,
                                       "goalId": _selectedGoalId,
                                       "saveFilter": _saveFilter,
+                                      "hideCompleted": _hideCompleted,
                                     });
                                   }
                                 },
@@ -620,7 +768,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                 },
                               ),
                               const SizedBox(width: 8),
-                              const Text("Save Sort"),
+                              const Text("Save Sort Settings"),
                             ],
                           ),
                         ),

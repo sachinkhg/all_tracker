@@ -135,41 +135,47 @@ class HabitListPageView extends StatelessWidget {
             ],
           ),
         ),
-        floatingActionButton: _ActionsFab(
-          initialVisibleFields: initialVisible,
-          onView: () async {
-            final currentState = cubit.state;
-            final Map<String, bool>? initial =
-                currentState is HabitsLoaded ? currentState.visibleFields : <String, bool>{};
+        floatingActionButton: BlocBuilder<HabitCubit, HabitState>(
+          builder: (context, state) {
+            final filterActive = cubit.hasActiveFilters;
+            return _ActionsFab(
+              initialVisibleFields: initialVisible,
+              filterActive: filterActive,
+              onView: () async {
+                final currentState = cubit.state;
+                final Map<String, bool>? initial =
+                    currentState is HabitsLoaded ? currentState.visibleFields : <String, bool>{};
 
-            final result = await showAppBottomSheet<Map<String, dynamic>?>(
-              context,
-              ViewFieldsBottomSheet(entity: ViewEntityType.habit, initial: initial),
+                final result = await showAppBottomSheet<Map<String, dynamic>?>(
+                  context,
+                  ViewFieldsBottomSheet(entity: ViewEntityType.habit, initial: initial),
+                );
+                if (result == null) return;
+                
+                // Extract fields and saveView preference from result
+                final fields = result['fields'] as Map<String, bool>;
+                final saveView = result['saveView'] as bool;
+                
+                // Get the ViewPreferencesService from cubit
+                final viewPrefsService = cubit.viewPreferencesService;
+                
+                // Save or clear preferences based on checkbox state
+                if (saveView) {
+                  await viewPrefsService.saveViewPreferences(ViewEntityType.habit, fields);
+                } else {
+                  await viewPrefsService.clearViewPreferences(ViewEntityType.habit);
+                }
+                
+                // Apply the fields to the cubit to update UI
+                cubit.setVisibleFields(fields);
+              },
+              onFilter: () async {
+                await _editFilters(context, cubit);
+              },
+              onAdd: () => _onCreateHabit(context, cubit),
+              onMore: () => _showActionsSheet(context, cubit),
             );
-            if (result == null) return;
-            
-            // Extract fields and saveView preference from result
-            final fields = result['fields'] as Map<String, bool>;
-            final saveView = result['saveView'] as bool;
-            
-            // Get the ViewPreferencesService from cubit
-            final viewPrefsService = cubit.viewPreferencesService;
-            
-            // Save or clear preferences based on checkbox state
-            if (saveView) {
-              await viewPrefsService.saveViewPreferences(ViewEntityType.habit, fields);
-            } else {
-              await viewPrefsService.clearViewPreferences(ViewEntityType.habit);
-            }
-            
-            // Apply the fields to the cubit to update UI
-            cubit.setVisibleFields(fields);
           },
-          onFilter: () async {
-            await _editFilters(context, cubit);
-          },
-          onAdd: () => _onCreateHabit(context, cubit),
-          onMore: () => _showActionsSheet(context, cubit),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
@@ -240,7 +246,7 @@ class HabitListPageView extends StatelessWidget {
     }
   }
 
-  /// Helper to build milestone-to-goal mapping for the form
+  /// Helper to build milestone-to-goal mapping for the form (milestoneId -> goalName)
   Map<String, String> _getMilestoneGoalMap() {
     try {
       final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
@@ -260,6 +266,22 @@ class HabitListPageView extends StatelessWidget {
     }
   }
 
+  /// Helper to build milestone-to-goalId mapping for filtering (milestoneId -> goalId)
+  Map<String, String> _getMilestoneToGoalIdMap() {
+    try {
+      final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
+      final milestones = milestoneBox.values.toList();
+      final map = <String, String>{};
+      
+      for (final m in milestones) {
+        map[m.id] = m.goalId;
+      }
+      return map;
+    } catch (e) {
+      return {};
+    }
+  }
+
   Future<void> _editFilters(BuildContext context, HabitCubit cubit) async {
     // Check if there are existing saved filters
     final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.habit);
@@ -271,15 +293,26 @@ class HabitListPageView extends StatelessWidget {
     final savedSort = cubit.sortPreferencesService.loadSortPreferences(SortEntityType.habit);
     final hasSavedSort = savedSort != null;
     
+    // Get goalId from saved filters if available, or derive from milestoneId
+    String? initialGoalId;
+    if (savedFilters != null && savedFilters['goalId'] != null) {
+      initialGoalId = savedFilters['goalId'];
+    } else if (cubit.currentMilestoneIdFilter != null) {
+      final milestoneToGoalMap = _getMilestoneToGoalIdMap();
+      initialGoalId = milestoneToGoalMap[cubit.currentMilestoneIdFilter];
+    }
+    
     final result = await showAppBottomSheet<Map<String, dynamic>?>(
       context,
       FilterGroupBottomSheet(
         entity: FilterEntityType.habit,
         initialContext: cubit.currentMilestoneIdFilter,
+        initialGoalId: initialGoalId,
         initialDateFilter: null, // Habits don't have target dates
         initialStatus: cubit.currentStatusFilter,
         milestoneOptions: _getMilestoneOptions(),
         goalOptions: _getGoalOptions(),
+        milestoneToGoalMap: _getMilestoneToGoalIdMap(),
         initialSaveFilter: hasSavedFilters,
         initialSaveSort: hasSavedSort,
         initialSortOrder: cubit.currentSortOrder,
@@ -291,8 +324,10 @@ class HabitListPageView extends StatelessWidget {
 
     if (result.containsKey('milestoneId') || 
         result.containsKey('goalId') || 
-        result.containsKey('status')) {
+        result.containsKey('status') ||
+        result.containsKey('hideCompleted')) {
       final saveFilter = result['saveFilter'] as bool? ?? false;
+      final hideCompleted = result['hideCompleted'] as bool? ?? true;
       
       // Save or clear filter preferences based on checkbox state
       if (saveFilter) {
@@ -309,12 +344,13 @@ class HabitListPageView extends StatelessWidget {
       cubit.applyFilter(
         milestoneId: result['milestoneId'] as String?,
         statusFilter: result['status'] as String?,
+        hideCompleted: hideCompleted,
       );
     }
 
     if (result.containsKey('sortOrder') || result.containsKey('hideCompleted')) {
       final sortOrder = result['sortOrder'] as String? ?? 'asc';
-      final hideInactive = result['hideCompleted'] as bool? ?? false;
+      final hideInactive = result['hideCompleted'] as bool? ?? true;
       final saveSort = result['saveSort'] as bool? ?? false;
       
       // Save or clear sort preferences based on checkbox state
@@ -482,6 +518,7 @@ class _ActionsFab extends StatelessWidget {
     required this.onAdd,
     required this.onMore,
     this.initialVisibleFields = const <String, bool>{},
+    this.filterActive = false,
   });
 
   final Future<void> Function() onView;
@@ -489,6 +526,7 @@ class _ActionsFab extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onMore;
   final Map<String, bool> initialVisibleFields;
+  final bool filterActive;
 
   @override
   Widget build(BuildContext context) {
@@ -543,7 +581,29 @@ class _ActionsFab extends StatelessWidget {
               tooltip: 'Filter',
               backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: () => onFilter(),
-              child: const Icon(Icons.filter_alt),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(Icons.filter_alt),
+                  if (filterActive)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: cs.surface.withOpacity(0.85),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -645,40 +705,7 @@ class _HabitsBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (filterActive) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceVariant,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.filter_alt, size: 20, color: Theme.of(context).colorScheme.onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    filterSummary,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    softWrap: true,
-                    maxLines: 3,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit),
-                  onPressed: onEditFilters,
-                  tooltip: 'Edit filters',
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: onClearFilters,
-                  tooltip: 'Clear filters',
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
+        // Filter header removed - filter icon dot indicator shows filter is active
         Expanded(
           child: ListView.builder(
             itemCount: habits.length,

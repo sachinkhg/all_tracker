@@ -59,7 +59,7 @@ class GoalCubit extends Cubit<GoalState> {
   
   // Sort-related state
   String _sortOrder = 'asc';
-  bool _hideCompleted = false;
+  bool _hideCompleted = true; // Default to true (hide completed items by default)
 
   static const Map<String, bool> _defaultVisibleFieldConfig = {
     'name': true,
@@ -162,7 +162,7 @@ class GoalCubit extends Cubit<GoalState> {
     final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.goal);
     if (savedSort != null) {
       _sortOrder = savedSort['sortOrder'] ?? 'asc';
-      _hideCompleted = savedSort['hideCompleted'] ?? false;
+      _hideCompleted = savedSort['hideCompleted'] ?? true;
     }
   }
 
@@ -183,9 +183,12 @@ class GoalCubit extends Cubit<GoalState> {
     }
   }
 
-  void applyFilter({String? contextFilter, String? targetDateFilter}) {
+  void applyFilter({String? contextFilter, String? targetDateFilter, bool? hideCompleted}) {
     _currentContextFilter = contextFilter;
     _currentTargetDateFilter = targetDateFilter;
+    if (hideCompleted != null) {
+      _hideCompleted = hideCompleted;
+    }
 
     final filtered = _filterGoals(_allGoals);
     final sorted = _sortGoals(filtered);
@@ -225,7 +228,7 @@ class GoalCubit extends Cubit<GoalState> {
     _currentTargetDateFilter = null;
     _currentGrouping = null;
     _sortOrder = 'asc';
-    _hideCompleted = false;
+    _hideCompleted = true; // Reset to default (hide completed)
     emit(GoalsLoaded(List.from(_allGoals), visibleFields, milestoneSummaries));
   }
 

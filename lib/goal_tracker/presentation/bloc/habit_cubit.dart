@@ -70,7 +70,7 @@ class HabitCubit extends Cubit<HabitState> {
   
   // Sort-related state
   String _sortOrder = 'asc';
-  bool _hideInactive = false;
+  bool _hideInactive = true; // Default to true (hide inactive items by default)
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -165,7 +165,8 @@ class HabitCubit extends Cubit<HabitState> {
     final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.habit);
     if (savedSort != null) {
       _sortOrder = savedSort['sortOrder'] ?? 'asc';
-      _hideInactive = savedSort['hideInactive'] ?? false;
+      // Support both 'hideCompleted' (from filter) and 'hideInactive' (from sort) keys
+      _hideInactive = savedSort['hideCompleted'] ?? savedSort['hideInactive'] ?? true;
     }
   }
 
@@ -211,9 +212,13 @@ class HabitCubit extends Cubit<HabitState> {
   }
 
   /// Apply filters (milestoneId and/or status).
-  void applyFilter({String? milestoneId, String? statusFilter}) {
+  void applyFilter({String? milestoneId, String? statusFilter, bool? hideCompleted}) {
     _currentMilestoneIdFilter = milestoneId;
     _currentStatusFilter = statusFilter;
+    // Map hideCompleted to hideInactive for habits
+    if (hideCompleted != null) {
+      _hideInactive = hideCompleted;
+    }
 
     final filtered = _filterHabits(_allHabits);
     final sorted = _sortHabits(filtered);
@@ -234,7 +239,7 @@ class HabitCubit extends Cubit<HabitState> {
     _currentMilestoneIdFilter = null;
     _currentStatusFilter = null;
     _sortOrder = 'asc';
-    _hideInactive = false;
+    _hideInactive = true; // Reset to default (hide inactive)
     emit(HabitsLoaded(List.from(_allHabits), visibleFields: visibleFields));
   }
 

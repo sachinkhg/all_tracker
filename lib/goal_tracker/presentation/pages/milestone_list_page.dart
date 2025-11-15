@@ -133,46 +133,52 @@ class MilestoneListPageView extends StatelessWidget {
           ],
         ),
       ),
-      floatingActionButton: _ActionsFab(
-        // initialVisibleFields provided for widget that might want to render based on it.
-        initialVisibleFields: initialVisible,
-        // onView opens the ViewFieldsBottomSheet and applies selected fields to cubit.
-        onView: () async {
-          final currentState = cubit.state;
-          final Map<String, bool>? initial =
-              currentState is MilestonesLoaded ? currentState.visibleFields : <String, bool>{};
+      floatingActionButton: BlocBuilder<MilestoneCubit, MilestoneState>(
+        builder: (context, state) {
+          final filterActive = cubit.hasActiveFilters;
+          return _ActionsFab(
+            // initialVisibleFields provided for widget that might want to render based on it.
+            initialVisibleFields: initialVisible,
+            filterActive: filterActive,
+            // onView opens the ViewFieldsBottomSheet and applies selected fields to cubit.
+            onView: () async {
+              final currentState = cubit.state;
+              final Map<String, bool>? initial =
+                  currentState is MilestonesLoaded ? currentState.visibleFields : <String, bool>{};
 
-          final result = await showAppBottomSheet<Map<String, dynamic>?>(
-            context,
-            ViewFieldsBottomSheet(entity: ViewEntityType.milestone, initial: initial),
+              final result = await showAppBottomSheet<Map<String, dynamic>?>(
+                context,
+                ViewFieldsBottomSheet(entity: ViewEntityType.milestone, initial: initial),
+              );
+              if (result == null) return;
+              
+              // Extract fields and saveView preference from result
+              final fields = result['fields'] as Map<String, bool>;
+              final saveView = result['saveView'] as bool;
+              
+              // Get the ViewPreferencesService from cubit
+              final viewPrefsService = cubit.viewPreferencesService;
+              
+              // Save or clear preferences based on checkbox state
+              if (saveView) {
+                await viewPrefsService.saveViewPreferences(ViewEntityType.milestone, fields);
+              } else {
+                await viewPrefsService.clearViewPreferences(ViewEntityType.milestone);
+              }
+              
+              // Apply the fields to the cubit to update UI
+              cubit.setVisibleFields(fields);
+            },
+            // onFilter opens the FilterGroupBottomSheet and applies filters/grouping via cubit.
+            onFilter: () async {
+              await _editFilters(context, cubit);
+            },
+            // onAdd shows the create milestone sheet — pass cubit explicitly
+            onAdd: () => _onCreateMilestone(context, cubit),
+            // onMore shows the actions sheet — pass cubit explicitly
+            onMore: () => _showActionsSheet(context, cubit),
           );
-          if (result == null) return;
-          
-          // Extract fields and saveView preference from result
-          final fields = result['fields'] as Map<String, bool>;
-          final saveView = result['saveView'] as bool;
-          
-          // Get the ViewPreferencesService from cubit
-          final viewPrefsService = cubit.viewPreferencesService;
-          
-          // Save or clear preferences based on checkbox state
-          if (saveView) {
-            await viewPrefsService.saveViewPreferences(ViewEntityType.milestone, fields);
-          } else {
-            await viewPrefsService.clearViewPreferences(ViewEntityType.milestone);
-          }
-          
-          // Apply the fields to the cubit to update UI
-          cubit.setVisibleFields(fields);
         },
-        // onFilter opens the FilterGroupBottomSheet and applies filters/grouping via cubit.
-        onFilter: () async {
-          await _editFilters(context, cubit);
-        },
-        // onAdd shows the create milestone sheet — pass cubit explicitly
-        onAdd: () => _onCreateMilestone(context, cubit),
-        // onMore shows the actions sheet — pass cubit explicitly
-        onMore: () => _showActionsSheet(context, cubit),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
@@ -205,9 +211,10 @@ class MilestoneListPageView extends StatelessWidget {
 
     if (result == null) return;
 
-    if (result.containsKey('context') || result.containsKey('targetDate')) {
+    if (result.containsKey('context') || result.containsKey('targetDate') || result.containsKey('hideCompleted')) {
       final selectedGoal = result['context'] as String?;
       final selectedTargetDate = result['targetDate'] as String?;
+      final hideCompleted = result['hideCompleted'] as bool? ?? true;
       final saveFilter = result['saveFilter'] as bool? ?? false;
       
       // Save or clear filter preferences based on checkbox state
@@ -225,12 +232,13 @@ class MilestoneListPageView extends StatelessWidget {
       cubit.applyFilter(
         goalId: selectedGoal,
         targetDateFilter: selectedTargetDate,
+        hideCompleted: hideCompleted,
       );
     }
 
     if (result.containsKey('sortOrder') || result.containsKey('hideCompleted')) {
       final sortOrder = result['sortOrder'] as String? ?? 'asc';
-      final hideCompleted = result['hideCompleted'] as bool? ?? false;
+      final hideCompleted = result['hideCompleted'] as bool? ?? true;
       final saveSort = result['saveSort'] as bool? ?? false;
       
       // Save or clear sort preferences based on checkbox state
@@ -384,7 +392,7 @@ class _ActionsFab extends StatelessWidget {
     required this.onAdd,
     required this.onMore,
     this.initialVisibleFields = const <String, bool>{},
-    super.key,
+    this.filterActive = false,
   });
 
   final Future<void> Function() onView;
@@ -392,6 +400,7 @@ class _ActionsFab extends StatelessWidget {
   final VoidCallback onAdd;
   final VoidCallback onMore;
   final Map<String, bool> initialVisibleFields;
+  final bool filterActive;
 
   @override
   Widget build(BuildContext context) {
@@ -446,7 +455,29 @@ class _ActionsFab extends StatelessWidget {
               tooltip: 'Filter & Group',
               backgroundColor: cs.surface.withOpacity(0.85),
               onPressed: () => onFilter(),
-              child: const Icon(Icons.filter_alt),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  const Icon(Icons.filter_alt),
+                  if (filterActive)
+                    Positioned(
+                      top: 6,
+                      right: 6,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: cs.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: cs.surface.withOpacity(0.85),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ],
         ),
@@ -510,12 +541,7 @@ class _MilestonesBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (filterActive)
-          _FilterHeader(
-            summary: filterSummary,
-            onEdit: onEditFilters,
-            onClear: onClearFilters,
-          ),
+        // Filter header removed - filter icon dot indicator shows filter is active
         Expanded(
           child: _MilestonesList(
             milestones: milestones,
@@ -545,7 +571,6 @@ class _MilestonesList extends StatelessWidget {
     required this.filterActive,
     required this.goalNameById,
     required this.onEdit,
-    super.key,
   });
 
   final List<Milestone> milestones;
@@ -619,57 +644,3 @@ class _EmptyMilestones extends StatelessWidget {
   }
 }
 
-/// ---------------------------------------------------------------------------
-/// _FilterHeader
-///
-/// Pure stateless widget that displays the filter summary and exposes
-/// edit / clear callbacks to the parent. Does NOT read from context/cubit.
-/// ---------------------------------------------------------------------------
-class _FilterHeader extends StatelessWidget {
-  const _FilterHeader({
-    required this.summary,
-    required this.onEdit,
-    required this.onClear,
-  });
-
-  final String summary;
-  final VoidCallback onEdit;
-  final VoidCallback onClear;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 8.0),
-      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(8.0),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.filter_alt, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              summary,
-              style: Theme.of(context).textTheme.bodyMedium,
-              softWrap: true,
-              maxLines: 3,
-            ),
-          ),
-          IconButton(
-            tooltip: 'Edit filters',
-            icon: const Icon(Icons.edit, size: 20),
-            onPressed: onEdit,
-          ),
-          IconButton(
-            tooltip: 'Clear filters',
-            icon: const Icon(Icons.clear, size: 20),
-            onPressed: onClear,
-          ),
-        ],
-      ),
-    );
-  }
-}

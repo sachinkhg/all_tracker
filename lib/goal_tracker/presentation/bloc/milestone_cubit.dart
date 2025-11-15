@@ -67,7 +67,7 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   
   // Sort-related state
   String _sortOrder = 'asc';
-  bool _hideCompleted = false;
+  bool _hideCompleted = true; // Default to true (hide completed items by default)
 
   // Visible fields configuration for presentation layer
   Map<String, bool> _visibleFields = const {
@@ -160,7 +160,7 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     final savedSort = sortPreferencesService.loadSortPreferences(SortEntityType.milestone);
     if (savedSort != null) {
       _sortOrder = savedSort['sortOrder'] ?? 'asc';
-      _hideCompleted = savedSort['hideCompleted'] ?? false;
+      _hideCompleted = savedSort['hideCompleted'] ?? true;
     }
   }
 
@@ -207,9 +207,12 @@ class MilestoneCubit extends Cubit<MilestoneState> {
   }
 
   /// Apply filters (goalId and/or targetDate).
-  void applyFilter({String? goalId, String? targetDateFilter}) {
+  void applyFilter({String? goalId, String? targetDateFilter, bool? hideCompleted}) {
     _currentGoalIdFilter = goalId;
     _currentTargetDateFilter = targetDateFilter;
+    if (hideCompleted != null) {
+      _hideCompleted = hideCompleted;
+    }
 
     final filtered = _filterMilestones(_allMilestones);
     final sorted = _sortMilestones(filtered);
@@ -230,7 +233,7 @@ class MilestoneCubit extends Cubit<MilestoneState> {
     _currentGoalIdFilter = null;
     _currentTargetDateFilter = null;
     _sortOrder = 'asc';
-    _hideCompleted = false;
+    _hideCompleted = true; // Reset to default (hide completed)
     emit(MilestonesLoaded(List.from(_allMilestones), visibleFields: visibleFields));
   }
 
