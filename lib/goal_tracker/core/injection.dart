@@ -80,6 +80,12 @@ import '../features/backup/core/backup_preferences_service.dart';
 import '../features/backup/core/backup_scheduler_service.dart';
 import '../features/backup/presentation/cubit/backup_cubit.dart';
 
+// Voice note feature imports
+import '../data/services/speech_to_text_service.dart';
+import '../data/services/text_processing_service.dart';
+import '../data/services/voice_recording_service.dart';
+import '../presentation/bloc/voice_note_cubit.dart';
+
 /// Singleton instance of ViewPreferencesService.
 /// 
 /// Shared across all cubits to manage view field preferences.
@@ -588,5 +594,25 @@ BackupSchedulerService createBackupSchedulerService() {
     preferencesService: backupPrefsService,
     createBackupUseCase: createBackup,
     googleAuth: googleAuth,
+  );
+}
+
+/// Creates a VoiceNoteCubit instance for managing voice note recording and processing.
+///
+/// This factory method wires up the voice note services:
+/// - SpeechToTextService: Handles speech-to-text conversion
+/// - TextProcessingService: Extracts name and description from transcribed text
+/// - VoiceRecordingService: Manages recording lifecycle
+/// - VoiceNoteCubit: Manages state for recording and processing
+VoiceNoteCubit createVoiceNoteCubit() {
+  final speechToTextService = SpeechToTextService();
+  final textProcessingService = TextProcessingService();
+  final voiceRecordingService = VoiceRecordingService(
+    speechToTextService: speechToTextService,
+    textProcessingService: textProcessingService,
+  );
+  
+  return VoiceNoteCubit(
+    voiceRecordingService: voiceRecordingService,
   );
 }
