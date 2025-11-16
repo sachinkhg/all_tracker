@@ -36,19 +36,31 @@ import '../../features/milestone_import_export.dart';
 // import '../../features/milestone_import_export.dart';
 
 class MilestoneListPage extends StatelessWidget {
-  const MilestoneListPage({super.key});
+  final String? goalId;
+  
+  const MilestoneListPage({super.key, this.goalId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createMilestoneCubit()..loadMilestones(),
-      child: const MilestoneListPageView(),
+      create: (_) {
+        final cubit = createMilestoneCubit();
+        cubit.loadMilestones().then((_) {
+          if (goalId != null) {
+            cubit.applyFilter(goalId: goalId);
+          }
+        });
+        return cubit;
+      },
+      child: MilestoneListPageView(goalId: goalId),
     );
   }
 }
 
 class MilestoneListPageView extends StatelessWidget {
-  const MilestoneListPageView({super.key});
+  final String? goalId;
+  
+  const MilestoneListPageView({super.key, this.goalId});
 
   @override
   Widget build(BuildContext context) {
@@ -360,6 +372,7 @@ class MilestoneListPageView extends StatelessWidget {
       initialActualValue: milestone.actualValue,
       initialTargetDate: milestone.targetDate,
       initialGoalId: milestone.goalId,
+      milestoneId: milestone.id, // Pass milestoneId for review buttons
       goalOptions: _getGoalOptions(),
       onSubmit: (name, desc, planned, actual, targetDate, goalId) async {
         await cubit.editMilestone(

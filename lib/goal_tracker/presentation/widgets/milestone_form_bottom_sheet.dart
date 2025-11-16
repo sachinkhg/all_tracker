@@ -12,6 +12,9 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/date_picker_bottom_sheet.dart';
 import '../../../widgets/context_dropdown_bottom_sheet.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import '../pages/task_list_page.dart';
+import '../pages/habit_list_page.dart';
 
 class MilestoneFormBottomSheet extends StatefulWidget {
   final String? initialName;
@@ -31,6 +34,7 @@ class MilestoneFormBottomSheet extends StatefulWidget {
   ) onSubmit;
   final Future<void> Function()? onDelete;
   final String title;
+  final String? milestoneId; // Optional milestoneId for review buttons
 
   const MilestoneFormBottomSheet({
     super.key,
@@ -44,6 +48,7 @@ class MilestoneFormBottomSheet extends StatefulWidget {
     required this.onSubmit,
     this.onDelete,
     this.title = 'Create Milestone',
+    this.milestoneId,
   });
 
   static Future<void> show(
@@ -54,6 +59,7 @@ class MilestoneFormBottomSheet extends StatefulWidget {
     double? initialActualValue,
     DateTime? initialTargetDate,
     String? initialGoalId,
+    String? milestoneId, // Optional milestoneId for review buttons (only in edit mode)
     List<String>? goalOptions,
     required Future<void> Function(
       String name,
@@ -81,6 +87,7 @@ class MilestoneFormBottomSheet extends StatefulWidget {
           initialActualValue: initialActualValue,
           initialTargetDate: initialTargetDate,
           initialGoalId: initialGoalId,
+          milestoneId: milestoneId,
           goalOptions: goalOptions,
           onSubmit: onSubmit,
           onDelete: onDelete,
@@ -417,11 +424,120 @@ class _MilestoneFormBottomSheetState extends State<MilestoneFormBottomSheet> {
 
                   await widget.onSubmit(name, desc, planned, actual, selectedDate, gid);
                   if (!mounted) return;
-                  Navigator.pop(context);
+                  
+                  // In edit mode, close the form after saving
+                  if (widget.onDelete != null) {
+                    Navigator.pop(context);
+                    return;
+                  }
+                  
+                  // In create mode, clear form and keep it open for adding more
+                  // Keep selectedGoalId since user might want to add multiple milestones to same goal
+                  nameCtrl.clear();
+                  descCtrl.clear();
+                  plannedCtrl.clear();
+                  actualCtrl.clear();
+                  setState(() {
+                    selectedDate = null;
+                  });
                 },
-                child: const Text('Save'),
+                child: Text(widget.onDelete != null ? 'Save' : 'Save and Add More'),
               ),
             ),
+
+            // --- Review Buttons ---
+            // Appears only in edit mode (when onDelete is provided and milestoneId is available).
+            if (widget.onDelete != null && widget.milestoneId != null) ...[
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                'Review',
+                style: textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Review Tasks button
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TaskListPage(milestoneId: widget.milestoneId),
+                        ),
+                      );
+                    },
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(AppIcons.task, color: cs.primary),
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.remove_red_eye,
+                              size: 14,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    tooltip: 'Review Tasks',
+                    style: IconButton.styleFrom(
+                      foregroundColor: cs.primary,
+                    ),
+                  ),
+                  // Review Habit button
+                  IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => HabitListPage(milestoneId: widget.milestoneId),
+                        ),
+                      );
+                    },
+                    icon: Stack(
+                      clipBehavior: Clip.none,
+                      alignment: Alignment.center,
+                      children: [
+                        Icon(AppIcons.habit, color: cs.primary),
+                        Positioned(
+                          top: -4,
+                          right: -4,
+                          child: Container(
+                            padding: const EdgeInsets.all(2),
+                            decoration: BoxDecoration(
+                              color: cs.surface,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.remove_red_eye,
+                              size: 14,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    tooltip: 'Review Habits',
+                    style: IconButton.styleFrom(
+                      foregroundColor: cs.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

@@ -128,7 +128,12 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             },
           ),
         ],
-        backgroundColor: cs.primary,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: AppGradients.appBar(cs),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
         foregroundColor: cs.onPrimary,
         elevation: 0,
       ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/injection.dart';
+import '../../../../../core/design_tokens.dart';
 import '../cubit/backup_cubit.dart';
 import '../cubit/backup_state.dart';
 import '../widgets/backup_list_item.dart';
@@ -14,10 +15,22 @@ class BackupSettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    
     return BlocProvider(
       create: (_) => createBackupCubit()..checkAuthStatus(),
       child: Scaffold(
-        appBar: AppBar(title: const Text('Cloud Backup')),
+        appBar: AppBar(
+          title: const Text('Cloud Backup'),
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: AppGradients.appBar(cs),
+            ),
+          ),
+          backgroundColor: Colors.transparent,
+          foregroundColor: cs.onPrimary,
+          elevation: 0,
+        ),
         body: const _BackupSettingsContent(),
       ),
     );

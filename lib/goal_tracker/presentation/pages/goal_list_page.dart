@@ -333,6 +333,7 @@ class GoalListPageView extends StatelessWidget {
       initialTargetDate: goal.targetDate,
       initialContext: goal.context,
       initialIsCompleted: goal.isCompleted,
+      goalId: goal.id, // Pass goalId for review buttons
       onSubmit: (name, desc, targetDate, contxt, isCompleted) async {
         await cubit.editGoal(goal.id, name, desc, targetDate, contxt, isCompleted);
       },

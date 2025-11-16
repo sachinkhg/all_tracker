@@ -1,8 +1,12 @@
 import 'package:all_tracker/goal_tracker/core/constants.dart';
+import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import 'package:flutter/material.dart';
 
 import '../../../widgets/context_dropdown_bottom_sheet.dart';
 import '../../../widgets/date_picker_bottom_sheet.dart';
+import '../pages/milestone_list_page.dart';
+import '../pages/task_list_page.dart';
+import '../pages/habit_list_page.dart';
 
 /// ---------------------------------------------------------------------------
 /// GoalFormBottomSheet
@@ -60,6 +64,7 @@ class GoalFormBottomSheet {
     DateTime? initialTargetDate,
     String? initialContext,
     bool initialIsCompleted = false,
+    String? goalId, // Optional goalId for review buttons (only in edit mode)
     required Future<void> Function(
       String name,
       String desc,
@@ -296,7 +301,7 @@ class GoalFormBottomSheet {
                     const SizedBox(height: 20),
 
                     // --- Action Buttons ---
-                    // Provides a single primary Save action.
+                    // Provides Save action (edit mode) or Save and Add More (create mode).
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
@@ -306,12 +311,159 @@ class GoalFormBottomSheet {
                           // Minimal validation: name required.
                           if (name.isEmpty) return;
                           await onSubmit(name, desc, selectedDate, selectedContext, isCompleted);
-                          // ignore: use_build_context_synchronously
-                          Navigator.pop(ctx2);
+                          
+                          // In edit mode, close the form after saving
+                          if (onDelete != null) {
+                            // ignore: use_build_context_synchronously
+                            Navigator.pop(ctx2);
+                            return;
+                          }
+                          
+                          // In create mode, clear form and keep it open for adding more
+                          // Persist context since user might want to add multiple goals with same context
+                          nameCtrl.clear();
+                          descCtrl.clear();
+                          setState(() {
+                            selectedDate = null;
+                            // Keep selectedContext - don't clear it
+                            isCompleted = false;
+                          });
                         },
-                        child: const Text('Save'),
+                        child: Text(onDelete != null ? 'Save' : 'Save and Add More'),
                       ),
                     ),
+
+                    // --- Review Buttons ---
+                    // Appears only in edit mode (when onDelete is provided and goalId is available).
+                    if (onDelete != null && goalId != null) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Review',
+                        style: textTheme.labelLarge?.copyWith(color: cs.onSurfaceVariant),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          // Review Milestone button
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(ctx2);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => MilestoneListPage(goalId: goalId),
+                                ),
+                              );
+                            },
+                            icon: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(AppIcons.milestone, color: cs.primary),
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: cs.surface,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.remove_red_eye,
+                                      size: 14,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            tooltip: 'Review Milestones',
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.primary,
+                            ),
+                          ),
+                          // Review Tasks button
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(ctx2);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => TaskListPage(goalId: goalId),
+                                ),
+                              );
+                            },
+                            icon: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(AppIcons.task, color: cs.primary),
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: cs.surface,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.remove_red_eye,
+                                      size: 14,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            tooltip: 'Review Tasks',
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.primary,
+                            ),
+                          ),
+                          // Review Habit button
+                          IconButton(
+                            onPressed: () {
+                              Navigator.pop(ctx2);
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => HabitListPage(goalId: goalId),
+                                ),
+                              );
+                            },
+                            icon: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.center,
+                              children: [
+                                Icon(AppIcons.habit, color: cs.primary),
+                                Positioned(
+                                  top: -4,
+                                  right: -4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: cs.surface,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.remove_red_eye,
+                                      size: 14,
+                                      color: cs.primary,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            tooltip: 'Review Habits',
+                            style: IconButton.styleFrom(
+                              foregroundColor: cs.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

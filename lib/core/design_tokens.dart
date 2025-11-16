@@ -33,6 +33,54 @@ class AppGradients {
         ],
       );
 
+  /// AppBar gradient with improved readability in both light and dark themes.
+  /// Uses lighter shades in dark mode and softer shades in light mode.
+  static LinearGradient appBar(ColorScheme cs) {
+    final isDark = cs.brightness == Brightness.dark;
+    
+    // In dark mode: use lighter primary shades to avoid too-dark black
+    // In light mode: use slightly muted/darker shades to avoid too-bright white
+    if (isDark) {
+      // Blend primary with surface for a lighter, more readable background
+      final startColor = Color.lerp(
+        cs.primary,
+        cs.surface,
+        0.15, // Make it 15% lighter by blending with surface
+      ) ?? cs.primary;
+      
+      final endColor = Color.lerp(
+        cs.primaryContainer,
+        cs.surface,
+        0.25, // Make it 25% lighter
+      ) ?? cs.primaryContainer;
+      
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [startColor, endColor],
+      );
+    } else {
+      // In light mode: blend with a subtle darker tone to reduce brightness
+      final startColor = Color.lerp(
+        cs.primary,
+        Colors.black,
+        0.08, // Make it slightly darker (8% towards black)
+      ) ?? cs.primary;
+      
+      final endColor = Color.lerp(
+        cs.primaryContainer,
+        Colors.black,
+        0.05, // Make it slightly darker (5% towards black)
+      ) ?? cs.primaryContainer;
+      
+      return LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [startColor, endColor],
+      );
+    }
+  }
+
   /// Secondary gradient derived from the theme's [ColorScheme].
   static LinearGradient secondary(ColorScheme cs) => LinearGradient(
         begin: Alignment.topLeft,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/app_theme.dart';
 import '../../../core/theme_notifier.dart';
+import '../../../core/design_tokens.dart';
 import '../../features/backup_restore.dart';
 import '../../features/backup/presentation/pages/backup_settings_page.dart';
 
@@ -11,9 +12,20 @@ class SettingsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final notifier = context.watch<ThemeNotifier>();
+    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(
+        title: const Text('Settings'),
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: AppGradients.appBar(cs),
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        foregroundColor: cs.onPrimary,
+        elevation: 0,
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

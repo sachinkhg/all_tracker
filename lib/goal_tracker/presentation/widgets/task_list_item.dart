@@ -52,6 +52,10 @@ class TaskListItem extends StatelessWidget {
   /// Triggered when the user taps the item (usually opens the edit screen).
   final VoidCallback onEdit;
 
+  /// Optional callback triggered when the user swipes right to mark task as completed.
+  /// If null, swipe gesture is disabled.
+  final VoidCallback? onSwipeComplete;
+
   /// Map of visibility flags that determines which fields are displayed.
   ///
   /// Expected keys:
@@ -76,6 +80,7 @@ class TaskListItem extends StatelessWidget {
     this.milestoneName,
     this.goalName,
     required this.onEdit,
+    this.onSwipeComplete,
     this.visibleFields,
     this.filterActive = false,
   });
@@ -130,7 +135,10 @@ class TaskListItem extends StatelessWidget {
 
     final formattedTarget = targetDate != null ? dateFmt.format(targetDate!) : null;
 
-    return Card(
+    // Only enable swipe if callback is provided and task is not already complete
+    final canSwipe = onSwipeComplete != null && status != 'Complete';
+
+    final card = Card(
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
@@ -266,6 +274,38 @@ class TaskListItem extends StatelessWidget {
         ),
       ),
     );
+
+    // Wrap in Dismissible if swipe is enabled
+    if (canSwipe) {
+      return Dismissible(
+        key: Key('task_$id'),
+        direction: DismissDirection.startToEnd, // Swipe right (startToEnd means swipe from left to right)
+        background: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: cs.tertiaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 20),
+          child: Icon(
+            Icons.check_circle,
+            color: cs.onTertiaryContainer,
+            size: 32,
+          ),
+        ),
+        confirmDismiss: (_) async {
+          // Call the callback to mark as complete
+          onSwipeComplete?.call();
+          // Return false to prevent the item from being dismissed
+          // The status update will cause a rebuild with the new status
+          return false;
+        },
+        child: card,
+      );
+    }
+
+    return card;
   }
 }
 

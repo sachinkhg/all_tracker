@@ -381,15 +381,28 @@ class _TaskFormBottomSheetState extends State<TaskFormBottomSheet> {
                     return;
                   }
 
-                  Navigator.pop(context);
                   await widget.onSubmit(
                     name,
                     selectedDate,
                     selectedMilestoneId!,
                     selectedStatus ?? 'To Do',
                   );
+                  
+                  // In edit mode, close the form after saving
+                  if (widget.onDelete != null) {
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    return;
+                  }
+                  
+                  // In create mode, clear form and keep it open for adding more
+                  // Keep selectedMilestoneId and selectedStatus since user might want to add multiple tasks
+                  nameCtrl.clear();
+                  setState(() {
+                    selectedDate = null;
+                  });
                 },
-                child: const Text('Save'),
+                child: Text(widget.onDelete != null ? 'Save' : 'Save and Add More'),
               ),
             ),
           ],

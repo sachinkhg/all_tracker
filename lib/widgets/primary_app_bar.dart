@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/design_tokens.dart';
 
 /// ----------------------------------------------------------------------------
 /// File purpose:
@@ -47,12 +48,18 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    // Use themed colors to maintain consistency across screens.
+    // Use themed colors and gradient to maintain consistency across screens.
     return AppBar(
       title: Text(title),
-      backgroundColor: cs.primary,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: AppGradients.appBar(cs),
+          ),
+        ),
+      backgroundColor: Colors.transparent,
       foregroundColor: cs.onPrimary,
       actions: actions,
+      elevation: 0,
     );
   }
 

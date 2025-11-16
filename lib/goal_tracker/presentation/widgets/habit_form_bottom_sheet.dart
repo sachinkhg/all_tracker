@@ -455,7 +455,6 @@ class _HabitFormBottomSheetState extends State<HabitFormBottomSheet> {
                       ? null
                       : int.tryParse(targetCompletionsCtrl.text.trim());
 
-                  Navigator.pop(context);
                   await widget.onSubmit(
                     name,
                     descriptionCtrl.text.trim().isEmpty ? null : descriptionCtrl.text.trim(),
@@ -464,8 +463,29 @@ class _HabitFormBottomSheetState extends State<HabitFormBottomSheet> {
                     targetCompletions,
                     isActive,
                   );
+                  
+                  // In edit mode, close the form after saving
+                  if (widget.onDelete != null) {
+                    if (!mounted) return;
+                    Navigator.pop(context);
+                    return;
+                  }
+                  
+                  // In create mode, clear form and keep it open for adding more
+                  // Keep selectedMilestoneId since user might want to add multiple habits to same milestone
+                  nameCtrl.clear();
+                  descriptionCtrl.clear();
+                  targetCompletionsCtrl.clear();
+                  setState(() {
+                    // Keep selectedMilestoneId - don't clear it
+                    // Reset RRULE to default
+                    selectedRrulePreset = 'Daily';
+                    useCustomRrule = false;
+                    customRruleCtrl.clear();
+                    isActive = true;
+                  });
                 },
-                child: const Text('Save'),
+                child: Text(widget.onDelete != null ? 'Save' : 'Save and Add More'),
               ),
             ),
           ],

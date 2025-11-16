@@ -36,19 +36,35 @@ import '../widgets/filter_group_bottom_sheet.dart';
 import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 
 class HabitListPage extends StatelessWidget {
-  const HabitListPage({super.key});
+  final String? goalId;
+  final String? milestoneId;
+  
+  const HabitListPage({super.key, this.goalId, this.milestoneId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createHabitCubit()..loadHabits(),
-      child: const HabitListPageView(),
+      create: (_) {
+        final cubit = createHabitCubit();
+        cubit.loadHabits().then((_) {
+          if (milestoneId != null) {
+            cubit.applyFilter(milestoneId: milestoneId);
+          } else if (goalId != null) {
+            cubit.applyFilter(goalId: goalId);
+          }
+        });
+        return cubit;
+      },
+      child: HabitListPageView(goalId: goalId, milestoneId: milestoneId),
     );
   }
 }
 
 class HabitListPageView extends StatelessWidget {
-  const HabitListPageView({super.key});
+  final String? goalId;
+  final String? milestoneId;
+  
+  const HabitListPageView({super.key, this.goalId, this.milestoneId});
 
   @override
   Widget build(BuildContext context) {
@@ -343,6 +359,7 @@ class HabitListPageView extends StatelessWidget {
       
       cubit.applyFilter(
         milestoneId: result['milestoneId'] as String?,
+        goalId: result['goalId'] as String?,
         statusFilter: result['status'] as String?,
         hideCompleted: hideCompleted,
       );

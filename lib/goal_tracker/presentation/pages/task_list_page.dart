@@ -34,19 +34,35 @@ import '../widgets/filter_group_bottom_sheet.dart';
 import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 
 class TaskListPage extends StatelessWidget {
-  const TaskListPage({super.key});
+  final String? goalId;
+  final String? milestoneId;
+  
+  const TaskListPage({super.key, this.goalId, this.milestoneId});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createTaskCubit()..loadTasks(),
-      child: const TaskListPageView(),
+      create: (_) {
+        final cubit = createTaskCubit();
+        cubit.loadTasks().then((_) {
+          if (milestoneId != null) {
+            cubit.applyFilter(milestoneId: milestoneId);
+          } else if (goalId != null) {
+            cubit.applyFilter(goalId: goalId);
+          }
+        });
+        return cubit;
+      },
+      child: TaskListPageView(goalId: goalId, milestoneId: milestoneId),
     );
   }
 }
 
 class TaskListPageView extends StatelessWidget {
-  const TaskListPageView({super.key});
+  final String? goalId;
+  final String? milestoneId;
+  
+  const TaskListPageView({super.key, this.goalId, this.milestoneId});
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +125,7 @@ class TaskListPageView extends StatelessWidget {
                       milestoneNameById: milestoneNameById,
                       goalNameById: goalNameById,
                       onEdit: (ctx, task) => _onEditTask(ctx, task, cubit),
+                      onSwipeComplete: (ctx, task) => _onSwipeComplete(ctx, task, cubit),
                       onEditFilters: () => _editFilters(context, cubit),
                       onClearFilters: () {
                         cubit.clearFilters();
@@ -441,6 +458,41 @@ class TaskListPageView extends StatelessWidget {
     );
   }
 
+  void _onSwipeComplete(BuildContext context, Task task, TaskCubit cubit) async {
+    // Only mark as complete if not already complete
+    if (task.status == 'Complete') return;
+
+    try {
+      await cubit.editTask(
+        id: task.id,
+        name: task.name,
+        targetDate: task.targetDate,
+        milestoneId: task.milestoneId,
+        status: 'Complete',
+      );
+      
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Task marked as complete')),
+      );
+    } on MilestoneNotFoundException catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } on InvalidMilestoneException catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } catch (e) {
+      // ignore: use_build_context_synchronously
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error marking task as complete: ${e.toString()}')),
+      );
+    }
+  }
+
   void _showActionsSheet(BuildContext context, TaskCubit cubit) {
     final sheet = Column(
       mainAxisSize: MainAxisSize.min,
@@ -678,6 +730,7 @@ class _TasksBody extends StatelessWidget {
   final Map<String, String> milestoneNameById;
   final Map<String, String> goalNameById;
   final Function(BuildContext, Task) onEdit;
+  final Function(BuildContext, Task) onSwipeComplete;
   final VoidCallback onEditFilters;
   final VoidCallback onClearFilters;
 
@@ -689,6 +742,7 @@ class _TasksBody extends StatelessWidget {
     required this.milestoneNameById,
     required this.goalNameById,
     required this.onEdit,
+    required this.onSwipeComplete,
     required this.onEditFilters,
     required this.onClearFilters,
   });
@@ -711,6 +765,7 @@ class _TasksBody extends StatelessWidget {
                 milestoneName: milestoneNameById[task.milestoneId],
                 goalName: goalNameById[task.goalId],
                 onEdit: () => onEdit(context, task),
+                onSwipeComplete: () => onSwipeComplete(context, task),
                 visibleFields: visibleFields,
                 filterActive: filterActive,
               );

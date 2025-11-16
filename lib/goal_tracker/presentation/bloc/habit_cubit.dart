@@ -37,6 +37,7 @@ import '../../core/view_preferences_service.dart';
 import '../../core/filter_preferences_service.dart';
 import '../../core/sort_preferences_service.dart';
 import '../../data/models/milestone_model.dart';
+import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
@@ -66,6 +67,7 @@ class HabitCubit extends Cubit<HabitState> {
 
   // Optional filters / context
   String? _currentMilestoneIdFilter;
+  String? _currentGoalIdFilter;
   String? _currentStatusFilter; // 'Active', 'Inactive', 'All'
   
   // Sort-related state
@@ -98,6 +100,7 @@ class HabitCubit extends Cubit<HabitState> {
   }
 
   String? get currentMilestoneIdFilter => _currentMilestoneIdFilter;
+  String? get currentGoalIdFilter => _currentGoalIdFilter;
   String? get currentStatusFilter => _currentStatusFilter;
   String get currentSortOrder => _sortOrder;
   bool get hideInactive => _hideInactive;
@@ -105,6 +108,7 @@ class HabitCubit extends Cubit<HabitState> {
   /// Returns true when any filter or sort is active.
   bool get hasActiveFilters =>
       (_currentMilestoneIdFilter != null && _currentMilestoneIdFilter!.isNotEmpty) ||
+      (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) ||
       (_currentStatusFilter != null && _currentStatusFilter != 'All') ||
       _sortOrder != 'asc';
 
@@ -120,6 +124,16 @@ class HabitCubit extends Cubit<HabitState> {
         parts.add('Milestone: $milestoneName');
       } catch (e) {
         parts.add('Milestone: ${_currentMilestoneIdFilter!}');
+      }
+    }
+    if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
+      try {
+        final goalBox = Hive.box<GoalModel>(goalBoxName);
+        final goal = goalBox.get(_currentGoalIdFilter);
+        final goalName = goal?.name ?? _currentGoalIdFilter!;
+        parts.add('Goal: $goalName');
+      } catch (e) {
+        parts.add('Goal: ${_currentGoalIdFilter!}');
       }
     }
     if (_currentStatusFilter != null && _currentStatusFilter != 'All') {
@@ -158,6 +172,7 @@ class HabitCubit extends Cubit<HabitState> {
     final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.habit);
     if (savedFilters != null) {
       _currentMilestoneIdFilter = savedFilters['milestoneId'];
+      _currentGoalIdFilter = savedFilters['goalId'];
       _currentStatusFilter = savedFilters['status'];
     }
     
@@ -211,9 +226,10 @@ class HabitCubit extends Cubit<HabitState> {
     }
   }
 
-  /// Apply filters (milestoneId and/or status).
-  void applyFilter({String? milestoneId, String? statusFilter, bool? hideCompleted}) {
+  /// Apply filters (milestoneId, goalId and/or status).
+  void applyFilter({String? milestoneId, String? goalId, String? statusFilter, bool? hideCompleted}) {
     _currentMilestoneIdFilter = milestoneId;
+    _currentGoalIdFilter = goalId;
     _currentStatusFilter = statusFilter;
     // Map hideCompleted to hideInactive for habits
     if (hideCompleted != null) {
@@ -237,6 +253,7 @@ class HabitCubit extends Cubit<HabitState> {
   /// Clear applied filters and emit the full list.
   void clearFilters() {
     _currentMilestoneIdFilter = null;
+    _currentGoalIdFilter = null;
     _currentStatusFilter = null;
     _sortOrder = 'asc';
     _hideInactive = true; // Reset to default (hide inactive)
@@ -253,6 +270,11 @@ class HabitCubit extends Cubit<HabitState> {
       // Milestone filter
       if (_currentMilestoneIdFilter != null && _currentMilestoneIdFilter!.isNotEmpty) {
         if (h.milestoneId != _currentMilestoneIdFilter) return false;
+      }
+
+      // Goal filter
+      if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
+        if (h.goalId != _currentGoalIdFilter) return false;
       }
 
       // Status filter

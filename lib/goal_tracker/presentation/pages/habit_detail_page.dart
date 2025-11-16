@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/injection.dart';
+import '../../../core/design_tokens.dart';
 import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
@@ -63,106 +64,119 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
         BlocProvider<HabitCubit>.value(value: _habitCubit),
         BlocProvider<HabitCompletionCubit>.value(value: _completionCubit),
       ],
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Habit Details'),
-          actions: [
-            IconButton(
-              onPressed: _editHabit,
-              icon: const Icon(Icons.edit),
-              tooltip: 'Edit Habit',
-            ),
-            PopupMenuButton<String>(
-              onSelected: _handleMenuAction,
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'toggle_active',
-                  child: Row(
-                    children: [
-                      Icon(Icons.power_settings_new),
-                      SizedBox(width: 8),
-                      Text('Toggle Active'),
-                    ],
-                  ),
+      child: Builder(
+        builder: (context) {
+          final cs = Theme.of(context).colorScheme;
+          return Scaffold(
+            appBar: AppBar(
+              title: const Text('Habit Details'),
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: AppGradients.appBar(cs),
                 ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete, color: Colors.red),
-                      SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: Colors.red)),
-                    ],
-                  ),
+              ),
+              backgroundColor: Colors.transparent,
+              foregroundColor: cs.onPrimary,
+              elevation: 0,
+              actions: [
+                IconButton(
+                  onPressed: _editHabit,
+                  icon: const Icon(Icons.edit),
+                  tooltip: 'Edit Habit',
+                ),
+                PopupMenuButton<String>(
+                  onSelected: _handleMenuAction,
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'toggle_active',
+                      child: Row(
+                        children: [
+                          Icon(Icons.power_settings_new),
+                          SizedBox(width: 8),
+                          Text('Toggle Active'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-        body: BlocListener<HabitCubit, HabitState>(
-          bloc: _habitCubit,
-          listener: (context, state) {
-            if (state is HabitsLoaded && state.habits.isNotEmpty) {
-              setState(() {
-                _habit = state.habits.first;
-              });
-              if (_habit != null) {
-                _completionCubit.loadCompletionsByHabitId(_habit!.id);
-              }
-            } else if (state is HabitsError) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.message)),
-              );
-            }
-          },
-          child: BlocBuilder<HabitCubit, HabitState>(
-            bloc: _habitCubit,
-            builder: (context, state) {
-              if (state is HabitsLoading) {
-                return const Center(child: CircularProgressIndicator());
-              }
+            body: BlocListener<HabitCubit, HabitState>(
+              bloc: _habitCubit,
+              listener: (context, state) {
+                if (state is HabitsLoaded && state.habits.isNotEmpty) {
+                  setState(() {
+                    _habit = state.habits.first;
+                  });
+                  if (_habit != null) {
+                    _completionCubit.loadCompletionsByHabitId(_habit!.id);
+                  }
+                } else if (state is HabitsError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(state.message)),
+                  );
+                }
+              },
+              child: BlocBuilder<HabitCubit, HabitState>(
+                bloc: _habitCubit,
+                builder: (context, state) {
+                  if (state is HabitsLoading) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
 
-              if (state is HabitsError) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Theme.of(context).colorScheme.error,
+                  if (state is HabitsError) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            size: 64,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Error loading habit',
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            state.message,
+                            style: Theme.of(context).textTheme.bodyMedium,
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _loadHabit,
+                            child: const Text('Retry'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Error loading habit',
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        state.message,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _loadHabit,
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                );
-              }
+                    );
+                  }
 
-              if (_habit == null) {
-                return const Center(
-                  child: Text('Habit not found'),
-                );
-              }
+                  if (_habit == null) {
+                    return const Center(
+                      child: Text('Habit not found'),
+                    );
+                  }
 
-              return _buildHabitDetails();
-            },
-          ),
-        ),
+                  return _buildHabitDetails();
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
