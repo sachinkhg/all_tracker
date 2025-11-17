@@ -1,6 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../goal_tracker/core/constants.dart';
-import '../goal_tracker/core/box_provider.dart';
+import '../trackers/goal_tracker/core/constants.dart';
+import '../trackers/goal_tracker/core/box_provider.dart';
 const String _kThemeKey = 'theme_key';
 const String _kFontKey = 'font_key';
 const String _kIsDark = 'is_dark';
