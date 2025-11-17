@@ -5,6 +5,14 @@ import 'package:all_tracker/trackers/goal_tracker/data/models/habit_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/data/models/habit_completion_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/features/backup/data/models/backup_metadata_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/core/constants.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/investment_component_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/income_category_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/expense_category_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/income_entry_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/expense_entry_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/component_allocation_model.dart';
+import 'package:all_tracker/utilities/investment_planner/data/models/investment_plan_model.dart';
+import 'package:all_tracker/utilities/investment_planner/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
@@ -81,6 +89,49 @@ class HiveInitializer {
       Hive.registerAdapter(BackupMetadataModelAdapter());
     }
 
+    // Investment Planner adapters
+    // typeId: 6 -> InvestmentComponentModel
+    final investmentComponentAdapterId = InvestmentComponentModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(investmentComponentAdapterId)) {
+      Hive.registerAdapter(InvestmentComponentModelAdapter());
+    }
+
+    // typeId: 7 -> IncomeCategoryModel
+    final incomeCategoryAdapterId = IncomeCategoryModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(incomeCategoryAdapterId)) {
+      Hive.registerAdapter(IncomeCategoryModelAdapter());
+    }
+
+    // typeId: 8 -> ExpenseCategoryModel
+    final expenseCategoryAdapterId = ExpenseCategoryModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(expenseCategoryAdapterId)) {
+      Hive.registerAdapter(ExpenseCategoryModelAdapter());
+    }
+
+    // typeId: 9 -> InvestmentPlanModel
+    final investmentPlanAdapterId = InvestmentPlanModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(investmentPlanAdapterId)) {
+      Hive.registerAdapter(InvestmentPlanModelAdapter());
+    }
+
+    // typeId: 10 -> IncomeEntryModel
+    final incomeEntryAdapterId = IncomeEntryModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(incomeEntryAdapterId)) {
+      Hive.registerAdapter(IncomeEntryModelAdapter());
+    }
+
+    // typeId: 11 -> ExpenseEntryModel
+    final expenseEntryAdapterId = ExpenseEntryModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(expenseEntryAdapterId)) {
+      Hive.registerAdapter(ExpenseEntryModelAdapter());
+    }
+
+    // typeId: 12 -> ComponentAllocationModel
+    final componentAllocationAdapterId = ComponentAllocationModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(componentAllocationAdapterId)) {
+      Hive.registerAdapter(ComponentAllocationModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
@@ -104,6 +155,12 @@ class HiveInitializer {
     
     // Open sort preferences box (stores user sort settings)
     await Hive.openBox(sortPreferencesBoxName);
+
+    // Open investment planner boxes
+    await Hive.openBox<InvestmentComponentModel>(investmentComponentBoxName);
+    await Hive.openBox<IncomeCategoryModel>(incomeCategoryBoxName);
+    await Hive.openBox<ExpenseCategoryModel>(expenseCategoryBoxName);
+    await Hive.openBox<InvestmentPlanModel>(investmentPlanBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

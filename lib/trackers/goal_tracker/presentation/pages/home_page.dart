@@ -46,9 +46,11 @@ import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
 import 'habit_list_page.dart';
-import 'settings_page.dart';
+import '../../../../pages/settings_page.dart';
 import '../bloc/habit_cubit.dart';
 import '../../../../widgets/bottom_sheet_helpers.dart';
+import '../../../../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
+import '../../../../pages/app_home_page.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
 class HomePage extends StatefulWidget {
@@ -123,6 +125,16 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
       appBar: AppBar(
         title: const Text('Goal Tracker'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AppHomePage()),
+                (route) => false,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
@@ -1525,16 +1537,17 @@ class _AppDrawer extends StatelessWidget {
                         ),
                   ),
                 ),
-                // Utility items will be added here in the future
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m),
-                  child: Text(
-                    'Coming soon...',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
-                  ),
+                _DrawerTile(
+                  icon: Icons.account_balance,
+                  title: 'Investment Planner',
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close drawer
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const InvestmentPlannerHomePage(),
+                      ),
+                    );
+                  },
                 ),
                 
                 const Divider(height: 1),

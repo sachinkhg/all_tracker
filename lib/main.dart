@@ -2,7 +2,7 @@ import 'package:all_tracker/core/hive_initializer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/app_typography.dart';
-import 'trackers/goal_tracker/presentation/pages/home_page.dart';
+import 'pages/app_home_page.dart';
 import 'core/theme_notifier.dart';
 
 /// ============================================================================
@@ -105,11 +105,11 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      /// Current initial route → HomePage
+      /// Current initial route → AppHomePage (main landing page)
       /// To modify:
       ///   - Replace with another widget
       ///   - Or use `initialRoute` and `routes` for multi-screen navigation
-      home: const HomePage(),
+      home: const AppHomePage(),
     );
   }
 }

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/app_theme.dart';
-import '../../../../core/theme_notifier.dart';
-import '../../../../core/design_tokens.dart';
-import '../../features/backup_restore.dart';
-import '../../features/backup/presentation/pages/backup_settings_page.dart';
+import '../core/app_theme.dart';
+import '../core/theme_notifier.dart';
+import '../core/design_tokens.dart';
+import '../trackers/goal_tracker/features/backup_restore.dart';
+import '../trackers/goal_tracker/features/backup/presentation/pages/backup_settings_page.dart';
+import 'app_home_page.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -17,6 +18,18 @@ class SettingsPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.home),
+            tooltip: 'Home',
+            onPressed: () {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const AppHomePage()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: AppGradients.appBar(cs),
@@ -99,7 +112,7 @@ class SettingsPage extends StatelessWidget {
                 subtitle: const Text('Export all data and preferences to a .zip'),
                 onTap: () async {
                   final path = await createBackupZip(context);
-                  if (path != null) {
+                  if (path != null && context.mounted) {
                     // Feedback handled inside helper; provide quick confirmation
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('Backup saved to: $path')),
@@ -231,5 +244,4 @@ class _ColorPresetTile extends StatelessWidget {
     );
   }
 }
-
 
