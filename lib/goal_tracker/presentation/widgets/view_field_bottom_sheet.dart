@@ -62,8 +62,16 @@ class ViewFieldsBottomSheet extends StatefulWidget {
   /// - Keep the keys consistent across the codebase to avoid accidental
   ///   migration issues. If you change a key name, update migration_notes.md.
   final Map<String, bool>? initial;
+  
+  /// Optional initial view type ('list' or 'calendar'). Only used for task entity.
+  final String? initialViewType;
 
-  const ViewFieldsBottomSheet({Key? key, required this.entity, this.initial}) : super(key: key);
+  const ViewFieldsBottomSheet({
+    Key? key, 
+    required this.entity, 
+    this.initial,
+    this.initialViewType,
+  }) : super(key: key);
 
   @override
   State<ViewFieldsBottomSheet> createState() => _ViewFieldsBottomSheetState();
@@ -81,10 +89,18 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
   /// Checked by default (auto-save enabled).
   /// When unchecked and APPLY is clicked, saved preferences are cleared.
   bool _saveView = true;
+  
+  /// View type for tasks: 'list' or 'calendar'. Only used for task entity.
+  String _viewType = 'list';
 
   @override
   void initState() {
     super.initState();
+    // Initialize view type for tasks
+    if (widget.entity == ViewEntityType.task) {
+      _viewType = widget.initialViewType ?? 'list';
+    }
+    
     // Build default sets based on entity type; then overlay any provided initial map.
     if (widget.entity == ViewEntityType.goal) {
       _fields = {
@@ -183,6 +199,34 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('actualValue', 'Actual Value'),
               _buildToggle('remainingDays', 'Remaining Days'),
             ] else if (widget.entity == ViewEntityType.task) ...[
+              // View type toggle for tasks
+              const Divider(),
+              ListTile(
+                title: const Text('View Type'),
+                subtitle: const Text('Choose how to display tasks'),
+                trailing: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'list',
+                      label: Text('List'),
+                      icon: Icon(Icons.list),
+                    ),
+                    ButtonSegment(
+                      value: 'calendar',
+                      label: Text('Calendar'),
+                      icon: Icon(Icons.calendar_month),
+                    ),
+                  ],
+                  selected: {_viewType},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    setState(() {
+                      _viewType = newSelection.first;
+                    });
+                  },
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
               // Task fields
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('status', 'Status'),
@@ -221,11 +265,16 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
                   onPressed: () {
                     // Ensure 'name' remains enabled
                     _fields['name'] = true;
-                    // Return both fields and saveView preference
-                    Navigator.of(context).pop({
+                    // Return fields, viewType (for tasks), and saveView preference
+                    final result = {
                       'fields': _fields,
                       'saveView': _saveView,
-                    });
+                    };
+                    // Only include viewType for tasks
+                    if (widget.entity == ViewEntityType.task) {
+                      result['viewType'] = _viewType;
+                    }
+                    Navigator.of(context).pop(result);
                   },
                 ),
               ],

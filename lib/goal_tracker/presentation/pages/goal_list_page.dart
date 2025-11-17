@@ -15,10 +15,7 @@ import '../../features/goal_import_export.dart';
 import '../bloc/goal_cubit.dart';
 import '../bloc/goal_state.dart';
 import '../../core/injection.dart'; // factory that wires everything
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../../core/sort_preferences_service.dart'; // for SortEntityType
-import 'milestone_list_page.dart';
-import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
@@ -58,8 +55,8 @@ class GoalListPageView extends StatelessWidget {
         title: 'Goal Tracker',
         actions: [
           IconButton(
-            tooltip: 'Dashboard',
-            icon: const Icon(Icons.dashboard),
+            tooltip: 'Home Page',
+            icon: const Icon(Icons.home),
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
@@ -389,36 +386,6 @@ class _ActionsFab extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Navigation row
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'navMilestones',
-              tooltip: 'Milestones',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MilestoneListPage()),
-                );
-              },
-              child: const Icon(AppIcons.milestone),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              heroTag: 'navTasks',
-              tooltip: 'Tasks',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const TaskListPage()),
-                );
-              },
-              child: const Icon(AppIcons.task),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

@@ -50,15 +50,19 @@ class TasksLoaded extends TaskState {
   /// Optional UI metadata, such as which fields are visible.
   final Map<String, bool>? visibleFields;
 
+  /// View type: 'list' or 'calendar'. Defaults to 'list'.
+  final String viewType;
+
   const TasksLoaded(
     this.tasks, {
     this.milestoneId,
     this.goalId,
     this.visibleFields,
+    this.viewType = 'list',
   });
 
   @override
-  List<Object?> get props => [tasks, milestoneId, goalId, visibleFields];
+  List<Object?> get props => [tasks, milestoneId, goalId, visibleFields, viewType];
 }
 
 /// Error state — emitted when task operations fail.

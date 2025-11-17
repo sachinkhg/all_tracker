@@ -110,5 +110,55 @@ class ViewPreferencesService {
         return 'habit_view';
     }
   }
+
+  /// Loads saved view type preference for a given entity type.
+  ///
+  /// Returns:
+  /// - String ('list' or 'calendar') if preference is found and valid
+  /// - null if no preference is saved or if decoding fails
+  String? loadViewType(ViewEntityType entity) {
+    try {
+      final box = boxes.box(viewPreferencesBoxName);
+      final key = '${_keyForEntity(entity)}_type';
+      final viewType = box.get(key) as String?;
+      
+      if (viewType == null || (viewType != 'list' && viewType != 'calendar')) {
+        return null;
+      }
+      
+      return viewType;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Saves view type preference for a given entity type.
+  ///
+  /// Parameters:
+  /// - entity: The entity type (goal, milestone, task, or habit)
+  /// - viewType: The view type ('list' or 'calendar')
+  Future<void> saveViewType(
+    ViewEntityType entity,
+    String viewType,
+  ) async {
+    try {
+      final box = boxes.box(viewPreferencesBoxName);
+      final key = '${_keyForEntity(entity)}_type';
+      await box.put(key, viewType);
+    } catch (e) {
+      // Silently fail if save operation encounters an error.
+    }
+  }
+
+  /// Clears (deletes) saved view type preference for a given entity type.
+  Future<void> clearViewType(ViewEntityType entity) async {
+    try {
+      final box = boxes.box(viewPreferencesBoxName);
+      final key = '${_keyForEntity(entity)}_type';
+      await box.delete(key);
+    } catch (e) {
+      // Silently fail if delete operation encounters an error.
+    }
+  }
 }
 

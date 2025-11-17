@@ -117,7 +117,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('All Tracker'),
+        title: const Text('Goal Tracker'),
         actions: [
           IconButton(
             icon: const Icon(Icons.settings),
@@ -142,13 +142,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Dashboard Section
-            // Text(
-            //   'Dashboard',
-            //   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            //         fontWeight: FontWeight.bold,
-            //       ),
-            // ),
             const SizedBox(height: AppSpacing.s),
             const _DashboardSection().animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
             const SizedBox(height: AppSpacing.l),

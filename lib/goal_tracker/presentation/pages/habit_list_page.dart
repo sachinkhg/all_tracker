@@ -20,8 +20,6 @@ import '../bloc/habit_cubit.dart';
 import '../bloc/habit_state.dart';
 import '../bloc/habit_completion_cubit.dart';
 // import '../../features/habit_import_export.dart'; // TODO: Create habit import/export feature
-import 'goal_list_page.dart';
-import 'milestone_list_page.dart';
 import 'habit_detail_page.dart';
 
 // Shared component imports - adjust paths to your project
@@ -81,8 +79,8 @@ class HabitListPageView extends StatelessWidget {
           title: 'Habits',
           actions: [
             IconButton(
-              tooltip: 'Dashboard',
-              icon: const Icon(Icons.dashboard),
+              tooltip: 'Home Page',
+              icon: const Icon(Icons.home),
               onPressed: () {
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
@@ -552,36 +550,6 @@ class _ActionsFab extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Navigation row
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'navGoals',
-              tooltip: 'Goals',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const GoalListPage()),
-                );
-              },
-              child: const Icon(AppIcons.habit),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              heroTag: 'navMilestones',
-              tooltip: 'Milestones',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MilestoneListPage()),
-                );
-              },
-              child: const Icon(AppIcons.milestone),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

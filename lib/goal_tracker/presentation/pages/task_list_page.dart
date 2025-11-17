@@ -19,8 +19,6 @@ import '../../core/sort_preferences_service.dart'; // for SortEntityType
 import '../bloc/task_cubit.dart';
 import '../bloc/task_state.dart';
 import '../../features/task_import_export.dart';
-import 'goal_list_page.dart';
-import 'milestone_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
@@ -31,6 +29,7 @@ import '../../../widgets/error_view.dart';
 import '../widgets/task_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
+import '../widgets/task_calendar_view.dart';
 import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 
 class TaskListPage extends StatelessWidget {
@@ -77,8 +76,8 @@ class TaskListPageView extends StatelessWidget {
         title: 'Tasks',
         actions: [
           IconButton(
-            tooltip: 'Dashboard',
-            icon: const Icon(Icons.dashboard),
+            tooltip: 'Home Page',
+            icon: const Icon(Icons.home),
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
@@ -117,20 +116,35 @@ class TaskListPageView extends StatelessWidget {
                       );
                     }
 
-                    return _TasksBody(
-                      tasks: tasks,
-                      visibleFields: visible,
-                      filterActive: filterActive,
-                      filterSummary: filterSummary,
-                      milestoneNameById: milestoneNameById,
-                      goalNameById: goalNameById,
-                      onEdit: (ctx, task) => _onEditTask(ctx, task, cubit),
-                      onSwipeComplete: (ctx, task) => _onSwipeComplete(ctx, task, cubit),
-                      onEditFilters: () => _editFilters(context, cubit),
-                      onClearFilters: () {
-                        cubit.clearFilters();
-                      },
-                    );
+                    // Check view type - default to 'list' if not specified
+                    final viewType = state.viewType;
+
+                    if (viewType == 'calendar') {
+                      return TaskCalendarView(
+                        tasks: tasks,
+                        onEdit: (ctx, task) => _onEditTask(ctx, task, cubit),
+                        onSwipeComplete: (ctx, task) => _onSwipeComplete(ctx, task, cubit),
+                        milestoneNameById: milestoneNameById,
+                        goalNameById: goalNameById,
+                        visibleFields: visible,
+                        filterActive: filterActive,
+                      );
+                    } else {
+                      return _TasksBody(
+                        tasks: tasks,
+                        visibleFields: visible,
+                        filterActive: filterActive,
+                        filterSummary: filterSummary,
+                        milestoneNameById: milestoneNameById,
+                        goalNameById: goalNameById,
+                        onEdit: (ctx, task) => _onEditTask(ctx, task, cubit),
+                        onSwipeComplete: (ctx, task) => _onSwipeComplete(ctx, task, cubit),
+                        onEditFilters: () => _editFilters(context, cubit),
+                        onClearFilters: () {
+                          cubit.clearFilters();
+                        },
+                      );
+                    }
                   }
 
                   if (state is TasksError) {
@@ -157,16 +171,23 @@ class TaskListPageView extends StatelessWidget {
               final currentState = cubit.state;
               final Map<String, bool>? initial =
                   currentState is TasksLoaded ? currentState.visibleFields : <String, bool>{};
+              final String? initialViewType =
+                  currentState is TasksLoaded ? currentState.viewType : 'list';
 
               final result = await showAppBottomSheet<Map<String, dynamic>?>(
                 context,
-                ViewFieldsBottomSheet(entity: ViewEntityType.task, initial: initial),
+                ViewFieldsBottomSheet(
+                  entity: ViewEntityType.task,
+                  initial: initial,
+                  initialViewType: initialViewType,
+                ),
               );
               if (result == null) return;
               
-              // Extract fields and saveView preference from result
+              // Extract fields, viewType, and saveView preference from result
               final fields = result['fields'] as Map<String, bool>;
               final saveView = result['saveView'] as bool;
+              final viewType = result['viewType'] as String? ?? 'list';
               
               // Get the ViewPreferencesService from cubit
               final viewPrefsService = cubit.viewPreferencesService;
@@ -174,12 +195,15 @@ class TaskListPageView extends StatelessWidget {
               // Save or clear preferences based on checkbox state
               if (saveView) {
                 await viewPrefsService.saveViewPreferences(ViewEntityType.task, fields);
+                await viewPrefsService.saveViewType(ViewEntityType.task, viewType);
               } else {
                 await viewPrefsService.clearViewPreferences(ViewEntityType.task);
+                await viewPrefsService.clearViewType(ViewEntityType.task);
               }
               
-              // Apply the fields to the cubit to update UI
+              // Apply the fields and view type to the cubit to update UI
               cubit.setVisibleFields(fields);
+              cubit.setViewType(viewType);
             },
             onFilter: () async {
               await _editFilters(context, cubit);
@@ -581,36 +605,6 @@ class _ActionsFab extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Navigation row
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'navGoals',
-              tooltip: 'Goals',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const GoalListPage()),
-                );
-              },
-              child: const Icon(AppIcons.habit),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              heroTag: 'navMilestones',
-              tooltip: 'Milestones',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const MilestoneListPage()),
-                );
-              },
-              child: const Icon(AppIcons.milestone),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

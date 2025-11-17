@@ -110,8 +110,13 @@ class TaskCubit extends Cubit<TaskState> {
     'goalId': false,
   };
 
+  // View type: 'list' or 'calendar'. Defaults to 'list'.
+  String _viewType = 'list';
+
   Map<String, bool> get visibleFields =>
       Map<String, bool>.unmodifiable(_visibleFields);
+
+  String get viewType => _viewType;
 
   void setVisibleFields(Map<String, bool> fields) {
     _visibleFields = Map<String, bool>.from(fields);
@@ -121,9 +126,25 @@ class TaskCubit extends Cubit<TaskState> {
       emit(TasksLoaded(List<Task>.from(current.tasks),
           milestoneId: current.milestoneId,
           goalId: current.goalId,
-          visibleFields: visibleFields));
+          visibleFields: visibleFields,
+          viewType: _viewType));
     } else {
-      emit(TasksLoaded(List<Task>.from(_allTasks), visibleFields: visibleFields));
+      emit(TasksLoaded(List<Task>.from(_allTasks), visibleFields: visibleFields, viewType: _viewType));
+    }
+  }
+
+  void setViewType(String viewType) {
+    _viewType = viewType;
+    // Re-emit current view to trigger UI rebuild with new view type
+    if (state is TasksLoaded) {
+      final current = state as TasksLoaded;
+      emit(TasksLoaded(List<Task>.from(current.tasks),
+          milestoneId: current.milestoneId,
+          goalId: current.goalId,
+          visibleFields: visibleFields,
+          viewType: _viewType));
+    } else {
+      emit(TasksLoaded(List<Task>.from(_allTasks), visibleFields: visibleFields, viewType: _viewType));
     }
   }
 
@@ -204,6 +225,12 @@ class TaskCubit extends Cubit<TaskState> {
       _visibleFields = savedPrefs;
     }
     
+    // Load saved view type preference on initialization
+    final savedViewType = viewPreferencesService.loadViewType(ViewEntityType.task);
+    if (savedViewType != null) {
+      _viewType = savedViewType;
+    }
+    
     // Load saved filter preferences on initialization
     final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.task);
     if (savedFilters != null) {
@@ -231,7 +258,7 @@ class TaskCubit extends Cubit<TaskState> {
       // Apply any saved filters and sorting after loading data
       final filteredTasks = _filterTasks(_allTasks);
       final sortedTasks = _sortTasks(filteredTasks);
-      emit(TasksLoaded(sortedTasks, visibleFields: visibleFields));
+      emit(TasksLoaded(sortedTasks, visibleFields: visibleFields, viewType: _viewType));
     } catch (e) {
       emit(TasksError(e.toString()));
     }
@@ -244,7 +271,7 @@ class TaskCubit extends Cubit<TaskState> {
       final data = await getByMilestoneId(milestoneId);
       _currentMilestoneIdFilter = milestoneId;
       emit(TasksLoaded(List.from(data),
-          milestoneId: milestoneId, visibleFields: visibleFields));
+          milestoneId: milestoneId, visibleFields: visibleFields, viewType: _viewType));
     } catch (e) {
       emit(TasksError(e.toString()));
     }
@@ -256,7 +283,7 @@ class TaskCubit extends Cubit<TaskState> {
       emit(TasksLoading());
       final t = await getById(id);
       final list = t != null ? [t] : <Task>[];
-      emit(TasksLoaded(list, visibleFields: visibleFields));
+      emit(TasksLoaded(list, visibleFields: visibleFields, viewType: _viewType));
     } catch (e) {
       emit(TasksError(e.toString()));
     }
@@ -283,7 +310,8 @@ class TaskCubit extends Cubit<TaskState> {
     emit(TasksLoaded(sorted,
         milestoneId: _currentMilestoneIdFilter,
         goalId: _currentGoalIdFilter,
-        visibleFields: visibleFields));
+        visibleFields: visibleFields,
+        viewType: _viewType));
   }
 
   void applySorting({required String sortOrder, required bool hideCompleted}) {
@@ -295,7 +323,8 @@ class TaskCubit extends Cubit<TaskState> {
     emit(TasksLoaded(sorted,
         milestoneId: _currentMilestoneIdFilter,
         goalId: _currentGoalIdFilter,
-        visibleFields: visibleFields));
+        visibleFields: visibleFields,
+        viewType: _viewType));
   }
 
   /// Clear applied filters and emit the full list.
@@ -306,7 +335,7 @@ class TaskCubit extends Cubit<TaskState> {
     _currentTargetDateFilter = null;
     _sortOrder = 'asc';
     _hideCompleted = true; // Reset to default (hide completed)
-    emit(TasksLoaded(List.from(_allTasks), visibleFields: visibleFields));
+    emit(TasksLoaded(List.from(_allTasks), visibleFields: visibleFields, viewType: _viewType));
   }
 
   List<Task> _filterTasks(List<Task> source) {

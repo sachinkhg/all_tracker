@@ -17,12 +17,9 @@ import '../../core/constants.dart'; // for goalBoxName
 import '../../core/sort_preferences_service.dart'; // for SortEntityType
 import '../bloc/milestone_cubit.dart';
 import '../bloc/milestone_state.dart';
-import 'goal_list_page.dart';
-import 'task_list_page.dart';
 
 // Shared component imports - adjust paths to your project
 import '../../../widgets/primary_app_bar.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/milestone_list_item.dart';
 import '../../../widgets/loading_view.dart';
@@ -75,8 +72,8 @@ class MilestoneListPageView extends StatelessWidget {
         title: 'Milestones',
         actions: [
           IconButton(
-            tooltip: 'Dashboard',
-            icon: const Icon(Icons.dashboard),
+            tooltip: 'Home Page',
+            icon: const Icon(Icons.home),
             onPressed: () {
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
@@ -422,36 +419,6 @@ class _ActionsFab extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Navigation row
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            FloatingActionButton.small(
-              heroTag: 'navGoals',
-              tooltip: 'Goals',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const GoalListPage()),
-                );
-              },
-              child: const Icon(AppIcons.habit),
-            ),
-            const SizedBox(width: 8),
-            FloatingActionButton.small(
-              heroTag: 'navTasks',
-              tooltip: 'Tasks',
-              backgroundColor: cs.surface.withOpacity(0.85),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const TaskListPage()),
-                );
-              },
-              child: const Icon(AppIcons.task),
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
