@@ -2,7 +2,7 @@ import 'package:all_tracker/core/hive_initializer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'core/app_typography.dart';
-import 'goal_tracker/presentation/pages/home_page.dart';
+import 'trackers/goal_tracker/presentation/pages/home_page.dart';
 import 'core/theme_notifier.dart';
 
 /// ============================================================================

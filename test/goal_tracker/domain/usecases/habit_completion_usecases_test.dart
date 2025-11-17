@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:all_tracker/goal_tracker/data/datasources/habit_completion_local_data_source.dart';
-import 'package:all_tracker/goal_tracker/data/models/habit_completion_model.dart';
-import 'package:all_tracker/goal_tracker/data/repositories/habit_completion_repository_impl.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/habit_completion.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/habit_completion/create_completion.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/habit_completion/get_all_completions.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/habit_completion/get_completions_by_habit_id.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/habit_completion/get_completions_by_date_range.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/habit_completion/delete_completion.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/datasources/habit_completion_local_data_source.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/habit_completion_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/repositories/habit_completion_repository_impl.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/habit_completion.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/habit_completion/create_completion.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/habit_completion/get_all_completions.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/habit_completion/get_completions_by_habit_id.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/habit_completion/get_completions_by_date_range.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/habit_completion/delete_completion.dart';
 
 import '../../../helpers/fake_hive_box.dart';
 

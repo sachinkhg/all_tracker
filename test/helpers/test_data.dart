@@ -1,8 +1,8 @@
-import 'package:all_tracker/goal_tracker/domain/entities/goal.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/milestone.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/task.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/habit.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/habit_completion.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/goal.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/milestone.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/task.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/habit.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/habit_completion.dart';
 
 class TestDataBuilders {
   static Goal goal({

@@ -21,22 +21,23 @@ import '../bloc/task_state.dart';
 import '../../features/task_import_export.dart';
 
 // Shared component imports - adjust paths to your project
-import '../../../widgets/primary_app_bar.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import '../../../../widgets/primary_app_bar.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 import '../widgets/task_list_item.dart';
-import '../../../widgets/loading_view.dart';
-import '../../../widgets/error_view.dart';
+import '../../../../widgets/loading_view.dart';
+import '../../../../widgets/error_view.dart';
 import '../widgets/task_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/task_calendar_view.dart';
-import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
+import '../../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 
 class TaskListPage extends StatelessWidget {
   final String? goalId;
   final String? milestoneId;
+  final String? targetDateFilter;
   
-  const TaskListPage({super.key, this.goalId, this.milestoneId});
+  const TaskListPage({super.key, this.goalId, this.milestoneId, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {
@@ -44,15 +45,17 @@ class TaskListPage extends StatelessWidget {
       create: (_) {
         final cubit = createTaskCubit();
         cubit.loadTasks().then((_) {
-          if (milestoneId != null) {
-            cubit.applyFilter(milestoneId: milestoneId);
-          } else if (goalId != null) {
-            cubit.applyFilter(goalId: goalId);
+          if (milestoneId != null || goalId != null || targetDateFilter != null) {
+            cubit.applyFilter(
+              milestoneId: milestoneId,
+              goalId: goalId,
+              targetDateFilter: targetDateFilter,
+            );
           }
         });
         return cubit;
       },
-      child: TaskListPageView(goalId: goalId, milestoneId: milestoneId),
+      child: TaskListPageView(goalId: goalId, milestoneId: milestoneId, targetDateFilter: targetDateFilter),
     );
   }
 }
@@ -60,8 +63,9 @@ class TaskListPage extends StatelessWidget {
 class TaskListPageView extends StatelessWidget {
   final String? goalId;
   final String? milestoneId;
+  final String? targetDateFilter;
   
-  const TaskListPageView({super.key, this.goalId, this.milestoneId});
+  const TaskListPageView({super.key, this.goalId, this.milestoneId, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {

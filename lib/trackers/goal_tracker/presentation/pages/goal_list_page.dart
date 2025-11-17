@@ -18,29 +18,41 @@ import '../../core/injection.dart'; // factory that wires everything
 import '../../core/sort_preferences_service.dart'; // for SortEntityType
 
 // Shared component imports - adjust paths to your project
-import '../../../widgets/primary_app_bar.dart';
+import '../../../../widgets/primary_app_bar.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/goal_list_item.dart';
-import '../../../widgets/loading_view.dart';
-import '../../../widgets/error_view.dart';
+import '../../../../widgets/loading_view.dart';
+import '../../../../widgets/error_view.dart';
 import '../widgets/goal_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
-import '../../../widgets/bottom_sheet_helpers.dart'; // <- centralized helper
+import '../../../../widgets/bottom_sheet_helpers.dart'; // <- centralized helper
 
 class GoalListPage extends StatelessWidget {
-  const GoalListPage({super.key});
+  final String? targetDateFilter;
+  
+  const GoalListPage({super.key, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createGoalCubit()..loadGoals(),
-      child: const GoalListPageView(),
+      create: (_) {
+        final cubit = createGoalCubit();
+        cubit.loadGoals().then((_) {
+          if (targetDateFilter != null) {
+            cubit.applyFilter(targetDateFilter: targetDateFilter);
+          }
+        });
+        return cubit;
+      },
+      child: GoalListPageView(targetDateFilter: targetDateFilter),
     );
   }
 }
 
 class GoalListPageView extends StatelessWidget {
-  const GoalListPageView({super.key});
+  final String? targetDateFilter;
+  
+  const GoalListPageView({super.key, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {

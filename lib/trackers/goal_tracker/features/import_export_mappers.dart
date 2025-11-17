@@ -1,9 +1,9 @@
-import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
-import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
-import 'package:all_tracker/goal_tracker/data/models/task_model.dart';
-import 'package:all_tracker/goal_tracker/data/models/habit_model.dart';
-import 'package:all_tracker/goal_tracker/data/models/habit_completion_model.dart';
-import 'package:all_tracker/goal_tracker/core/constants.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/goal_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/milestone_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/task_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/habit_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/habit_completion_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/constants.dart';
 
 // ---------- Generic helpers (shared by import/export UIs and tests) ----------
 

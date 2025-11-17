@@ -10,9 +10,9 @@
  */
 
 import 'package:flutter/material.dart';
-import '../../../widgets/date_picker_bottom_sheet.dart';
-import '../../../widgets/context_dropdown_bottom_sheet.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import '../../../../widgets/date_picker_bottom_sheet.dart';
+import '../../../../widgets/context_dropdown_bottom_sheet.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 import '../pages/task_list_page.dart';
 import '../pages/habit_list_page.dart';
 

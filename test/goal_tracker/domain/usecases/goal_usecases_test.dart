@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:all_tracker/goal_tracker/data/datasources/goal_local_data_source.dart';
-import 'package:all_tracker/goal_tracker/data/models/goal_model.dart';
-import 'package:all_tracker/goal_tracker/data/repositories/goal_repository_impl.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/goal.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/goal/create_goal.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/goal/get_all_goals.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/goal/get_goal_by_id.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/goal/update_goal.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/goal/delete_goal.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/datasources/goal_local_data_source.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/goal_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/repositories/goal_repository_impl.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/goal.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/goal/create_goal.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/goal/get_all_goals.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/goal/get_goal_by_id.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/goal/update_goal.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/goal/delete_goal.dart';
 
 import '../../../helpers/fake_hive_box.dart';
 

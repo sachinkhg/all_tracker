@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'box_provider.dart';
-import '../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
+import '../presentation/widgets/view_field_bottom_sheet.dart';
 import 'constants.dart';
 
 /// ---------------------------------------------------------------------------

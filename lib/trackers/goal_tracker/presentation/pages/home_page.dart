@@ -17,8 +17,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../../core/design_tokens.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import '../../../../core/design_tokens.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../data/models/goal_model.dart';
@@ -48,6 +48,7 @@ import 'task_list_page.dart';
 import 'habit_list_page.dart';
 import 'settings_page.dart';
 import '../bloc/habit_cubit.dart';
+import '../../../../widgets/bottom_sheet_helpers.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
 class HomePage extends StatefulWidget {
@@ -64,6 +65,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final HabitCubit _habitCubit;
   late final BackupSchedulerService _backupScheduler;
   late final VoiceNoteCubit _voiceNoteCubit;
+  
+  // Filter state for home page
+  String? _targetDateFilter;
 
   @override
   void initState() {
@@ -137,13 +141,14 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         foregroundColor: cs.onPrimary,
         elevation: 0,
       ),
+      drawer: _AppDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.m),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const SizedBox(height: AppSpacing.s),
-            const _DashboardSection().animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
+            _DashboardSection(targetDateFilter: _targetDateFilter).animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
             const SizedBox(height: AppSpacing.l),
 
             // Quick Actions Section
@@ -165,7 +170,54 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        heroTag: 'homeFilterFab',
+        tooltip: 'Filter by Target Date',
+        backgroundColor: _targetDateFilter != null 
+            ? Theme.of(context).colorScheme.primary 
+            : Theme.of(context).colorScheme.surface.withOpacity(0.85),
+        onPressed: () => _showFilterBottomSheet(context),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            const Icon(Icons.filter_alt),
+            if (_targetDateFilter != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  width: 10,
+                  height: 10,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
+  }
+
+  Future<void> _showFilterBottomSheet(BuildContext context) async {
+    final result = await showAppBottomSheet<Map<String, dynamic>?>(
+      context,
+      _HomeFilterBottomSheet(
+        initialDateFilter: _targetDateFilter,
+      ),
+    );
+
+    if (result != null && result.containsKey('targetDate')) {
+      setState(() {
+        _targetDateFilter = result['targetDate'] as String?;
+      });
+    }
   }
 
   Future<void> _addGoal() async {
@@ -500,7 +552,9 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
 
 /// Dashboard section showing insights and statistics
 class _DashboardSection extends StatelessWidget {
-  const _DashboardSection();
+  const _DashboardSection({this.targetDateFilter});
+  
+  final String? targetDateFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -514,9 +568,16 @@ class _DashboardSection extends StatelessWidget {
               valueListenable: Hive.box<TaskModel>(taskBoxName).listenable(),
               builder: (context, Box<TaskModel> taskBox, _) {
                 // Calculate statistics
-                final goals = goalBox.values.toList();
-                final milestones = milestoneBox.values.toList();
-                final tasks = taskBox.values.toList();
+                var goals = goalBox.values.toList();
+                var milestones = milestoneBox.values.toList();
+                var tasks = taskBox.values.toList();
+
+                // Apply target date filter if set
+                if (targetDateFilter != null) {
+                  goals = _filterByTargetDate(goals, targetDateFilter!);
+                  milestones = _filterMilestonesByTargetDate(milestones, targetDateFilter!);
+                  tasks = _filterTasksByTargetDate(tasks, targetDateFilter!);
+                }
 
                 final totalGoals = goals.length;
                 final completedGoals = goals.where((g) => g.isCompleted).length;
@@ -546,7 +607,9 @@ class _DashboardSection extends StatelessWidget {
                             color: Theme.of(context).colorScheme.primary,
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const GoalListPage()),
+                                MaterialPageRoute(
+                                  builder: (_) => GoalListPage(targetDateFilter: targetDateFilter),
+                                ),
                               );
                             },
                           ),
@@ -561,7 +624,9 @@ class _DashboardSection extends StatelessWidget {
                             color: Theme.of(context).colorScheme.secondary,
                             onTap: () {
                               Navigator.of(context).push(
-                                MaterialPageRoute(builder: (_) => const MilestoneListPage()),
+                                MaterialPageRoute(
+                                  builder: (_) => MilestoneListPage(targetDateFilter: targetDateFilter),
+                                ),
                               );
                             },
                           ),
@@ -576,7 +641,9 @@ class _DashboardSection extends StatelessWidget {
                       color: Theme.of(context).colorScheme.tertiary,
                       onTap: () {
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const TaskListPage()),
+                          MaterialPageRoute(
+                            builder: (_) => TaskListPage(targetDateFilter: targetDateFilter),
+                          ),
                         );
                       },
                     ),
@@ -595,6 +662,226 @@ class _DashboardSection extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  // Helper methods to filter by target date (reusing logic from GoalCubit)
+  static List<GoalModel> _filterByTargetDate(List<GoalModel> goals, String filter) {
+    final now = DateTime.now();
+    return goals.where((g) {
+      final td = g.targetDate;
+      if (td == null) return false;
+
+      final today = DateTime(now.year, now.month, now.day);
+      final targetDay = DateTime(td.year, td.month, td.day);
+
+      switch (filter) {
+        case 'Today':
+          return targetDay == today;
+        case 'Tomorrow':
+          final tomorrow = today.add(const Duration(days: 1));
+          return targetDay == tomorrow;
+        case 'This Week':
+          final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+          final endOfWeek = startOfWeek.add(const Duration(days: 6));
+          return !targetDay.isBefore(startOfWeek) && !targetDay.isAfter(endOfWeek);
+        case 'Next Week':
+          final nextWeekStart = today.add(Duration(days: 8 - now.weekday));
+          final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+          return !targetDay.isBefore(nextWeekStart) && !targetDay.isAfter(nextWeekEnd);
+        case 'This Month':
+          return td.year == now.year && td.month == now.month;
+        case 'Next Month':
+          return td.year == now.year && td.month == now.month + 1;
+        case 'This Year':
+          return td.year == now.year;
+        case 'Next Year':
+          return td.year == now.year + 1;
+        default:
+          return false;
+      }
+    }).toList();
+  }
+
+  static List<MilestoneModel> _filterMilestonesByTargetDate(List<MilestoneModel> milestones, String filter) {
+    final now = DateTime.now();
+    return milestones.where((m) {
+      final td = m.targetDate;
+      if (td == null) return false;
+
+      final today = DateTime(now.year, now.month, now.day);
+      final targetDay = DateTime(td.year, td.month, td.day);
+
+      switch (filter) {
+        case 'Today':
+          return targetDay == today;
+        case 'Tomorrow':
+          final tomorrow = today.add(const Duration(days: 1));
+          return targetDay == tomorrow;
+        case 'This Week':
+          final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+          final endOfWeek = startOfWeek.add(const Duration(days: 6));
+          return !targetDay.isBefore(startOfWeek) && !targetDay.isAfter(endOfWeek);
+        case 'Next Week':
+          final nextWeekStart = today.add(Duration(days: 8 - now.weekday));
+          final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+          return !targetDay.isBefore(nextWeekStart) && !targetDay.isAfter(nextWeekEnd);
+        case 'This Month':
+          return td.year == now.year && td.month == now.month;
+        case 'Next Month':
+          return td.year == now.year && td.month == now.month + 1;
+        case 'This Year':
+          return td.year == now.year;
+        case 'Next Year':
+          return td.year == now.year + 1;
+        default:
+          return false;
+      }
+    }).toList();
+  }
+
+  static List<TaskModel> _filterTasksByTargetDate(List<TaskModel> tasks, String filter) {
+    final now = DateTime.now();
+    return tasks.where((t) {
+      final td = t.targetDate;
+      if (td == null) return false;
+
+      final today = DateTime(now.year, now.month, now.day);
+      final targetDay = DateTime(td.year, td.month, td.day);
+
+      switch (filter) {
+        case 'Today':
+          return targetDay == today;
+        case 'Tomorrow':
+          final tomorrow = today.add(const Duration(days: 1));
+          return targetDay == tomorrow;
+        case 'This Week':
+          final startOfWeek = today.subtract(Duration(days: now.weekday - 1));
+          final endOfWeek = startOfWeek.add(const Duration(days: 6));
+          return !targetDay.isBefore(startOfWeek) && !targetDay.isAfter(endOfWeek);
+        case 'Next Week':
+          final nextWeekStart = today.add(Duration(days: 8 - now.weekday));
+          final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+          return !targetDay.isBefore(nextWeekStart) && !targetDay.isAfter(nextWeekEnd);
+        case 'This Month':
+          return td.year == now.year && td.month == now.month;
+        case 'Next Month':
+          return td.year == now.year && td.month == now.month + 1;
+        case 'This Year':
+          return td.year == now.year;
+        case 'Next Year':
+          return td.year == now.year + 1;
+        default:
+          return false;
+      }
+    }).toList();
+  }
+}
+
+/// Filter bottom sheet for home page - only shows Target Date filter
+class _HomeFilterBottomSheet extends StatefulWidget {
+  const _HomeFilterBottomSheet({this.initialDateFilter});
+
+  final String? initialDateFilter;
+
+  @override
+  State<_HomeFilterBottomSheet> createState() => _HomeFilterBottomSheetState();
+}
+
+class _HomeFilterBottomSheetState extends State<_HomeFilterBottomSheet> {
+  String? _selectedDateFilter;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDateFilter = widget.initialDateFilter;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final maxHeight = MediaQuery.of(context).size.height * 0.5;
+    final viewInsets = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                'Filter by Target Date',
+                style: textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        for (final option in [
+                          "Today",
+                          "Tomorrow",
+                          "This Week",
+                          "Next Week",
+                          "This Month",
+                          "Next Month",
+                          "This Year",
+                          "Next Year",
+                        ])
+                          ChoiceChip(
+                            label: Text(option),
+                            selected: _selectedDateFilter == option,
+                            onSelected: (sel) {
+                              setState(() {
+                                _selectedDateFilter = sel ? option : null;
+                              });
+                            },
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text("Close"),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop({
+                        "targetDate": _selectedDateFilter,
+                      });
+                    },
+                    child: const Text("Apply Filter"),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -906,18 +1193,18 @@ class _QuickActionsSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: AppSpacing.m),
-        Row(
-          children: [
-            Expanded(
-              child: _GradientActionTile(
-                icon: Icons.mic,
-                gradient: AppGradients.secondary(cs),
-                accentColor: cs.secondary,
-                onTap: onAddVoiceNote,
-              ),
-            ),
-          ],
-        ),
+        // Row(
+        //   children: [
+        //     Expanded(
+        //       child: _GradientActionTile(
+        //         icon: Icons.mic,
+        //         gradient: AppGradients.secondary(cs),
+        //         accentColor: cs.secondary,
+        //         onTap: onAddVoiceNote,
+        //       ),
+        //     ),
+        //   ],
+        // ),
       ],
     );
   }
@@ -1139,6 +1426,177 @@ class _HabitInsightCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Side menu drawer providing navigation to different app sections
+class _AppDrawer extends StatelessWidget {
+  const _AppDrawer();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Drawer(
+      child: Column(
+        children: [
+          // Drawer header
+          Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              gradient: AppGradients.appBar(cs),
+            ),
+            padding: EdgeInsets.only(
+              top: MediaQuery.of(context).padding.top + AppSpacing.m,
+              bottom: AppSpacing.l,
+              left: AppSpacing.m,
+              right: AppSpacing.m,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'All Tracker',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        color: cs.onPrimary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Your productivity hub',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onPrimary.withOpacity(0.9),
+                      ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Drawer content
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                // Tracker Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.m,
+                    AppSpacing.l,
+                    AppSpacing.m,
+                    AppSpacing.s,
+                  ),
+                  child: Text(
+                    'TRACKER',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                  ),
+                ),
+                _DrawerTile(
+                  icon: AppIcons.goal,
+                  title: 'Goal Tracker',
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close drawer
+                    // Already on Goal Tracker home, so no navigation needed
+                  },
+                ),
+                
+                const Divider(height: 1),
+                
+                // Utility Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.m,
+                    AppSpacing.l,
+                    AppSpacing.m,
+                    AppSpacing.s,
+                  ),
+                  child: Text(
+                    'UTILITY',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                  ),
+                ),
+                // Utility items will be added here in the future
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.m),
+                  child: Text(
+                    'Coming soon...',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                  ),
+                ),
+                
+                const Divider(height: 1),
+                
+                // Settings Section
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.m,
+                    AppSpacing.l,
+                    AppSpacing.m,
+                    AppSpacing.s,
+                  ),
+                  child: Text(
+                    'SETTINGS',
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1.2,
+                        ),
+                  ),
+                ),
+                _DrawerTile(
+                  icon: Icons.settings_outlined,
+                  title: 'Settings',
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close drawer
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SettingsPage()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Individual drawer menu item
+class _DrawerTile extends StatelessWidget {
+  const _DrawerTile({
+    required this.icon,
+    required this.title,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return ListTile(
+      leading: Icon(icon, color: cs.onSurface),
+      title: Text(title),
+      onTap: onTap,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(AppRadii.button),
       ),
     );
   }

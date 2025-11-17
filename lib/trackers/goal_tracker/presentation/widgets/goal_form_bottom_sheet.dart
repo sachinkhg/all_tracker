@@ -1,9 +1,9 @@
-import 'package:all_tracker/goal_tracker/core/constants.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/constants.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 import 'package:flutter/material.dart';
 
-import '../../../widgets/context_dropdown_bottom_sheet.dart';
-import '../../../widgets/date_picker_bottom_sheet.dart';
+import '../../../../widgets/context_dropdown_bottom_sheet.dart';
+import '../../../../widgets/date_picker_bottom_sheet.dart';
 import '../pages/milestone_list_page.dart';
 import '../pages/task_list_page.dart';
 import '../pages/habit_list_page.dart';

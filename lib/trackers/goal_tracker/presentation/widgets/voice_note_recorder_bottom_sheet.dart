@@ -4,7 +4,7 @@ import '../bloc/voice_note_cubit.dart';
 import '../bloc/voice_note_state.dart';
 import '../../domain/usecases/voice_note/voice_entity_type.dart';
 import '../../domain/usecases/voice_note/process_voice_note.dart';
-import '../../../widgets/context_dropdown_bottom_sheet.dart';
+import '../../../../widgets/context_dropdown_bottom_sheet.dart';
 
 /// Bottom sheet for recording voice notes and processing them
 ///

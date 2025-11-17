@@ -19,14 +19,14 @@ import '../bloc/milestone_cubit.dart';
 import '../bloc/milestone_state.dart';
 
 // Shared component imports - adjust paths to your project
-import '../../../widgets/primary_app_bar.dart';
+import '../../../../widgets/primary_app_bar.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
 import '../widgets/milestone_list_item.dart';
-import '../../../widgets/loading_view.dart';
-import '../../../widgets/error_view.dart';
+import '../../../../widgets/loading_view.dart';
+import '../../../../widgets/error_view.dart';
 import '../widgets/milestone_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
-import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
+import '../../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 import '../../features/milestone_import_export.dart';
 
 // Optional import placeholders for import/export functionality.
@@ -34,8 +34,9 @@ import '../../features/milestone_import_export.dart';
 
 class MilestoneListPage extends StatelessWidget {
   final String? goalId;
+  final String? targetDateFilter;
   
-  const MilestoneListPage({super.key, this.goalId});
+  const MilestoneListPage({super.key, this.goalId, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {
@@ -43,21 +44,22 @@ class MilestoneListPage extends StatelessWidget {
       create: (_) {
         final cubit = createMilestoneCubit();
         cubit.loadMilestones().then((_) {
-          if (goalId != null) {
-            cubit.applyFilter(goalId: goalId);
+          if (goalId != null || targetDateFilter != null) {
+            cubit.applyFilter(goalId: goalId, targetDateFilter: targetDateFilter);
           }
         });
         return cubit;
       },
-      child: MilestoneListPageView(goalId: goalId),
+      child: MilestoneListPageView(goalId: goalId, targetDateFilter: targetDateFilter),
     );
   }
 }
 
 class MilestoneListPageView extends StatelessWidget {
   final String? goalId;
+  final String? targetDateFilter;
   
-  const MilestoneListPageView({super.key, this.goalId});
+  const MilestoneListPageView({super.key, this.goalId, this.targetDateFilter});
 
   @override
   Widget build(BuildContext context) {

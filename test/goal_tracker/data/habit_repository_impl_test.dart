@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:all_tracker/goal_tracker/data/repositories/habit_repository_impl.dart';
-import 'package:all_tracker/goal_tracker/data/datasources/habit_local_data_source.dart';
-import 'package:all_tracker/goal_tracker/data/models/habit_model.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/habit.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/repositories/habit_repository_impl.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/datasources/habit_local_data_source.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/habit_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/habit.dart';
 
 import '../../helpers/fake_hive_box.dart';
 

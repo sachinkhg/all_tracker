@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 
 /// ---------------------------------------------------------------------------
 /// MilestoneListItem

@@ -23,15 +23,15 @@ import '../bloc/habit_completion_cubit.dart';
 import 'habit_detail_page.dart';
 
 // Shared component imports - adjust paths to your project
-import '../../../widgets/primary_app_bar.dart';
-import 'package:all_tracker/goal_tracker/core/app_icons.dart';
+import '../../../../widgets/primary_app_bar.dart';
+import 'package:all_tracker/trackers/goal_tracker/core/app_icons.dart';
 import '../widgets/habit_list_item.dart';
-import '../../../widgets/loading_view.dart';
-import '../../../widgets/error_view.dart';
+import '../../../../widgets/loading_view.dart';
+import '../../../../widgets/error_view.dart';
 import '../widgets/habit_form_bottom_sheet.dart';
 import '../widgets/view_field_bottom_sheet.dart';
 import '../widgets/filter_group_bottom_sheet.dart';
-import '../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
+import '../../../../widgets/bottom_sheet_helpers.dart'; // centralized helper
 
 class HabitListPage extends StatelessWidget {
   final String? goalId;

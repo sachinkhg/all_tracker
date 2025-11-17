@@ -1,8 +1,8 @@
-import 'package:all_tracker/goal_tracker/domain/repositories/goal_repository.dart';
-import 'package:all_tracker/goal_tracker/domain/repositories/milestone_repository.dart';
-import 'package:all_tracker/goal_tracker/domain/repositories/task_repository.dart';
-import 'package:all_tracker/goal_tracker/domain/repositories/habit_repository.dart';
-import 'package:all_tracker/goal_tracker/domain/repositories/habit_completion_repository.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/repositories/goal_repository.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/repositories/milestone_repository.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/repositories/task_repository.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/repositories/habit_repository.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/repositories/habit_completion_repository.dart';
 
 // Lightweight abstract stubs to satisfy analyzer without external mocking libs.
 // In tests, prefer real implementations/fakes over these, or replace with mocktail

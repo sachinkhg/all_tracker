@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:all_tracker/goal_tracker/data/datasources/milestone_local_data_source.dart';
-import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/datasources/milestone_local_data_source.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/milestone_model.dart';
 
 import '../../helpers/fake_hive_box.dart';
 

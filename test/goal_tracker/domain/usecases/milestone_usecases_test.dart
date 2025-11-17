@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:all_tracker/goal_tracker/data/datasources/milestone_local_data_source.dart';
-import 'package:all_tracker/goal_tracker/data/models/milestone_model.dart';
-import 'package:all_tracker/goal_tracker/data/repositories/milestone_repository_impl.dart';
-import 'package:all_tracker/goal_tracker/domain/entities/milestone.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/create_milestone.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/get_all_milestones.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/get_milestone_by_id.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/get_milestones_by_goal_id.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/update_milestone.dart';
-import 'package:all_tracker/goal_tracker/domain/usecases/milestone/delete_milestone.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/datasources/milestone_local_data_source.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/models/milestone_model.dart';
+import 'package:all_tracker/trackers/goal_tracker/data/repositories/milestone_repository_impl.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/entities/milestone.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/create_milestone.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/get_all_milestones.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/get_milestone_by_id.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/get_milestones_by_goal_id.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/update_milestone.dart';
+import 'package:all_tracker/trackers/goal_tracker/domain/usecases/milestone/delete_milestone.dart';
 
 import '../../../helpers/fake_hive_box.dart';
 
