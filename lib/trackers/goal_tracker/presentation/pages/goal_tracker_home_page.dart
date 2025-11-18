@@ -49,8 +49,8 @@ import 'habit_list_page.dart';
 import '../../../../pages/settings_page.dart';
 import '../bloc/habit_cubit.dart';
 import '../../../../widgets/bottom_sheet_helpers.dart';
-import '../../../../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
 import '../../../../pages/app_home_page.dart';
+import '../../../../widgets/app_drawer.dart';
 
 /// The app's landing page providing dashboard insights and navigation.
 class HomePage extends StatefulWidget {
@@ -151,9 +151,21 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         ),
         backgroundColor: Colors.transparent,
         foregroundColor: cs.onPrimary,
+        iconTheme: IconThemeData(
+          color: cs.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.95)
+              : Colors.black87,
+          opacity: 1.0,
+        ),
+        actionsIconTheme: IconThemeData(
+          color: cs.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.95)
+              : Colors.black87,
+          opacity: 1.0,
+        ),
         elevation: 0,
       ),
-      drawer: _AppDrawer(),
+      drawer: const AppDrawer(currentPage: AppPage.goalTracker),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppSpacing.m),
         child: Column(
@@ -172,7 +184,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
             ),
             const SizedBox(height: AppSpacing.s),
             _QuickActionsSection(
-              colorScheme: cs,
               onAddGoal: _addGoal,
               onAddMilestone: _addMilestone,
               onAddTask: _addTask,
@@ -1145,7 +1156,6 @@ class _StatusChip extends StatelessWidget {
 /// Quick actions for adding new items
 class _QuickActionsSection extends StatelessWidget {
   const _QuickActionsSection({
-    required this.colorScheme,
     required this.onAddGoal,
     required this.onAddMilestone,
     required this.onAddTask,
@@ -1153,7 +1163,6 @@ class _QuickActionsSection extends StatelessWidget {
     required this.onAddVoiceNote,
   });
 
-  final ColorScheme colorScheme;
   final VoidCallback onAddGoal;
   final VoidCallback onAddMilestone;
   final VoidCallback onAddTask;
@@ -1162,7 +1171,6 @@ class _QuickActionsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Column(
       children: [
         Row(
@@ -1170,8 +1178,7 @@ class _QuickActionsSection extends StatelessWidget {
             Expanded(
               child: _GradientActionTile(
                 icon: AppIcons.goal,
-                gradient: AppGradients.primary(cs),
-                accentColor: cs.primary,
+                gradientType: _GradientType.primary,
                 onTap: onAddGoal,
               ),
             ),
@@ -1179,8 +1186,7 @@ class _QuickActionsSection extends StatelessWidget {
             Expanded(
               child: _GradientActionTile(
                 icon: AppIcons.milestone,
-                gradient: AppGradients.secondary(cs),
-                accentColor: cs.secondary,
+                gradientType: _GradientType.secondary,
                 onTap: onAddMilestone,
               ),
             ),
@@ -1188,8 +1194,7 @@ class _QuickActionsSection extends StatelessWidget {
             Expanded(
               child: _GradientActionTile(
                 icon: AppIcons.task,
-                gradient: AppGradients.tertiary(cs),
-                accentColor: cs.tertiary,
+                gradientType: _GradientType.tertiary,
                 onTap: onAddTask,
               ),
             ),
@@ -1197,8 +1202,7 @@ class _QuickActionsSection extends StatelessWidget {
             Expanded(
               child: _GradientActionTile(
                 icon: AppIcons.habit,
-                gradient: AppGradients.primary(cs),
-                accentColor: cs.primary,
+                gradientType: _GradientType.primary,
                 onTap: onAddHabit,
               ),
             ),
@@ -1222,28 +1226,52 @@ class _QuickActionsSection extends StatelessWidget {
   }
 }
 
+/// Gradient type enum for action tiles
+enum _GradientType {
+  primary,
+  secondary,
+  tertiary,
+}
+
 /// Action button widget
 class _GradientActionTile extends StatelessWidget {
   const _GradientActionTile({
     required this.icon,
-    required this.gradient,
-    required this.accentColor,
+    required this.gradientType,
     required this.onTap,
   });
 
   final IconData icon;
-  final Gradient gradient;
-  final Color accentColor;
+  final _GradientType gradientType;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    
+    // Create gradient based on type, ensuring theme is fully available
+    final Gradient gradient;
+    final Color accentColor;
+    switch (gradientType) {
+      case _GradientType.primary:
+        gradient = AppGradients.primary(cs);
+        accentColor = cs.primary;
+        break;
+      case _GradientType.secondary:
+        gradient = AppGradients.secondary(cs);
+        accentColor = cs.secondary;
+        break;
+      case _GradientType.tertiary:
+        gradient = AppGradients.tertiary(cs);
+        accentColor = cs.tertiary;
+        break;
+    }
+    
     final fg = cs.onPrimary;
     final tile = InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadii.card),
-      child: Ink(
+      child: Container(
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(AppRadii.card),
@@ -1443,175 +1471,4 @@ class _HabitInsightCard extends StatelessWidget {
   }
 }
 
-/// Side menu drawer providing navigation to different app sections
-class _AppDrawer extends StatelessWidget {
-  const _AppDrawer();
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Drawer(
-      child: Column(
-        children: [
-          // Drawer header
-          Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: AppGradients.appBar(cs),
-            ),
-            padding: EdgeInsets.only(
-              top: MediaQuery.of(context).padding.top + AppSpacing.m,
-              bottom: AppSpacing.l,
-              left: AppSpacing.m,
-              right: AppSpacing.m,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'All Tracker',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: cs.onPrimary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: AppSpacing.xs),
-                Text(
-                  'Your productivity hub',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onPrimary.withOpacity(0.9),
-                      ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Drawer content
-          Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // Tracker Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.m,
-                    AppSpacing.l,
-                    AppSpacing.m,
-                    AppSpacing.s,
-                  ),
-                  child: Text(
-                    'TRACKER',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                  ),
-                ),
-                _DrawerTile(
-                  icon: AppIcons.goal,
-                  title: 'Goal Tracker',
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    // Already on Goal Tracker home, so no navigation needed
-                  },
-                ),
-                
-                const Divider(height: 1),
-                
-                // Utility Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.m,
-                    AppSpacing.l,
-                    AppSpacing.m,
-                    AppSpacing.s,
-                  ),
-                  child: Text(
-                    'UTILITY',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                  ),
-                ),
-                _DrawerTile(
-                  icon: Icons.account_balance,
-                  title: 'Investment Planner',
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const InvestmentPlannerHomePage(),
-                      ),
-                    );
-                  },
-                ),
-                
-                const Divider(height: 1),
-                
-                // Settings Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.m,
-                    AppSpacing.l,
-                    AppSpacing.m,
-                    AppSpacing.s,
-                  ),
-                  child: Text(
-                    'SETTINGS',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
-                  ),
-                ),
-                _DrawerTile(
-                  icon: Icons.settings_outlined,
-                  title: 'Settings',
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SettingsPage()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Individual drawer menu item
-class _DrawerTile extends StatelessWidget {
-  const _DrawerTile({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return ListTile(
-      leading: Icon(icon, color: cs.onSurface),
-      title: Text(title),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.button),
-      ),
-    );
-  }
-}
 

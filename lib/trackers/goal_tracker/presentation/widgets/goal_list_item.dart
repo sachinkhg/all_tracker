@@ -249,9 +249,10 @@ class GoalListItem extends StatelessWidget {
                   () {
                     final open = openMilestoneCount ?? 0;
                     final total = totalMilestoneCount ?? 0;
+                    final completed = total - open;
                     final percent = milestoneCompletionPercent ??
                         (total == 0 ? 0 : ((total - open) / total) * 100);
-                    return 'Total Milestone: $open/$total (${_formatPercent(percent)}%)';
+                    return 'Total Milestone Completed: $completed/$total (${_formatPercent(percent)}%)';
                   }(),
                   style: Theme.of(context)
                       .textTheme

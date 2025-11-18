@@ -48,6 +48,11 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
+    // Enhanced icon color for better contrast against gradient background
+    final iconColor = cs.brightness == Brightness.dark
+        ? Colors.white.withOpacity(0.95)
+        : Colors.black87;
+
     // Use themed colors and gradient to maintain consistency across screens.
     return AppBar(
       title: Text(title),
@@ -58,6 +63,14 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
       backgroundColor: Colors.transparent,
       foregroundColor: cs.onPrimary,
+      iconTheme: IconThemeData(
+        color: iconColor,
+        opacity: 1.0,
+      ),
+      actionsIconTheme: IconThemeData(
+        color: iconColor,
+        opacity: 1.0,
+      ),
       actions: actions,
       elevation: 0,
     );

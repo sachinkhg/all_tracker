@@ -36,6 +36,18 @@ class SettingsPage extends StatelessWidget {
           ),
         ),
         backgroundColor: Colors.transparent,
+        iconTheme: IconThemeData(
+          color: cs.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.95)
+              : Colors.black87,
+          opacity: 1.0,
+        ),
+        actionsIconTheme: IconThemeData(
+          color: cs.brightness == Brightness.dark
+              ? Colors.white.withOpacity(0.95)
+              : Colors.black87,
+          opacity: 1.0,
+        ),
         foregroundColor: cs.onPrimary,
         elevation: 0,
       ),

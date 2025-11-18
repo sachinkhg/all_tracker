@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import '../../../../core/design_tokens.dart';
-import 'component_config_page.dart';
-import 'category_config_page.dart';
-import 'plan_list_page.dart';
 import '../../../../pages/app_home_page.dart';
+import 'retirement_plan_list_page.dart';
+import 'retirement_advance_settings_page.dart';
 import '../../../../widgets/app_drawer.dart';
 
-/// Main landing page for Investment Planner
-class InvestmentPlannerHomePage extends StatelessWidget {
-  const InvestmentPlannerHomePage({super.key});
+/// Main landing page for Retirement Planner
+class RetirementPlannerHomePage extends StatelessWidget {
+  const RetirementPlannerHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Investment Planner'),
+        title: const Text('Retirement Planner'),
         actions: [
           IconButton(
             icon: const Icon(Icons.home),
@@ -49,7 +48,7 @@ class InvestmentPlannerHomePage extends StatelessWidget {
         foregroundColor: cs.onPrimary,
         elevation: 0,
       ),
-      drawer: const AppDrawer(currentPage: AppPage.investmentPlanner),
+      drawer: const AppDrawer(currentPage: AppPage.retirementPlanner),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -57,52 +56,38 @@ class InvestmentPlannerHomePage extends StatelessWidget {
           children: [
             const SizedBox(height: 24),
             const Text(
-              'Investment Planner',
+              'Retirement Planner',
               style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
-              'Plan your investments based on income and expenses',
+              'Plan your retirement with comprehensive calculations',
               style: TextStyle(fontSize: 16, color: Colors.grey),
             ),
             const SizedBox(height: 32),
             _QuickActionCard(
-              title: 'Configure Components',
-              subtitle: 'Set up investment components (NPS, PPF, etc.)',
-              icon: Icons.account_balance,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ComponentConfigPage(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            _QuickActionCard(
-              title: 'Manage Categories',
-              subtitle: 'Configure income and expense categories',
-              icon: Icons.category,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CategoryConfigPage(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            _QuickActionCard(
               title: 'View Plans',
-              subtitle: 'View and manage saved investment plans',
+              subtitle: 'View and manage your retirement plans',
               icon: Icons.list,
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => const PlanListPage(),
+                    builder: (_) => const RetirementPlanListPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+            _QuickActionCard(
+              title: 'Advanced Settings',
+              subtitle: 'Configure default retirement calculation parameters',
+              icon: Icons.settings,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const RetirementAdvanceSettingsPage(),
                   ),
                 );
               },
@@ -169,5 +154,4 @@ class _QuickActionCard extends StatelessWidget {
     );
   }
 }
-
 

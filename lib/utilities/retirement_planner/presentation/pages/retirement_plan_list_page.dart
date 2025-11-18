@@ -2,33 +2,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/design_tokens.dart';
 import '../../core/injection.dart';
-import '../bloc/investment_plan_cubit.dart';
-import '../bloc/investment_plan_state.dart';
-import 'plan_create_edit_page.dart';
-import 'plan_detail_page.dart';
+import '../bloc/retirement_plan_cubit.dart';
+import '../bloc/retirement_plan_state.dart';
+import 'retirement_plan_create_edit_page.dart';
+import 'retirement_plan_detail_page.dart';
 
-/// Page for listing all saved investment plans
-class PlanListPage extends StatelessWidget {
-  const PlanListPage({super.key});
+/// Page for listing all saved retirement plans
+class RetirementPlanListPage extends StatelessWidget {
+  const RetirementPlanListPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createInvestmentPlanCubit(),
-      child: const PlanListPageView(),
+      create: (_) => createRetirementPlanCubit(),
+      child: const RetirementPlanListPageView(),
     );
   }
 }
 
-class PlanListPageView extends StatelessWidget {
-  const PlanListPageView({super.key});
+class RetirementPlanListPageView extends StatelessWidget {
+  const RetirementPlanListPageView({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Investment Plans'),
+        title: const Text('Retirement Plans'),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: AppGradients.appBar(cs),
@@ -50,7 +50,7 @@ class PlanListPageView extends StatelessWidget {
         ),
         elevation: 0,
       ),
-      body: BlocBuilder<InvestmentPlanCubit, InvestmentPlanState>(
+      body: BlocBuilder<RetirementPlanCubit, RetirementPlanState>(
         builder: (context, state) {
           if (state is PlansLoading) {
             return const Center(child: CircularProgressIndicator());
@@ -65,7 +65,7 @@ class PlanListPageView extends StatelessWidget {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      context.read<InvestmentPlanCubit>().loadPlans();
+                      context.read<RetirementPlanCubit>().loadPlans();
                     },
                     child: const Text('Retry'),
                   ),
@@ -88,12 +88,12 @@ class PlanListPageView extends StatelessWidget {
                         await Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const PlanCreateEditPage(),
+                            builder: (_) => const RetirementPlanCreateEditPage(),
                           ),
                         );
                         // Reload plans when returning from create/edit page
                         if (context.mounted) {
-                          context.read<InvestmentPlanCubit>().loadPlans();
+                          context.read<RetirementPlanCubit>().loadPlans();
                         }
                       },
                       child: const Text('Create Plan'),
@@ -112,17 +112,17 @@ class PlanListPageView extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   child: ListTile(
                     title: Text(plan.name),
-                    subtitle: Text('${plan.duration} - ${plan.period}'),
+                    subtitle: Text('Retirement Age: ${plan.retirementAge}'),
                     onTap: () async {
                       final result = await Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => PlanDetailPage(plan: plan),
+                          builder: (_) => RetirementPlanDetailPage(plan: plan),
                         ),
                       );
                       // Reload plans when returning from detail page if plan was updated/deleted
                       if (result == true && context.mounted) {
-                        context.read<InvestmentPlanCubit>().loadPlans();
+                        context.read<RetirementPlanCubit>().loadPlans();
                       }
                     },
                   ),
@@ -135,19 +135,19 @@ class PlanListPageView extends StatelessWidget {
         },
       ),
       floatingActionButton: FloatingActionButton.small(
-        heroTag: 'addPlanFab',
+        heroTag: 'addRetirementPlanFab',
         tooltip: 'Add Plan',
         backgroundColor: cs.surface.withOpacity(0.85),
         onPressed: () async {
           await Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => const PlanCreateEditPage(),
+              builder: (_) => const RetirementPlanCreateEditPage(),
             ),
           );
           // Reload plans when returning from create page
           if (context.mounted) {
-            context.read<InvestmentPlanCubit>().loadPlans();
+            context.read<RetirementPlanCubit>().loadPlans();
           }
         },
         child: const Icon(Icons.add),

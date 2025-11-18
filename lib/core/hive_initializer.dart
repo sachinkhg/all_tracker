@@ -13,6 +13,8 @@ import 'package:all_tracker/utilities/investment_planner/data/models/expense_ent
 import 'package:all_tracker/utilities/investment_planner/data/models/component_allocation_model.dart';
 import 'package:all_tracker/utilities/investment_planner/data/models/investment_plan_model.dart';
 import 'package:all_tracker/utilities/investment_planner/core/constants.dart';
+import 'package:all_tracker/utilities/retirement_planner/data/models/retirement_plan_model.dart';
+import 'package:all_tracker/utilities/retirement_planner/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
@@ -132,6 +134,13 @@ class HiveInitializer {
       Hive.registerAdapter(ComponentAllocationModelAdapter());
     }
 
+    // Retirement Planner adapters
+    // typeId: 13 -> RetirementPlanModel
+    final retirementPlanAdapterId = RetirementPlanModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(retirementPlanAdapterId)) {
+      Hive.registerAdapter(RetirementPlanModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
@@ -161,6 +170,10 @@ class HiveInitializer {
     await Hive.openBox<IncomeCategoryModel>(incomeCategoryBoxName);
     await Hive.openBox<ExpenseCategoryModel>(expenseCategoryBoxName);
     await Hive.openBox<InvestmentPlanModel>(investmentPlanBoxName);
+
+    // Open retirement planner boxes
+    await Hive.openBox<RetirementPlanModel>(retirementPlanBoxName);
+    await Hive.openBox(retirementPreferencesBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

@@ -33,7 +33,7 @@ class TaskCalendarView extends StatefulWidget {
 
 class _TaskCalendarViewState extends State<TaskCalendarView> {
   DateTime _focusedDay = DateTime.now();
-  DateTime? _selectedDay;
+  DateTime? _selectedDay = DateTime.now(); // Default to today to show tasks for current day
 
   List<Task> _getTasksForDay(DateTime day) {
     return widget.tasks.where((task) {
