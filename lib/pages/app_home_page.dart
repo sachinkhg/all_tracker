@@ -3,19 +3,80 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../core/design_tokens.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
+import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
+import '../trackers/travel_tracker/core/app_icons.dart';
 import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
-import 'settings_page.dart';
 import '../widgets/app_drawer.dart';
 
 /// Main landing page for the All Tracker app
-/// Displays all available sections (Trackers, Utilities, Settings) as navigable cards
+/// Displays all available sections (Trackers, Utilities) as navigable cards
 class AppHomePage extends StatelessWidget {
   const AppHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    // Define tracker items
+    final trackerItems = [
+      _SectionItem(
+        title: 'Goal Tracker',
+        subtitle: 'Track your goals, milestones, tasks, and habits',
+        icon: AppIcons.goal,
+        gradient: AppGradients.primary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const HomePage(),
+            ),
+          );
+        },
+      ),
+      _SectionItem(
+        title: 'Travel Tracker',
+        subtitle: 'Plan trips, manage itineraries, and journal your travels',
+        icon: TravelTrackerIcons.trip,
+        gradient: AppGradients.primary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const TravelTrackerHomePage(),
+            ),
+          );
+        },
+      ),
+    ];
+
+    // Define utility items
+    final utilityItems = [
+      _SectionItem(
+        title: 'Investment Planner',
+        subtitle: 'Plan your investments based on income and expenses',
+        icon: Icons.account_balance,
+        gradient: AppGradients.secondary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const InvestmentPlannerHomePage(),
+            ),
+          );
+        },
+      ),
+      _SectionItem(
+        title: 'Retirement Planner',
+        subtitle: 'Calculate your retirement corpus and investment needs',
+        icon: Icons.account_balance_wallet,
+        gradient: AppGradients.secondary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const RetirementPlannerHomePage(),
+            ),
+          );
+        },
+      ),
+    ];
 
     return Scaffold(
       appBar: AppBar(
@@ -49,10 +110,10 @@ class AppHomePage extends StatelessWidget {
           children: [
             const SizedBox(height: AppSpacing.s),
             // Welcome section
-            _WelcomeSection()
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
-            const SizedBox(height: AppSpacing.l),
+            // _WelcomeSection()
+            //     .animate()
+            //     .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
+            // const SizedBox(height: AppSpacing.l),
 
             // Tracker Section
             _SectionHeader(
@@ -62,24 +123,12 @@ class AppHomePage extends StatelessWidget {
                 .animate()
                 .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
             const SizedBox(height: AppSpacing.m),
-            _SectionCard(
-              title: 'Goal Tracker',
-              subtitle: 'Track your goals, milestones, tasks, and habits',
-              icon: AppIcons.goal,
-              gradient: AppGradients.primary(cs),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const HomePage(),
-                  ),
-                );
-              },
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease)
-                .moveY(begin: 8, end: 0, duration: AppAnimations.short, curve: AppAnimations.ease),
+            _SectionGrid(
+              items: trackerItems,
+              crossAxisCount: 3,
+            ),
 
-            const SizedBox(height: AppSpacing.l),
+            const SizedBox(height: AppSpacing.s),
 
             // Utility Section
             _SectionHeader(
@@ -89,66 +138,10 @@ class AppHomePage extends StatelessWidget {
                 .animate()
                 .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
             const SizedBox(height: AppSpacing.m),
-            _SectionCard(
-              title: 'Investment Planner',
-              subtitle: 'Plan your investments based on income and expenses',
-              icon: Icons.account_balance,
-              gradient: AppGradients.secondary(cs),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const InvestmentPlannerHomePage(),
-                  ),
-                );
-              },
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease)
-                .moveY(begin: 8, end: 0, duration: AppAnimations.short, curve: AppAnimations.ease),
-            const SizedBox(height: AppSpacing.m),
-            _SectionCard(
-              title: 'Retirement Planner',
-              subtitle: 'Calculate your retirement corpus and investment needs',
-              icon: Icons.account_balance_wallet,
-              gradient: AppGradients.secondary(cs),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const RetirementPlannerHomePage(),
-                  ),
-                );
-              },
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease)
-                .moveY(begin: 8, end: 0, duration: AppAnimations.short, curve: AppAnimations.ease),
-
-            const SizedBox(height: AppSpacing.l),
-
-            // Settings Section
-            _SectionHeader(
-              title: 'SETTINGS',
-              icon: Icons.settings,
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
-            const SizedBox(height: AppSpacing.m),
-            _SectionCard(
-              title: 'Settings',
-              subtitle: 'Configure app preferences and manage your data',
-              icon: Icons.settings_outlined,
-              gradient: AppGradients.tertiary(cs),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (_) => const SettingsPage(),
-                  ),
-                );
-              },
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease)
-                .moveY(begin: 8, end: 0, duration: AppAnimations.short, curve: AppAnimations.ease),
+            _SectionGrid(
+              items: utilityItems,
+              crossAxisCount: 3,
+            ),
 
             const SizedBox(height: AppSpacing.l),
           ],
@@ -228,7 +221,63 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// Section card widget for navigation
+/// Data class for section items
+class _SectionItem {
+  const _SectionItem({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Gradient gradient;
+  final VoidCallback onTap;
+}
+
+/// Grid widget for displaying section items
+class _SectionGrid extends StatelessWidget {
+  const _SectionGrid({
+    required this.items,
+    required this.crossAxisCount,
+  });
+
+  final List<_SectionItem> items;
+  final int crossAxisCount;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        crossAxisSpacing: AppSpacing.m,
+        mainAxisSpacing: AppSpacing.m,
+        childAspectRatio: 0.65,
+      ),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return _SectionCard(
+          title: item.title,
+          subtitle: item.subtitle,
+          icon: item.icon,
+          gradient: item.gradient,
+          onTap: item.onTap,
+        )
+            .animate()
+            .fade(duration: AppAnimations.short, curve: AppAnimations.ease)
+            .moveY(begin: 8, end: 0, duration: AppAnimations.short, curve: AppAnimations.ease);
+      },
+    );
+  }
+}
+
+/// Section card widget for navigation (optimized for grid layout)
 class _SectionCard extends StatelessWidget {
   const _SectionCard({
     required this.title,
@@ -248,65 +297,55 @@ class _SectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    return Card(
-      elevation: AppElevations.card,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppRadii.card),
-      ),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadii.card),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: gradient,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Card(
+          elevation: AppElevations.card,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppRadii.card),
           ),
-          padding: const EdgeInsets.all(AppSpacing.l),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppSpacing.m),
-                decoration: BoxDecoration(
-                  color: cs.onPrimary.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(AppRadii.button),
-                ),
-                child: Icon(
-                  icon,
-                  size: 32,
-                  color: cs.onPrimary,
-                ),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(AppRadii.card),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(AppRadii.card),
               ),
-              const SizedBox(width: AppSpacing.m),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: cs.onPrimary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onPrimary.withOpacity(0.9),
-                          ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right,
+              padding: const EdgeInsets.all(AppSpacing.m),
+              child: Icon(
+                icon,
+                size: 32,
                 color: cs.onPrimary,
-                size: 28,
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: cs.onSurface,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontSize: 9,
+              ),
+          textAlign: TextAlign.center,
+          maxLines: 3,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

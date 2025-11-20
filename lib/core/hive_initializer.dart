@@ -15,6 +15,14 @@ import 'package:all_tracker/utilities/investment_planner/data/models/investment_
 import 'package:all_tracker/utilities/investment_planner/core/constants.dart';
 import 'package:all_tracker/utilities/retirement_planner/data/models/retirement_plan_model.dart';
 import 'package:all_tracker/utilities/retirement_planner/core/constants.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/trip_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/trip_profile_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/itinerary_day_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/itinerary_item_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/journal_entry_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/photo_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/expense_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/core/constants.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Hive initializer for the app.
@@ -141,6 +149,49 @@ class HiveInitializer {
       Hive.registerAdapter(RetirementPlanModelAdapter());
     }
 
+    // Travel Tracker adapters
+    // typeId: 14 -> TripModel
+    final tripAdapterId = TripModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(tripAdapterId)) {
+      Hive.registerAdapter(TripModelAdapter());
+    }
+
+    // typeId: 15 -> TripProfileModel
+    final tripProfileAdapterId = TripProfileModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(tripProfileAdapterId)) {
+      Hive.registerAdapter(TripProfileModelAdapter());
+    }
+
+    // typeId: 16 -> ItineraryDayModel
+    final itineraryDayAdapterId = ItineraryDayModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(itineraryDayAdapterId)) {
+      Hive.registerAdapter(ItineraryDayModelAdapter());
+    }
+
+    // typeId: 17 -> ItineraryItemModel
+    final itineraryItemAdapterId = ItineraryItemModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(itineraryItemAdapterId)) {
+      Hive.registerAdapter(ItineraryItemModelAdapter());
+    }
+
+    // typeId: 18 -> JournalEntryModel
+    final journalEntryAdapterId = JournalEntryModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(journalEntryAdapterId)) {
+      Hive.registerAdapter(JournalEntryModelAdapter());
+    }
+
+    // typeId: 19 -> PhotoModel
+    final photoAdapterId = PhotoModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(photoAdapterId)) {
+      Hive.registerAdapter(PhotoModelAdapter());
+    }
+
+    // typeId: 20 -> ExpenseModel
+    final expenseAdapterId = ExpenseModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(expenseAdapterId)) {
+      Hive.registerAdapter(ExpenseModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
@@ -174,6 +225,15 @@ class HiveInitializer {
     // Open retirement planner boxes
     await Hive.openBox<RetirementPlanModel>(retirementPlanBoxName);
     await Hive.openBox(retirementPreferencesBoxName);
+
+    // Open travel tracker boxes
+    await Hive.openBox<TripModel>(tripBoxName);
+    await Hive.openBox<TripProfileModel>(tripProfileBoxName);
+    await Hive.openBox<ItineraryDayModel>(itineraryDayBoxName);
+    await Hive.openBox<ItineraryItemModel>(itineraryItemBoxName);
+    await Hive.openBox<JournalEntryModel>(journalEntryBoxName);
+    await Hive.openBox<PhotoModel>(photoBoxName);
+    await Hive.openBox<ExpenseModel>(expenseBoxName);
 
     // // -------------------------------------------------------------------------
     // // Debug print section (for developer visibility)

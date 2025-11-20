@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../core/design_tokens.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
+import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
+import '../trackers/travel_tracker/core/app_icons.dart';
 import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../pages/settings_page.dart';
@@ -10,6 +12,7 @@ import '../pages/settings_page.dart';
 enum AppPage {
   appHome,
   goalTracker,
+  travelTracker,
   investmentPlanner,
   retirementPlanner,
   settings,
@@ -97,6 +100,21 @@ class AppDrawer extends StatelessWidget {
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (_) => const HomePage(),
+                        ),
+                      );
+                    }
+                  },
+                ),
+                _DrawerTile(
+                  icon: TravelTrackerIcons.trip,
+                  title: 'Travel Tracker',
+                  isSelected: currentPage == AppPage.travelTracker,
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close drawer
+                    if (currentPage != AppPage.travelTracker) {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const TravelTrackerHomePage(),
                         ),
                       );
                     }
