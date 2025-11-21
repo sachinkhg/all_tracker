@@ -12,12 +12,12 @@ import 'package:share_plus/share_plus.dart';
 // ignore: depend_on_referenced_packages
 import 'package:path/path.dart' as p;
 
-import '../core/constants.dart';
-import '../data/models/goal_model.dart';
-import '../data/models/milestone_model.dart';
-import '../data/models/task_model.dart';
-import '../data/models/habit_model.dart';
-import '../data/models/habit_completion_model.dart';
+import '../../trackers/goal_tracker/core/constants.dart';
+import '../../trackers/goal_tracker/data/models/goal_model.dart';
+import '../../trackers/goal_tracker/data/models/milestone_model.dart';
+import '../../trackers/goal_tracker/data/models/task_model.dart';
+import '../../trackers/goal_tracker/data/models/habit_model.dart';
+import '../../trackers/goal_tracker/data/models/habit_completion_model.dart';
 
 /// Create a JSON-based backup of all Hive boxes and save as a .zip file.
 Future<String?> createBackupZip(BuildContext context) async {

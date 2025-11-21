@@ -3,7 +3,7 @@ import 'package:all_tracker/trackers/goal_tracker/data/models/milestone_model.da
 import 'package:all_tracker/trackers/goal_tracker/data/models/task_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/data/models/habit_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/data/models/habit_completion_model.dart';
-import 'package:all_tracker/trackers/goal_tracker/features/backup/data/models/backup_metadata_model.dart';
+import 'package:all_tracker/features/backup/data/models/backup_metadata_model.dart';
 import 'package:all_tracker/trackers/goal_tracker/core/constants.dart';
 import 'package:all_tracker/utilities/investment_planner/data/models/investment_component_model.dart';
 import 'package:all_tracker/utilities/investment_planner/data/models/income_category_model.dart';

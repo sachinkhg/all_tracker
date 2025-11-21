@@ -1,5 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../../../core/constants.dart';
+import '../../../../trackers/goal_tracker/core/constants.dart';
 import '../domain/entities/backup_mode.dart';
 
 /// Service for managing backup preferences.

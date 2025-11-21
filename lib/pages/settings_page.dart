@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../core/app_theme.dart';
 import '../core/theme_notifier.dart';
 import '../core/design_tokens.dart';
-import '../trackers/goal_tracker/features/backup_restore.dart';
-import '../trackers/goal_tracker/features/backup/presentation/pages/backup_settings_page.dart';
+import '../features/backup/backup_restore.dart';
+import '../features/backup/presentation/pages/backup_settings_page.dart';
 import 'app_home_page.dart';
 
 class SettingsPage extends StatelessWidget {
