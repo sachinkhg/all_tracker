@@ -3,6 +3,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 // Data sources
 import '../data/datasources/trip_local_data_source.dart';
 import '../data/datasources/trip_profile_local_data_source.dart';
+import '../data/datasources/traveler_local_data_source.dart';
 import '../data/datasources/itinerary_local_data_source.dart';
 import '../data/datasources/journal_local_data_source.dart';
 import '../data/datasources/photo_local_data_source.dart';
@@ -11,6 +12,7 @@ import '../data/datasources/expense_local_data_source.dart';
 // Models
 import '../data/models/trip_model.dart';
 import '../data/models/trip_profile_model.dart';
+import '../data/models/traveler_model.dart';
 import '../data/models/itinerary_day_model.dart';
 import '../data/models/itinerary_item_model.dart';
 import '../data/models/journal_entry_model.dart';
@@ -20,6 +22,7 @@ import '../data/models/expense_model.dart';
 // Repositories
 import '../data/repositories/trip_repository_impl.dart';
 import '../data/repositories/trip_profile_repository_impl.dart';
+import '../data/repositories/traveler_repository_impl.dart';
 import '../data/repositories/itinerary_repository_impl.dart';
 import '../data/repositories/journal_repository_impl.dart';
 import '../data/repositories/photo_repository_impl.dart';
@@ -43,6 +46,10 @@ import '../domain/usecases/journal/create_journal_entry.dart';
 import '../domain/usecases/journal/get_entries_by_trip_id.dart';
 import '../domain/usecases/journal/update_journal_entry.dart';
 import '../domain/usecases/journal/delete_journal_entry.dart';
+import '../domain/usecases/traveler/create_traveler.dart';
+import '../domain/usecases/traveler/get_travelers_by_trip_id.dart';
+import '../domain/usecases/traveler/update_traveler.dart';
+import '../domain/usecases/traveler/delete_traveler.dart';
 import '../domain/usecases/photo/add_photo.dart';
 import '../domain/usecases/photo/get_photos_by_entry_id.dart';
 import '../domain/usecases/photo/get_photos_by_trip_id.dart';
@@ -56,6 +63,7 @@ import '../domain/usecases/expense/delete_expense.dart';
 import '../presentation/bloc/trip_cubit.dart';
 import '../presentation/bloc/itinerary_cubit.dart';
 import '../presentation/bloc/journal_cubit.dart';
+import '../presentation/bloc/traveler_cubit.dart';
 import '../presentation/bloc/photo_cubit.dart';
 import '../presentation/bloc/expense_cubit.dart';
 
@@ -227,6 +235,32 @@ ExpenseCubit createExpenseCubit() {
   return ExpenseCubit(
     create: create,
     getExpenses: getExpenses,
+    update: update,
+    delete: delete,
+  );
+}
+
+/// Factory that constructs a fully-wired TravelerCubit.
+TravelerCubit createTravelerCubit() {
+  final Box<TravelerModel> travelerBox =
+      Hive.box<TravelerModel>(travelerBoxName);
+
+  // Data layer
+  final travelerLocal = TravelerLocalDataSourceImpl(travelerBox);
+
+  // Repository layer
+  final travelerRepo = TravelerRepositoryImpl(travelerLocal);
+
+  // Use cases
+  final create = CreateTraveler(travelerRepo);
+  final getTravelers = GetTravelersByTripId(travelerRepo);
+  final update = UpdateTraveler(travelerRepo);
+  final delete = DeleteTraveler(travelerRepo);
+
+  // Presentation
+  return TravelerCubit(
+    create: create,
+    getTravelers: getTravelers,
     update: update,
     delete: delete,
   );

@@ -6,7 +6,7 @@ import '../../domain/entities/itinerary_item.dart';
 import '../../core/constants.dart';
 
 /// Widget displaying an itinerary day with its items.
-class ItineraryDayCard extends StatelessWidget {
+class ItineraryDayCard extends StatefulWidget {
   final ItineraryDay day;
   final List<ItineraryItem> items;
   final VoidCallback onAddItem;
@@ -25,6 +25,13 @@ class ItineraryDayCard extends StatelessWidget {
   });
 
   @override
+  State<ItineraryDayCard> createState() => _ItineraryDayCardState();
+}
+
+class _ItineraryDayCardState extends State<ItineraryDayCard> {
+  bool _isExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -34,92 +41,169 @@ class ItineraryDayCard extends StatelessWidget {
       return DateFormat('HH:mm').format(time);
     }
 
+    final hasActivities = widget.items.isNotEmpty;
+    final canExpand = hasActivities;
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      child: ExpansionTile(
-        leading: Icon(Icons.calendar_today, color: cs.primary),
-        title: Text(
-          DateFormat('MMM dd, yyyy').format(day.date),
-          style: textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        subtitle: day.notes != null && day.notes!.isNotEmpty
-            ? Text(day.notes!, maxLines: 1, overflow: TextOverflow.ellipsis)
-            : null,
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.add),
-              onPressed: onAddItem,
-              tooltip: 'Add Activity',
-            ),
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: onEditDay,
-              tooltip: 'Edit Day',
-            ),
-          ],
-        ),
-        children: items.isEmpty
-            ? [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'No activities for this day',
-                    style: textTheme.bodyMedium?.copyWith(
-                      color: cs.onSurfaceVariant,
+      child: Column(
+        children: [
+          // Header section (always visible)
+          InkWell(
+            onTap: canExpand
+                ? () => setState(() => _isExpanded = !_isExpanded)
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, color: cs.primary),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          DateFormat('MMM dd, yyyy').format(widget.day.date),
+                          style: textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface,
+                          ),
+                        ),
+                        if (widget.day.notes != null && widget.day.notes!.isNotEmpty)
+                          Text(
+                            widget.day.notes!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: textTheme.bodySmall?.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        if (hasActivities)
+                          Text(
+                            '${widget.items.length} ${widget.items.length == 1 ? 'activity' : 'activities'}',
+                            style: textTheme.bodySmall?.copyWith(
+                              color: cs.primary,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              ]
-            : items.map((item) {
-                return ListTile(
-                  leading: Icon(
-                    itineraryItemTypeIcons[item.type],
-                    color: cs.primary,
-                  ),
-                  title: Text(item.title),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (item.time != null)
-                        Text('Time: ${formatTime(item.time)}'),
-                      if (item.location != null)
-                        Text('Location: ${item.location}'),
-                      if (item.notes != null && item.notes!.isNotEmpty)
-                        Text(item.notes!),
-                    ],
-                  ),
-                  trailing: Row(
+                  Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (item.mapLink != null)
+                      IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: widget.onAddItem,
+                        tooltip: 'Add Activity',
+                      ),
+                      Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.note),
+                            onPressed: widget.onEditDay,
+                            tooltip: widget.day.notes != null && widget.day.notes!.isNotEmpty
+                                ? 'Edit Day Notes'
+                                : 'Add Day Notes',
+                          ),
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 14,
+                              height: 14,
+                              decoration: BoxDecoration(
+                                color: cs.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: cs.surface,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Icon(
+                                widget.day.notes != null && widget.day.notes!.isNotEmpty
+                                    ? Icons.edit
+                                    : Icons.add,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (canExpand)
                         IconButton(
-                          icon: const Icon(Icons.map),
-                          onPressed: () async {
-                            final uri = Uri.parse(item.mapLink!);
-                            if (await canLaunchUrl(uri)) {
-                              await launchUrl(uri);
-                            }
-                          },
-                          tooltip: 'Open Map',
+                          icon: Icon(
+                            _isExpanded ? Icons.expand_less : Icons.expand_more,
+                            color: cs.onSurfaceVariant,
+                          ),
+                          onPressed: () => setState(() => _isExpanded = !_isExpanded),
+                          tooltip: _isExpanded ? 'Collapse' : 'Expand',
                         ),
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => onEditItem(item),
-                        tooltip: 'Edit',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => onDeleteItem(item.id),
-                        tooltip: 'Delete',
-                      ),
                     ],
                   ),
-                );
-              }).toList(),
+                ],
+              ),
+            ),
+          ),
+          // Accordion content (only visible when expanded and has activities)
+          if (_isExpanded && hasActivities)
+            Divider(height: 1, color: cs.outline.withOpacity(0.12)),
+          if (_isExpanded && hasActivities)
+            ...widget.items.map((item) {
+              return ListTile(
+                leading: Icon(
+                  itineraryItemTypeIcons[item.type],
+                  color: cs.primary,
+                ),
+                title: Text(item.title),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (item.time != null)
+                      Text('Time: ${formatTime(item.time)}'),
+                    if (item.location != null)
+                      Text('Location: ${item.location}'),
+                    if (item.notes != null && item.notes!.isNotEmpty)
+                      Text(item.notes!),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (item.mapLink != null)
+                      IconButton(
+                        icon: const Icon(Icons.map),
+                        onPressed: () async {
+                          final uri = Uri.parse(item.mapLink!);
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri);
+                          }
+                        },
+                        tooltip: 'Open Map',
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () => widget.onEditItem(item),
+                      tooltip: 'Edit',
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          if (!hasActivities)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'No activities for this day',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

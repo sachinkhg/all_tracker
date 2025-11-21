@@ -22,11 +22,19 @@ class ItineraryItemFormBottomSheet {
       String? notes,
       String? mapLink,
     ) onSubmit,
+    Future<void> Function()? onDelete,
   }) {
     final titleCtrl = TextEditingController(text: initialTitle ?? '');
     final locationCtrl = TextEditingController(text: initialLocation ?? '');
     final notesCtrl = TextEditingController(text: initialNotes ?? '');
     final mapLinkCtrl = TextEditingController(text: initialMapLink ?? '');
+
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    // Determine if it's edit mode (has initial title) or create mode
+    final bool isEditMode = initialTitle != null && initialTitle.isNotEmpty;
+    final String headerTitle = isEditMode ? 'Edit Activity' : 'Add Activity';
 
     ItineraryItemType? selectedType = initialType ?? ItineraryItemType.sightseeing;
     DateTime? selectedTime = initialTime;
@@ -42,128 +50,263 @@ class ItineraryItemFormBottomSheet {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Activity',
-                style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx2, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 24,
+                bottom: MediaQuery.of(ctx2).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // --- Header ---
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            headerTitle,
+                            style: textTheme.titleLarge,
+                          ),
+                        ),
+                        if (onDelete != null)
+                          IconButton(
+                            icon: Icon(Icons.delete, color: cs.error),
+                            tooltip: 'Delete Activity',
+                            onPressed: () async {
+                              Navigator.pop(ctx2);
+                              await onDelete();
+                            },
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(ctx2),
+                        ),
+                      ],
                     ),
-              ),
-              const SizedBox(height: 24),
-              DropdownButtonFormField<ItineraryItemType>(
-                value: selectedType,
-                decoration: const InputDecoration(
-                  labelText: 'Activity Type',
-                  border: OutlineInputBorder(),
+                    const SizedBox(height: 16),
+
+                    // --- Activity Type Selector ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Activity Type', style: textTheme.labelLarge),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final type = await showModalBottomSheet<ItineraryItemType>(
+                              context: ctx2,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                              ),
+                              builder: (context) => Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(
+                                      'Select Activity Type',
+                                      style: textTheme.titleMedium,
+                                    ),
+                                  ),
+                                  ...ItineraryItemType.values.map((type) {
+                                    return ListTile(
+                                      leading: Icon(itineraryItemTypeIcons[type], color: cs.primary),
+                                      title: Text(itineraryItemTypeLabels[type]!),
+                                      onTap: () => Navigator.pop(context, type),
+                                      selected: selectedType == type,
+                                    );
+                                  }),
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            );
+                            if (type != null) {
+                              setState(() => selectedType = type);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    if (selectedType != null)
+                                      Icon(
+                                        itineraryItemTypeIcons[selectedType!],
+                                        color: cs.primary,
+                                        size: 20,
+                                      ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      selectedType != null
+                                          ? itineraryItemTypeLabels[selectedType!]!
+                                          : 'Select activity type',
+                                      style: textTheme.bodyLarge?.copyWith(color: cs.primary),
+                                    ),
+                                  ],
+                                ),
+                                Icon(Icons.arrow_drop_down, size: 24, color: cs.onSurfaceVariant),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Title Field ---
+                    TextField(
+                      controller: titleCtrl,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Title',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Time Selector ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Time', style: textTheme.labelLarge),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final time = await showTimePicker(
+                              context: ctx2,
+                              initialTime: selectedTime != null
+                                  ? TimeOfDay.fromDateTime(selectedTime!)
+                                  : TimeOfDay.now(),
+                            );
+                            if (time != null) {
+                              final now = DateTime.now();
+                              setState(() {
+                                selectedTime = DateTime(
+                                  now.year,
+                                  now.month,
+                                  now.day,
+                                  time.hour,
+                                  time.minute,
+                                );
+                              });
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  formatTime(selectedTime),
+                                  style: textTheme.bodyLarge?.copyWith(color: cs.primary),
+                                ),
+                                Row(
+                                  children: [
+                                    if (selectedTime != null)
+                                      IconButton(
+                                        icon: Icon(Icons.clear, size: 20, color: cs.onSurfaceVariant),
+                                        onPressed: () => setState(() => selectedTime = null),
+                                      ),
+                                    Icon(Icons.access_time, size: 20, color: cs.onSurfaceVariant),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Location Field ---
+                    TextField(
+                      controller: locationCtrl,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Location',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Map Link Field ---
+                    TextField(
+                      controller: mapLinkCtrl,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Map Link (URL)',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Notes Field ---
+                    TextField(
+                      controller: notesCtrl,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Notes',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- Action Button ---
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () async {
+                          final title = titleCtrl.text.trim();
+                          if (title.isEmpty) {
+                            ScaffoldMessenger.of(ctx2).showSnackBar(
+                              const SnackBar(content: Text('Title is required')),
+                            );
+                            return;
+                          }
+                          await onSubmit(
+                            selectedType!,
+                            title,
+                            selectedTime,
+                            locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
+                            notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
+                            mapLinkCtrl.text.trim().isEmpty ? null : mapLinkCtrl.text.trim(),
+                          );
+                          if (ctx2.mounted) {
+                            Navigator.pop(ctx2);
+                          }
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
                 ),
-                items: ItineraryItemType.values.map((type) {
-                  return DropdownMenuItem(
-                    value: type,
-                    child: Text(itineraryItemTypeLabels[type]!),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  selectedType = value;
-                },
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Title *',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              InkWell(
-                onTap: () async {
-                  final time = await showTimePicker(
-                    context: ctx,
-                    initialTime: selectedTime != null
-                        ? TimeOfDay.fromDateTime(selectedTime!)
-                        : TimeOfDay.now(),
-                  );
-                  if (time != null) {
-                    final now = DateTime.now();
-                    selectedTime = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      time.hour,
-                      time.minute,
-                    );
-                    (ctx as Element).markNeedsBuild();
-                  }
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Time',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(formatTime(selectedTime)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: locationCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Location',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: mapLinkCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Map Link (URL)',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: notesCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Notes',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  if (titleCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Title is required')),
-                    );
-                    return;
-                  }
-                  await onSubmit(
-                    selectedType!,
-                    titleCtrl.text.trim(),
-                    selectedTime,
-                    locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
-                    notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
-                    mapLinkCtrl.text.trim().isEmpty ? null : mapLinkCtrl.text.trim(),
-                  );
-                  if (ctx.mounted) {
-                    Navigator.of(ctx).pop();
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

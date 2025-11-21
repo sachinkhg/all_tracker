@@ -12,6 +12,7 @@ import 'package:flutter/material.dart';
 /// Hive box names for travel tracker persistence.
 const String tripBoxName = 'trips_box';
 const String tripProfileBoxName = 'trip_profiles_box';
+const String travelerBoxName = 'travelers_box';
 const String itineraryDayBoxName = 'itinerary_days_box';
 const String itineraryItemBoxName = 'itinerary_items_box';
 const String journalEntryBoxName = 'journal_entries_box';

@@ -208,6 +208,10 @@ class ItineraryViewPageView extends StatelessWidget {
         );
         await cubit.updateItemEntry(updated, tripId);
       },
+      onDelete: () async {
+        final cubit = context.read<ItineraryCubit>();
+        await cubit.deleteItemById(item.id, tripId);
+      },
     );
   }
 }

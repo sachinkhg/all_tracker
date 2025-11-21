@@ -17,6 +17,7 @@ import 'package:all_tracker/utilities/retirement_planner/data/models/retirement_
 import 'package:all_tracker/utilities/retirement_planner/core/constants.dart';
 import 'package:all_tracker/trackers/travel_tracker/data/models/trip_model.dart';
 import 'package:all_tracker/trackers/travel_tracker/data/models/trip_profile_model.dart';
+import 'package:all_tracker/trackers/travel_tracker/data/models/traveler_model.dart';
 import 'package:all_tracker/trackers/travel_tracker/data/models/itinerary_day_model.dart';
 import 'package:all_tracker/trackers/travel_tracker/data/models/itinerary_item_model.dart';
 import 'package:all_tracker/trackers/travel_tracker/data/models/journal_entry_model.dart';
@@ -192,6 +193,12 @@ class HiveInitializer {
       Hive.registerAdapter(ExpenseModelAdapter());
     }
 
+    // typeId: 21 -> TravelerModel
+    final travelerAdapterId = TravelerModelAdapter().typeId;
+    if (!Hive.isAdapterRegistered(travelerAdapterId)) {
+      Hive.registerAdapter(TravelerModelAdapter());
+    }
+
     // -------------------------------------------------------------------------
     // Box opening
     // -------------------------------------------------------------------------
@@ -229,6 +236,7 @@ class HiveInitializer {
     // Open travel tracker boxes
     await Hive.openBox<TripModel>(tripBoxName);
     await Hive.openBox<TripProfileModel>(tripProfileBoxName);
+    await Hive.openBox<TravelerModel>(travelerBoxName);
     await Hive.openBox<ItineraryDayModel>(itineraryDayBoxName);
     await Hive.openBox<ItineraryItemModel>(itineraryItemBoxName);
     await Hive.openBox<JournalEntryModel>(journalEntryBoxName);

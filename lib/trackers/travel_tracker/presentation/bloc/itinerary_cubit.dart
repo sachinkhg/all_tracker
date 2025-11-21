@@ -47,9 +47,9 @@ class ItineraryCubit extends Cubit<ItineraryState> {
       // Get trip to check start and end dates
       final trip = await getTripById(tripId);
       
-      // Auto-generate days if trip has start and end dates
+      // Reset days based on start and end dates
       if (trip != null && trip.startDate != null && trip.endDate != null) {
-        await _ensureDaysExist(tripId, trip.startDate!, trip.endDate!);
+        await _resetDaysForDateRange(tripId, trip.startDate!, trip.endDate!);
       }
       
       final days = await getDays(tripId);
@@ -75,24 +75,53 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     }
   }
 
-  /// Ensures that itinerary days exist for all dates between startDate and endDate.
-  /// Only creates days that don't already exist.
-  Future<void> _ensureDaysExist(
+  /// Resets itinerary days based on the new date range.
+  /// - Deletes days outside the date range (along with their activities)
+  /// - Creates missing days within the date range
+  /// - Preserves days and activities within the range
+  Future<void> _resetDaysForDateRange(
     String tripId,
     DateTime startDate,
     DateTime endDate,
   ) async {
     final existingDays = await getDays(tripId);
-    final existingDates = existingDays.map((day) {
-      // Normalize to date only (remove time component)
+    
+    // Normalize dates to date-only (remove time component) for comparison
+    final startDateNormalized = DateTime(startDate.year, startDate.month, startDate.day);
+    final endDateNormalized = DateTime(endDate.year, endDate.month, endDate.day);
+    
+    // Track which dates should exist in the new range
+    final datesInRange = <DateTime>{};
+    DateTime currentDate = startDateNormalized;
+    while (currentDate.isBefore(endDateNormalized) || currentDate.isAtSameMomentAs(endDateNormalized)) {
+      datesInRange.add(currentDate);
+      currentDate = currentDate.add(const Duration(days: 1));
+    }
+    
+    // Delete days outside the date range (along with their activities)
+    for (final day in existingDays) {
+      final dayDate = DateTime(day.date.year, day.date.month, day.date.day);
+      if (!datesInRange.contains(dayDate)) {
+        // Delete all items for this day first
+        final items = await getItems(day.id);
+        for (final item in items) {
+          await deleteItem(item.id);
+        }
+        // Then delete the day
+        await deleteDay(day.id);
+      }
+    }
+    
+    // Create missing days within the date range
+    final remainingDays = await getDays(tripId);
+    final existingDates = remainingDays.map((day) {
       final date = day.date;
       return DateTime(date.year, date.month, date.day);
     }).toSet();
 
     final now = DateTime.now();
-    DateTime currentDate = DateTime(startDate.year, startDate.month, startDate.day);
-    final endDateNormalized = DateTime(endDate.year, endDate.month, endDate.day);
-
+    currentDate = startDateNormalized;
+    
     while (currentDate.isBefore(endDateNormalized) || currentDate.isAtSameMomentAs(endDateNormalized)) {
       if (!existingDates.contains(currentDate)) {
         final day = ItineraryDay(

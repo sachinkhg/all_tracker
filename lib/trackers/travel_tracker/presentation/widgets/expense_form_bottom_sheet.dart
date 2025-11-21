@@ -19,16 +19,37 @@ class ExpenseFormBottomSheet {
       String currency,
       String? description,
     ) onSubmit,
+    Future<void> Function()? onDelete,
   }) {
     final amountCtrl = TextEditingController(
       text: initialAmount?.toStringAsFixed(2) ?? '',
     );
     final descCtrl = TextEditingController(text: initialDescription ?? '');
 
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    // Determine if it's edit mode (has initial amount) or create mode
+    final bool isEditMode = initialAmount != null;
+    final String headerTitle = isEditMode ? 'Edit Expense' : 'Add Expense';
+
     DateTime selectedDate = initialDate ?? DateTime.now();
     ExpenseCategory? selectedCategory = initialCategory ?? ExpenseCategory.other;
 
     String formatDate(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
+
+    IconData _getCategoryIcon(ExpenseCategory category) {
+      switch (category) {
+        case ExpenseCategory.food:
+          return Icons.restaurant;
+        case ExpenseCategory.travel:
+          return Icons.directions_transit;
+        case ExpenseCategory.stay:
+          return Icons.hotel;
+        case ExpenseCategory.other:
+          return Icons.category;
+      }
+    }
 
     return showModalBottomSheet(
       context: context,
@@ -36,106 +57,218 @@ class ExpenseFormBottomSheet {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Expense',
-                style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx2, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 24,
+                bottom: MediaQuery.of(ctx2).viewInsets.bottom + 24,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // --- Header ---
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            headerTitle,
+                            style: textTheme.titleLarge,
+                          ),
+                        ),
+                        if (onDelete != null)
+                          IconButton(
+                            icon: Icon(Icons.delete, color: cs.error),
+                            tooltip: 'Delete Expense',
+                            onPressed: () async {
+                              Navigator.pop(ctx2);
+                              await onDelete();
+                            },
+                          ),
+                        IconButton(
+                          icon: Icon(Icons.close, color: cs.onSurfaceVariant),
+                          tooltip: 'Close',
+                          onPressed: () => Navigator.pop(ctx2),
+                        ),
+                      ],
                     ),
-              ),
-              const SizedBox(height: 24),
-              InkWell(
-                onTap: () async {
-                  final date = await showDatePicker(
-                    context: ctx,
-                    initialDate: selectedDate,
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (date != null) {
-                    selectedDate = date;
-                    (ctx as Element).markNeedsBuild();
-                  }
-                },
-                child: InputDecorator(
-                  decoration: const InputDecoration(
-                    labelText: 'Date',
-                    border: OutlineInputBorder(),
-                  ),
-                  child: Text(formatDate(selectedDate)),
+                    const SizedBox(height: 16),
+
+                    // --- Date Selector ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Date', style: textTheme.labelLarge),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final date = await showDatePicker(
+                              context: ctx2,
+                              initialDate: selectedDate,
+                              firstDate: DateTime(2000),
+                              lastDate: DateTime(2100),
+                            );
+                            if (date != null) {
+                              setState(() => selectedDate = date);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  formatDate(selectedDate),
+                                  style: textTheme.bodyLarge?.copyWith(color: cs.primary),
+                                ),
+                                Icon(Icons.calendar_today, size: 20, color: cs.onSurfaceVariant),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Category Selector ---
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Category', style: textTheme.labelLarge),
+                        const SizedBox(height: 6),
+                        GestureDetector(
+                          onTap: () async {
+                            final category = await showModalBottomSheet<ExpenseCategory>(
+                              context: ctx2,
+                              shape: const RoundedRectangleBorder(
+                                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                              ),
+                              builder: (context) => Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Text(
+                                      'Select Category',
+                                      style: textTheme.titleMedium,
+                                    ),
+                                  ),
+                                  ...ExpenseCategory.values.map((category) {
+                                    return ListTile(
+                                      leading: Icon(_getCategoryIcon(category), color: cs.primary),
+                                      title: Text(expenseCategoryLabels[category]!),
+                                      onTap: () => Navigator.pop(context, category),
+                                      selected: selectedCategory == category,
+                                    );
+                                  }).toList(),
+                                  const SizedBox(height: 8),
+                                ],
+                              ),
+                            );
+                            if (category != null) {
+                              setState(() => selectedCategory = category);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _getCategoryIcon(selectedCategory!),
+                                      color: cs.primary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      expenseCategoryLabels[selectedCategory!]!,
+                                      style: textTheme.bodyLarge?.copyWith(color: cs.primary),
+                                    ),
+                                  ],
+                                ),
+                                Icon(Icons.arrow_drop_down, size: 24, color: cs.onSurfaceVariant),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Amount Field ---
+                    TextField(
+                      controller: amountCtrl,
+                      style: TextStyle(color: cs.primary),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Amount',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // --- Description Field ---
+                    TextField(
+                      controller: descCtrl,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Description',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 20),
+
+                    // --- Action Button ---
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        onPressed: () async {
+                          final amount = double.tryParse(amountCtrl.text.trim());
+                          if (amount == null || amount <= 0) {
+                            ScaffoldMessenger.of(ctx2).showSnackBar(
+                              const SnackBar(content: Text('Valid amount is required')),
+                            );
+                            return;
+                          }
+                          await onSubmit(
+                            selectedDate,
+                            selectedCategory!,
+                            amount,
+                            defaultCurrency, // Always use default currency
+                            descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+                          );
+                          if (ctx2.mounted) {
+                            Navigator.pop(ctx2);
+                          }
+                        },
+                        child: const Text('Save'),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<ExpenseCategory>(
-                value: selectedCategory,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                ),
-                items: ExpenseCategory.values.map((category) {
-                  return DropdownMenuItem(
-                    value: category,
-                    child: Text(expenseCategoryLabels[category]!),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  selectedCategory = value;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: amountCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Amount *',
-                  border: OutlineInputBorder(),
-                ),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  final amount = double.tryParse(amountCtrl.text.trim());
-                  if (amount == null || amount <= 0) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Valid amount is required')),
-                    );
-                    return;
-                  }
-                  await onSubmit(
-                    selectedDate,
-                    selectedCategory!,
-                    amount,
-                    defaultCurrency, // Always use default currency
-                    descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-                  );
-                  if (ctx.mounted) {
-                    Navigator.of(ctx).pop();
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
-          ),
-        ),
-      ),
+            );
+          },
+        );
+      },
     );
   }
 }

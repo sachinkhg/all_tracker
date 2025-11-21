@@ -3,21 +3,24 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/trip.dart';
 import '../bloc/trip_cubit.dart';
+import '../bloc/itinerary_cubit.dart';
 import '../bloc/journal_cubit.dart';
 import '../bloc/journal_state.dart';
 import '../bloc/expense_cubit.dart';
 import '../bloc/expense_state.dart';
+import '../bloc/traveler_cubit.dart';
+import '../bloc/traveler_state.dart';
 import '../../core/injection.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../core/design_tokens.dart';
 import 'itinerary_view_page.dart';
 import 'journal_entry_page.dart';
 import 'expense_list_page.dart';
-import 'travel_stats_page.dart';
-import '../widgets/profile_setup_bottom_sheet.dart';
+import 'travelers_page.dart';
 import '../widgets/trip_form_bottom_sheet.dart';
 import '../widgets/journal_entry_form_bottom_sheet.dart';
 import '../widgets/expense_form_bottom_sheet.dart';
+import '../widgets/traveler_form_bottom_sheet.dart';
 
 /// Detail page for a trip showing tabs for Itinerary, Journal, Expenses, and Stats.
 class TripDetailPage extends StatelessWidget {
@@ -57,6 +60,7 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   Trip? _trip;
+  final GlobalKey _builderKey = GlobalKey();
 
   @override
   void initState() {
@@ -81,6 +85,22 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
     }
   }
 
+  void _refreshItinerary() {
+    // Access the ItineraryCubit from the builder context
+    // Use post-frame callback to ensure the context is available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        final BuildContext? builderContext = _builderKey.currentContext;
+        if (builderContext != null && mounted) {
+          final itineraryCubit = builderContext.read<ItineraryCubit>();
+          itineraryCubit.loadItinerary(widget.tripId);
+        }
+      } catch (e) {
+        debugPrint('Error refreshing itinerary: $e');
+      }
+    });
+  }
+
   Future<void> _editTrip(BuildContext context, Trip trip, TripCubit cubit) async {
     await TripFormBottomSheet.show(
       context,
@@ -92,6 +112,22 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
       initialEndDate: trip.endDate,
       initialDescription: trip.description,
       onSubmit: (title, destination, startDate, endDate, description) async {
+        // Check if dates changed
+        final oldStartDate = trip.startDate != null
+            ? DateTime(trip.startDate!.year, trip.startDate!.month, trip.startDate!.day)
+            : null;
+        final oldEndDate = trip.endDate != null
+            ? DateTime(trip.endDate!.year, trip.endDate!.month, trip.endDate!.day)
+            : null;
+        final newStartDate = startDate != null
+            ? DateTime(startDate.year, startDate.month, startDate.day)
+            : null;
+        final newEndDate = endDate != null
+            ? DateTime(endDate.year, endDate.month, endDate.day)
+            : null;
+
+        final datesChanged = oldStartDate != newStartDate || oldEndDate != newEndDate;
+
         final updated = Trip(
           id: trip.id,
           title: title,
@@ -106,6 +142,11 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
         // Reload trip data after updating
         if (mounted) {
           await _loadTrip();
+          // Always refresh itinerary when dates change to reset days based on new date range
+          // Days outside the range will be deleted, days within the range will be preserved
+          if (datesChanged) {
+            _refreshItinerary();
+          }
         }
       },
       onDelete: () async {
@@ -219,14 +260,6 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
         ),
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Profile Setup',
-            onPressed: () => ProfileSetupBottomSheet.show(
-              context,
-              tripId: widget.tripId,
-            ),
-          ),
           if (_trip != null) ...[
             IconButton(
               icon: const Icon(Icons.edit),
@@ -325,7 +358,7 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                     Tab(text: 'Itinerary', icon: Icon(Icons.calendar_today)),
                     Tab(text: 'Journal', icon: Icon(Icons.book)),
                     Tab(text: 'Expenses', icon: Icon(Icons.attach_money)),
-                    Tab(text: 'Stats', icon: Icon(Icons.bar_chart)),
+                    Tab(text: 'Travelers', icon: Icon(Icons.people)),
                   ],
                 ),
                 // Tab Bar View
@@ -353,8 +386,16 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                           return cubit;
                         },
                       ),
+                      BlocProvider(
+                        create: (_) {
+                          final cubit = createTravelerCubit();
+                          cubit.loadTravelers(widget.tripId);
+                          return cubit;
+                        },
+                      ),
                     ],
                     child: Builder(
+                      key: _builderKey,
                       builder: (builderContext) => Stack(
                         children: [
                           TabBarView(
@@ -363,7 +404,7 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                               ItineraryViewPage(tripId: widget.tripId),
                               JournalEntryPage(tripId: widget.tripId),
                               ExpenseListPage(tripId: widget.tripId),
-                              TravelStatsPage(tripId: widget.tripId),
+                              TravelersPage(tripId: widget.tripId),
                             ],
                           ),
                           Positioned(
@@ -404,9 +445,9 @@ class _QuickAddButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Show FAB only for journal (1) and expenses (2) tabs
-    // Itinerary tab (0) and Stats tab (3) don't need FAB
-    if (currentTab == 0 || currentTab == 3) {
+    // Show FAB for journal (1), expenses (2), and travelers (3) tabs
+    // Itinerary tab (0) doesn't need FAB
+    if (currentTab == 0) {
       return const SizedBox.shrink();
     }
 
@@ -439,6 +480,21 @@ class _QuickAddButton extends StatelessWidget {
           return const SizedBox.shrink();
         },
         buildWhen: (previous, current) => current is ExpensesLoaded,
+      );
+    } else if (currentTab == 3) {
+      // Travelers tab - show FAB if there are travelers
+      return BlocBuilder<TravelerCubit, TravelerState>(
+        builder: (context, state) {
+          if (state is TravelersLoaded && state.travelers.isNotEmpty) {
+            return FloatingActionButton(
+              onPressed: () => _addTraveler(builderContext),
+              tooltip: 'Add Traveler',
+              child: const Icon(Icons.add),
+            );
+          }
+          return const SizedBox.shrink();
+        },
+        buildWhen: (previous, current) => current is TravelersLoaded,
       );
     }
 
@@ -483,6 +539,29 @@ class _QuickAddButton extends StatelessWidget {
       );
     } catch (e) {
       debugPrint('Error adding expense: $e');
+    }
+  }
+
+  void _addTraveler(BuildContext context) {
+    try {
+      TravelerFormBottomSheet.show(
+        context,
+        tripId: tripId,
+        onSubmit: (name, relationship, email, phone, notes, isMainTraveler) async {
+          final cubit = context.read<TravelerCubit>();
+          await cubit.createTraveler(
+            tripId: tripId,
+            name: name,
+            relationship: relationship,
+            email: email,
+            phone: phone,
+            notes: notes,
+            isMainTraveler: isMainTraveler,
+          );
+        },
+      );
+    } catch (e) {
+      debugPrint('Error adding traveler: $e');
     }
   }
 }

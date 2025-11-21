@@ -129,85 +129,45 @@ class ExpenseListPageView extends StatelessWidget {
                     final expense = expenses[index];
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        isThreeLine: expense.description != null,
-                        dense: true,
-                        leading: Icon(
-                          _getCategoryIcon(expense.category),
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                      child: InkWell(
+                        onTap: () => _editExpense(context, expense),
+                        borderRadius: BorderRadius.circular(12),
+                        child: ListTile(
+                          isThreeLine: expense.description != null,
+                          dense: true,
+                          leading: Icon(
+                            _getCategoryIcon(expense.category),
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                         title: Text(
                           expenseCategoryLabels[expense.category]!,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                         ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              DateFormat('MMM dd, yyyy').format(expense.date),
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                            if (expense.description != null)
-                              Text(
-                                expense.description!,
-                                style: Theme.of(context).textTheme.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
-                        trailing: SizedBox(
-                          width: 100,
-                          child: Column(
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisSize: MainAxisSize.min,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
                               Text(
-                                NumberFormat('#,##0.00').format(expense.amount),
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                textAlign: TextAlign.end,
+                                DateFormat('MMM dd, yyyy').format(expense.date),
+                                style: Theme.of(context).textTheme.bodySmall,
                               ),
-                              const SizedBox(height: 2),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  InkWell(
-                                    onTap: () => _editExpense(context, expense),
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(2),
-                                      child: Icon(
-                                        Icons.edit,
-                                        size: 16,
-                                        color: Theme.of(context).colorScheme.primary,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 2),
-                                  InkWell(
-                                    onTap: () async {
-                                      await cubit.deleteExpenseEntry(expense.id, tripId);
-                                    },
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(2),
-                                      child: Icon(
-                                        Icons.delete,
-                                        size: 16,
-                                        color: Theme.of(context).colorScheme.error,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                              if (expense.description != null)
+                                Text(
+                                  expense.description!,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                             ],
+                          ),
+                          trailing: Text(
+                            NumberFormat('#,##0.00').format(expense.amount),
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                           ),
                         ),
                       ),
@@ -285,6 +245,10 @@ class ExpenseListPageView extends StatelessWidget {
           updatedAt: DateTime.now(),
         );
         await cubit.updateExpenseEntry(updated);
+      },
+      onDelete: () async {
+        final cubit = context.read<ExpenseCubit>();
+        await cubit.deleteExpenseEntry(expense.id, tripId);
       },
     );
   }
