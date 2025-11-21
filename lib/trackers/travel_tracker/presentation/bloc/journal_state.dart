@@ -15,11 +15,12 @@ class JournalLoading extends JournalState {}
 /// Loaded state with entries.
 class JournalLoaded extends JournalState {
   final List<JournalEntry> entries;
+  final bool isRefreshing;
 
-  const JournalLoaded(this.entries);
+  const JournalLoaded(this.entries, {this.isRefreshing = false});
 
   @override
-  List<Object?> get props => [entries];
+  List<Object?> get props => [entries, isRefreshing];
 }
 
 /// Error state.

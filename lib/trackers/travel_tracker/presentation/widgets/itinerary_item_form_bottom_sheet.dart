@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants.dart';
+import '../../data/services/google_places_service.dart';
+import 'location_picker_widget.dart';
 
 /// Bottom sheet for creating/editing itinerary items.
 class ItineraryItemFormBottomSheet {
@@ -236,15 +238,13 @@ class ItineraryItemFormBottomSheet {
                     ),
                     const SizedBox(height: 12),
 
-                    // --- Location Field ---
-                    TextField(
+                    // --- Location Field with Google Places Integration ---
+                    LocationPickerWidget(
                       controller: locationCtrl,
-                      style: TextStyle(color: cs.primary),
-                      decoration: InputDecoration(
-                        labelText: 'Location',
-                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
-                        border: const OutlineInputBorder(),
-                      ),
+                      placesService: GooglePlacesService(apiKey: null), // TODO: Add API key from config if available
+                      onLocationSelected: (location) {
+                        // Location selected callback
+                      },
                     ),
                     const SizedBox(height: 12),
 

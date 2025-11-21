@@ -193,16 +193,16 @@ class _ItineraryDayCardState extends State<ItineraryDayCard> {
                 ),
               );
             }).toList(),
-          if (!hasActivities)
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'No activities for this day',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
-            ),
+          // if (!hasActivities)
+          //   Padding(
+          //     padding: const EdgeInsets.all(16),
+          //     child: Text(
+          //       'No activities for this day',
+          //       style: textTheme.bodyMedium?.copyWith(
+          //         color: cs.onSurfaceVariant,
+          //       ),
+          //     ),
+          //   ),
         ],
       ),
     );

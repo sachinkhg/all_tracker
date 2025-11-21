@@ -7,6 +7,6 @@ class CreateJournalEntry {
 
   CreateJournalEntry(this.repository);
 
-  Future<void> call(JournalEntry entry) async => repository.createEntry(entry);
+  Future<JournalEntry> call(JournalEntry entry) async => repository.createEntry(entry);
 }
 

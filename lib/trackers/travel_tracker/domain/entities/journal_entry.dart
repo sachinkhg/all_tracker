@@ -3,7 +3,6 @@ import 'package:equatable/equatable.dart';
 /// Domain model for a Journal Entry.
 ///
 /// Represents a daily journal entry for a trip with formatted text content.
-/// Each entry can have multiple photos.
 class JournalEntry extends Equatable {
   /// Unique identifier for the entry (GUID recommended).
   final String id;

@@ -508,11 +508,12 @@ class _QuickAddButton extends StatelessWidget {
         tripId: tripId,
         onSubmit: (date, content) async {
           final cubit = context.read<JournalCubit>();
-          await cubit.createEntry(
+          final createdEntry = await cubit.createEntry(
             tripId: tripId,
             date: date,
             content: content,
           );
+          return createdEntry?.id;
         },
       );
     } catch (e) {

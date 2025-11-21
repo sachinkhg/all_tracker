@@ -23,18 +23,25 @@ class JournalCubit extends Cubit<JournalState> {
     required this.delete,
   }) : super(JournalLoading());
 
-  Future<void> loadEntries(String tripId) async {
+  Future<void> loadEntries(String tripId, {bool isRefreshing = false}) async {
     try {
-      emit(JournalLoading());
+      if (isRefreshing && state is JournalLoaded) {
+        // Show refreshing state while keeping current entries visible
+        final currentState = state as JournalLoaded;
+        emit(JournalLoaded(List.from(currentState.entries), isRefreshing: true));
+      } else {
+        emit(JournalLoading());
+      }
       final entries = await getEntries(tripId);
       entries.sort((a, b) => b.date.compareTo(a.date)); // Newest first
-      emit(JournalLoaded(entries));
+      // Create new list instance to ensure state change is detected
+      emit(JournalLoaded(List.from(entries), isRefreshing: false));
     } catch (e) {
       emit(JournalError(e.toString()));
     }
   }
 
-  Future<void> createEntry({
+  Future<JournalEntry?> createEntry({
     required String tripId,
     required DateTime date,
     required String content,
@@ -50,10 +57,12 @@ class JournalCubit extends Cubit<JournalState> {
         updatedAt: now,
       );
 
-      await create(entry);
-      await loadEntries(tripId);
+      final createdEntry = await create(entry);
+      await loadEntries(tripId, isRefreshing: true);
+      return createdEntry;
     } catch (e) {
       emit(JournalError(e.toString()));
+      return null;
     }
   }
 
@@ -69,7 +78,7 @@ class JournalCubit extends Cubit<JournalState> {
       );
 
       await update(updated);
-      await loadEntries(entry.tripId);
+      await loadEntries(entry.tripId, isRefreshing: true);
     } catch (e) {
       emit(JournalError(e.toString()));
     }
@@ -78,7 +87,7 @@ class JournalCubit extends Cubit<JournalState> {
   Future<void> deleteEntry(String id, String tripId) async {
     try {
       await delete(id);
-      await loadEntries(tripId);
+      await loadEntries(tripId, isRefreshing: true);
     } catch (e) {
       emit(JournalError(e.toString()));
     }

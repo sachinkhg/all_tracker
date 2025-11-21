@@ -10,9 +10,10 @@ class JournalRepositoryImpl implements JournalRepository {
   JournalRepositoryImpl(this.local);
 
   @override
-  Future<void> createEntry(JournalEntry entry) async {
+  Future<JournalEntry> createEntry(JournalEntry entry) async {
     final model = JournalEntryModel.fromEntity(entry);
     await local.createEntry(model);
+    return entry; // Return the created entry
   }
 
   @override

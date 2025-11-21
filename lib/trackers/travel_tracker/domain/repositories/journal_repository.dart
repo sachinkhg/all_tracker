@@ -9,7 +9,8 @@ abstract class JournalRepository {
   Future<JournalEntry?> getEntryById(String id);
 
   /// Create a new journal entry.
-  Future<void> createEntry(JournalEntry entry);
+  /// Returns the created entry.
+  Future<JournalEntry> createEntry(JournalEntry entry);
 
   /// Update an existing journal entry.
   Future<void> updateEntry(JournalEntry entry);

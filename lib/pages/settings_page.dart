@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/app_theme.dart';
 import '../core/theme_notifier.dart';
 import '../core/design_tokens.dart';
 import '../features/backup/backup_restore.dart';
 import '../features/backup/presentation/pages/backup_settings_page.dart';
+import '../features/auth/presentation/cubit/auth_cubit.dart';
+import '../features/auth/presentation/states/auth_state.dart';
 import 'app_home_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -54,6 +57,76 @@ class SettingsPage extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // User Profile Section
+          BlocBuilder<AuthCubit, AuthState>(
+            builder: (context, authState) {
+              if (authState is AuthAuthenticated) {
+                final user = authState.user;
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                              backgroundImage: user.photoUrl != null
+                                  ? NetworkImage(user.photoUrl!)
+                                  : null,
+                              child: user.photoUrl == null
+                                  ? Icon(
+                                      Icons.person,
+                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                    )
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user.displayName ?? 'User',
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user.email,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            context.read<AuthCubit>().signOut();
+                          },
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Sign Out'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 48),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 32),
           Text('Color Scheme', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           Wrap(

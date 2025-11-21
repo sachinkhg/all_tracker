@@ -1,9 +1,14 @@
 import 'package:all_tracker/core/hive_initializer.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/app_typography.dart';
 import 'pages/app_home_page.dart';
 import 'core/theme_notifier.dart';
+import 'features/auth/core/injection.dart';
+import 'features/auth/presentation/pages/login_page.dart';
+import 'features/auth/presentation/cubit/auth_cubit.dart';
+import 'features/auth/presentation/states/auth_state.dart';
 
 /// ============================================================================
 /// APPLICATION ENTRY POINT
@@ -46,12 +51,15 @@ Future<void> main() async {
   /// is ready before the app runs.
   await HiveInitializer.initialize();
 
-  /// Step 3: Initialize and provide ThemeNotifier.
-  /// This allows the app to listen for and react to theme changes globally.
+  /// Step 3: Initialize and provide ThemeNotifier and AuthCubit.
+  /// This allows the app to listen for and react to theme changes and auth state globally.
   runApp(
     ChangeNotifierProvider(
       create: (_) => ThemeNotifier()..init(),
-      child: const MyApp(),
+      child: BlocProvider(
+        create: (_) => createAuthCubit()..checkAuthStatus(),
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -105,11 +113,21 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      /// Current initial route → AppHomePage (main landing page)
-      /// To modify:
-      ///   - Replace with another widget
-      ///   - Or use `initialRoute` and `routes` for multi-screen navigation
-      home: const AppHomePage(),
+      /// Conditional routing based on authentication state
+      /// - Show LoginPage if user is not authenticated
+      /// - Show AppHomePage if user is authenticated
+      home: BlocBuilder<AuthCubit, AuthState>(
+        builder: (context, state) {
+          if (state is AuthAuthenticated) {
+            return const AppHomePage();
+          } else if (state is AuthUnauthenticated || state is AuthInitial || state is AuthError) {
+            return const LoginPage();
+          } else {
+            // Loading state - show loading screen or login page
+            return const LoginPage();
+          }
+        },
+      ),
     );
   }
 }
