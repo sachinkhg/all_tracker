@@ -1,34 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-/// Bottom sheet for creating/editing a trip.
-class TripFormBottomSheet {
+/// Bottom sheet for shifting trip dates.
+/// Allows user to change start and end dates, with an option to shift itinerary along with dates.
+class ShiftDatesBottomSheet {
   static Future<void> show(
     BuildContext context, {
-    String? initialTitle,
-    String? initialDestination,
-    DateTime? initialStartDate,
-    DateTime? initialEndDate,
-    String? initialDescription,
-    String? tripId,
+    required DateTime? initialStartDate,
+    required DateTime? initialEndDate,
     required Future<void> Function(
-      String title,
-      String? destination,
       DateTime? startDate,
       DateTime? endDate,
-      String? description,
+      bool shiftItinerary,
     ) onSubmit,
-    Future<void> Function()? onDelete,
-    String title = 'Create Trip',
   }) {
-    final titleCtrl = TextEditingController(text: initialTitle ?? '');
-    final destCtrl = TextEditingController(text: initialDestination ?? '');
-    final descCtrl = TextEditingController(text: initialDescription ?? '');
-
     DateTime? startDate = initialStartDate;
     DateTime? endDate = initialEndDate;
-
-    final cs = Theme.of(context).colorScheme;
+    bool shiftItinerary = false;
 
     String formatDate(DateTime? d) {
       if (d == null) return 'Select date';
@@ -41,57 +29,24 @@ class TripFormBottomSheet {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(ctx).viewInsets.bottom,
-        ),
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  if (onDelete != null)
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      color: cs.error,
-                      onPressed: () async {
-                        await onDelete();
-                        if (ctx.mounted) {
-                          Navigator.of(ctx).pop();
-                        }
-                      },
-                    ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              TextField(
-                controller: titleCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Trip Title *',
-                  border: OutlineInputBorder(),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom,
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Shift Dates',
+                  style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: destCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Destination',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              // Only show date fields when creating a new trip (tripId is null)
-              if (tripId == null) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Row(
                   children: [
                     Expanded(
@@ -125,8 +80,9 @@ class TripFormBottomSheet {
                                 return;
                               }
                             }
-                            startDate = picked;
-                            (ctx as Element).markNeedsBuild();
+                            setState(() {
+                              startDate = picked;
+                            });
                           }
                         },
                         child: InputDecorator(
@@ -170,8 +126,9 @@ class TripFormBottomSheet {
                                 return;
                               }
                             }
-                            endDate = picked;
-                            (ctx as Element).markNeedsBuild();
+                            setState(() {
+                              endDate = picked;
+                            });
                           }
                         },
                         child: InputDecorator(
@@ -185,27 +142,23 @@ class TripFormBottomSheet {
                     ),
                   ],
                 ),
-              ],
-              const SizedBox(height: 16),
-              TextField(
-                controller: descCtrl,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
+                const SizedBox(height: 24),
+                CheckboxListTile(
+                  title: const Text('Shift Itinerary'),
+                  subtitle: const Text(
+                    'Move all itinerary items along with the dates. Items on days outside the new date range will be lost.',
+                  ),
+                  value: shiftItinerary,
+                  onChanged: (value) {
+                    setState(() {
+                      shiftItinerary = value ?? false;
+                    });
+                  },
+                  controlAffinity: ListTileControlAffinity.leading,
                 ),
-                maxLines: 3,
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () async {
-                  if (titleCtrl.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      const SnackBar(content: Text('Title is required')),
-                    );
-                    return;
-                  }
-                  // Only validate dates when creating a new trip (tripId is null)
-                  if (tripId == null) {
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () async {
                     // Validate that start date is not later than end date
                     if (startDate != null && endDate != null) {
                       // Normalize dates to date-only for comparison
@@ -228,21 +181,15 @@ class TripFormBottomSheet {
                         return;
                       }
                     }
-                  }
-                  await onSubmit(
-                    titleCtrl.text.trim(),
-                    destCtrl.text.trim().isEmpty ? null : destCtrl.text.trim(),
-                    startDate,
-                    endDate,
-                    descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-                  );
-                  if (ctx.mounted) {
-                    Navigator.of(ctx).pop();
-                  }
-                },
-                child: const Text('Save'),
-              ),
-            ],
+                    await onSubmit(startDate, endDate, shiftItinerary);
+                    if (ctx.mounted) {
+                      Navigator.of(ctx).pop();
+                    }
+                  },
+                  child: const Text('Shift Dates'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

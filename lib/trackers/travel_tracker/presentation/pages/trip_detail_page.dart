@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/trip.dart';
+import '../../domain/entities/itinerary_day.dart';
 import '../bloc/trip_cubit.dart';
 import '../bloc/itinerary_cubit.dart';
+import '../bloc/itinerary_state.dart';
 import '../bloc/journal_cubit.dart';
 import '../bloc/journal_state.dart';
 import '../bloc/expense_cubit.dart';
@@ -23,6 +25,7 @@ import '../widgets/trip_form_bottom_sheet.dart';
 import '../widgets/journal_entry_form_bottom_sheet.dart';
 import '../widgets/expense_form_bottom_sheet.dart';
 import '../widgets/traveler_form_bottom_sheet.dart';
+import '../widgets/shift_dates_bottom_sheet.dart';
 
 /// Detail page for a trip showing tabs for Itinerary, Journal, Expenses, and Stats.
 class TripDetailPage extends StatelessWidget {
@@ -217,6 +220,130 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
     }
   }
 
+  Future<void> _shiftDates(BuildContext context, Trip trip, TripCubit cubit) async {
+    if (trip.startDate == null || trip.endDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Trip must have both start and end dates to shift dates'),
+        ),
+      );
+      return;
+    }
+
+    await ShiftDatesBottomSheet.show(
+      context,
+      initialStartDate: trip.startDate,
+      initialEndDate: trip.endDate,
+      onSubmit: (newStartDate, newEndDate, shiftItinerary) async {
+        if (newStartDate == null || newEndDate == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Both start and end dates are required'),
+            ),
+          );
+          return;
+        }
+
+        // Normalize dates to date-only for comparison
+        final oldStartDate = DateTime(
+          trip.startDate!.year,
+          trip.startDate!.month,
+          trip.startDate!.day,
+        );
+        final newStartDateNormalized = DateTime(
+          newStartDate.year,
+          newStartDate.month,
+          newStartDate.day,
+        );
+        final newEndDateNormalized = DateTime(
+          newEndDate.year,
+          newEndDate.month,
+          newEndDate.day,
+        );
+
+        // Calculate the shift amount (difference in days)
+        final shiftDays = newStartDateNormalized.difference(oldStartDate).inDays;
+
+        // Update trip dates
+        final updated = Trip(
+          id: trip.id,
+          title: trip.title,
+          destination: trip.destination,
+          startDate: newStartDateNormalized,
+          endDate: newEndDateNormalized,
+          description: trip.description,
+          createdAt: trip.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        await cubit.updateTrip(updated);
+
+        // If shiftItinerary is checked, shift all itinerary days
+        if (shiftItinerary && shiftDays != 0) {
+          try {
+            // Access the ItineraryCubit from the builder context
+            final BuildContext? builderContext = _builderKey.currentContext;
+            if (builderContext != null && mounted) {
+              final itineraryCubit = builderContext.read<ItineraryCubit>();
+              
+              // Get current itinerary state
+              final state = itineraryCubit.state;
+              if (state is ItineraryLoaded) {
+                // Shift each itinerary day by the calculated number of days
+                // Days that end up outside the new range will be deleted by the refresh
+                for (final day in state.days) {
+                  final newDayDate = day.date.add(Duration(days: shiftDays));
+                  
+                  // Update the day with the new date
+                  // The refresh will handle deleting days outside the new range
+                  final updatedDay = ItineraryDay(
+                    id: day.id,
+                    tripId: day.tripId,
+                    date: newDayDate,
+                    notes: day.notes,
+                    createdAt: day.createdAt,
+                    updatedAt: DateTime.now(),
+                  );
+                  await itineraryCubit.updateDayEntry(updatedDay);
+                }
+              }
+              
+              // Refresh itinerary to handle days outside the new range
+              itineraryCubit.loadItinerary(trip.id);
+            }
+          } catch (e) {
+            debugPrint('Error shifting itinerary: $e');
+            // Still refresh itinerary to clean up days outside range
+            try {
+              final BuildContext? builderContext = _builderKey.currentContext;
+              if (builderContext != null && mounted) {
+                final itineraryCubit = builderContext.read<ItineraryCubit>();
+                itineraryCubit.loadItinerary(trip.id);
+              }
+            } catch (_) {
+              // Ignore errors in cleanup
+            }
+          }
+        } else {
+          // Even if not shifting itinerary, refresh to remove days outside new range
+          try {
+            final BuildContext? builderContext = _builderKey.currentContext;
+            if (builderContext != null && mounted) {
+              final itineraryCubit = builderContext.read<ItineraryCubit>();
+              itineraryCubit.loadItinerary(trip.id);
+            }
+          } catch (e) {
+            debugPrint('Error refreshing itinerary: $e');
+          }
+        }
+
+        // Reload trip data after updating
+        if (mounted) {
+          await _loadTrip();
+        }
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -268,15 +395,45 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
         actions: [
           if (_trip != null) ...[
             IconButton(
+              icon: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  const Icon(Icons.calendar_today),
+                  Positioned(
+                    right: -4,
+                    top: -4,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: BoxDecoration(
+                        color: cs.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: cs.surface,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.edit,
+                        size: 10,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              tooltip: 'Shift Dates',
+              onPressed: () => _shiftDates(context, _trip!, cubit),
+            ),
+            IconButton(
               icon: const Icon(Icons.edit),
               tooltip: 'Edit Trip',
               onPressed: () => _editTrip(context, _trip!, cubit),
             ),
-            IconButton(
-              icon: const Icon(Icons.delete),
-              tooltip: 'Delete Trip',
-              onPressed: () => _deleteTrip(context, _trip!, cubit),
-            ),
+            // IconButton(
+            //   icon: const Icon(Icons.delete),
+            //   tooltip: 'Delete Trip',
+            //   onPressed: () => _deleteTrip(context, _trip!, cubit),
+            // ),
           ],
         ],
       ),
@@ -308,19 +465,56 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      // Trip Title
-                                      Text(
-                                        _trip!.title,
-                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
+                                      // Trip Title with Description Tooltip
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              _trip!.title,
+                                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
                                             ),
+                                          ),
+                                          if (_trip!.description != null && _trip!.description!.isNotEmpty)
+                                            Tooltip(
+                                              message: _trip!.description!,
+                                              preferBelow: false,
+                                              waitDuration: const Duration(milliseconds: 500),
+                                              child: InkWell(
+                                                onTap: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder: (context) => AlertDialog(
+                                                      title: const Text('Description'),
+                                                      content: Text(_trip!.description!),
+                                                      actions: [
+                                                        TextButton(
+                                                          onPressed: () => Navigator.of(context).pop(),
+                                                          child: const Text('Close'),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  );
+                                                },
+                                                child: Padding(
+                                                  padding: const EdgeInsets.all(4.0),
+                                                  child: Icon(
+                                                    Icons.info_outline,
+                                                    size: 20,
+                                                    color: cs.onSurfaceVariant,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
                                       ),
                                       const SizedBox(height: 16),
                                       // Destination
                                       if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
                                         _DetailRow(
-                                          label: 'Destination',
-                                          value: _trip!.destination!,
+                                          label:  _trip!.destination!,
+                                          //value: _trip!.destination!,
                                           icon: Icons.location_on,
                                         ),
                                       // Date Range
@@ -328,45 +522,9 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                                         if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
                                           const SizedBox(height: 12),
                                         _DetailRow(
-                                          label: 'Dates',
-                                          value: dateRange(),
+                                          label: dateRange(),
+                                          //value: dateRange(),
                                           icon: Icons.calendar_today,
-                                        ),
-                                      ],
-                                      // Description
-                                      if (_trip!.description != null && _trip!.description!.isNotEmpty) ...[
-                                        if (_trip!.startDate != null || _trip!.endDate != null)
-                                          const SizedBox(height: 12),
-                                        Row(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Icon(
-                                              Icons.description,
-                                              size: 20,
-                                              color: cs.onSurfaceVariant,
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    'Description',
-                                                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                                          color: cs.onSurfaceVariant,
-                                                        ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Text(
-                                                    _trip!.description!,
-                                                    style: Theme.of(context).textTheme.bodyMedium,
-                                                    maxLines: 2,
-                                                    overflow: TextOverflow.ellipsis,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
                                         ),
                                       ],
                                     ],
@@ -637,12 +795,12 @@ class _QuickAddButton extends StatelessWidget {
 
 class _DetailRow extends StatelessWidget {
   final String label;
-  final String value;
+  //final String value;
   final IconData icon;
 
   const _DetailRow({
     required this.label,
-    required this.value,
+    //required this.value,
     required this.icon,
   });
 
@@ -665,17 +823,17 @@ class _DetailRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: cs.onSurfaceVariant,
                     ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w500,
-                    ),
-              ),
+              // const SizedBox(height: 4),
+              // Text(
+              //   value,
+              //   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              //         fontWeight: FontWeight.w500,
+              //       ),
+              // ),
             ],
           ),
         ),
