@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../core/design_tokens.dart';
+import '../core/organization_notifier.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
@@ -70,108 +72,139 @@ class AppDrawer extends StatelessWidget {
 
           // Drawer content
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // Tracker Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.m,
-                    AppSpacing.l,
-                    AppSpacing.m,
-                    AppSpacing.s,
-                  ),
-                  child: Text(
-                    'TRACKER',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
+            child: Consumer<OrganizationNotifier>(
+              builder: (context, orgNotifier, _) {
+                final trackerItems = <Widget>[];
+                final utilityItems = <Widget>[];
+                
+                // Build tracker items based on toggle states
+                if (orgNotifier.goalTrackerEnabled) {
+                  trackerItems.add(
+                    _DrawerTile(
+                      icon: AppIcons.goal,
+                      title: 'Goal Tracker',
+                      isSelected: currentPage == AppPage.goalTracker,
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        if (currentPage != AppPage.goalTracker) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const HomePage(),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }
+                
+                if (orgNotifier.travelTrackerEnabled) {
+                  trackerItems.add(
+                    _DrawerTile(
+                      icon: TravelTrackerIcons.trip,
+                      title: 'Travel Tracker',
+                      isSelected: currentPage == AppPage.travelTracker,
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        if (currentPage != AppPage.travelTracker) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const TravelTrackerHomePage(),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }
+                
+                // Build utility items based on toggle states
+                if (orgNotifier.investmentPlannerEnabled) {
+                  utilityItems.add(
+                    _DrawerTile(
+                      icon: Icons.account_balance,
+                      title: 'Investment Planner',
+                      isSelected: currentPage == AppPage.investmentPlanner,
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        if (currentPage != AppPage.investmentPlanner) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const InvestmentPlannerHomePage(),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }
+                
+                if (orgNotifier.retirementPlannerEnabled) {
+                  utilityItems.add(
+                    _DrawerTile(
+                      icon: Icons.account_balance_wallet,
+                      title: 'Retirement Planner',
+                      isSelected: currentPage == AppPage.retirementPlanner,
+                      onTap: () {
+                        Navigator.of(context).pop(); // Close drawer
+                        if (currentPage != AppPage.retirementPlanner) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const RetirementPlannerHomePage(),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  );
+                }
+                
+                return ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    // Tracker Section (only show if there are enabled trackers)
+                    if (trackerItems.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.m,
+                          AppSpacing.l,
+                          AppSpacing.m,
+                          AppSpacing.s,
                         ),
-                  ),
-                ),
-                _DrawerTile(
-                  icon: AppIcons.goal,
-                  title: 'Goal Tracker',
-                  isSelected: currentPage == AppPage.goalTracker,
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    if (currentPage != AppPage.goalTracker) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const HomePage(),
+                        child: Text(
+                          'TRACKER',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
                         ),
-                      );
-                    }
-                  },
-                ),
-                _DrawerTile(
-                  icon: TravelTrackerIcons.trip,
-                  title: 'Travel Tracker',
-                  isSelected: currentPage == AppPage.travelTracker,
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    if (currentPage != AppPage.travelTracker) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const TravelTrackerHomePage(),
-                        ),
-                      );
-                    }
-                  },
-                ),
+                      ),
+                      ...trackerItems,
+                      const Divider(height: 1),
+                    ],
 
-                const Divider(height: 1),
-
-                // Utility Section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.m,
-                    AppSpacing.l,
-                    AppSpacing.m,
-                    AppSpacing.s,
-                  ),
-                  child: Text(
-                    'UTILITY',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: cs.onSurfaceVariant,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
+                    // Utility Section (only show if there are enabled utilities)
+                    if (utilityItems.isNotEmpty) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.m,
+                          AppSpacing.l,
+                          AppSpacing.m,
+                          AppSpacing.s,
                         ),
-                  ),
-                ),
-                _DrawerTile(
-                  icon: Icons.account_balance,
-                  title: 'Investment Planner',
-                  isSelected: currentPage == AppPage.investmentPlanner,
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    if (currentPage != AppPage.investmentPlanner) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const InvestmentPlannerHomePage(),
+                        child: Text(
+                          'UTILITY',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: cs.onSurfaceVariant,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
                         ),
-                      );
-                    }
-                  },
-                ),
-                _DrawerTile(
-                  icon: Icons.account_balance_wallet,
-                  title: 'Retirement Planner',
-                  isSelected: currentPage == AppPage.retirementPlanner,
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close drawer
-                    if (currentPage != AppPage.retirementPlanner) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => const RetirementPlannerHomePage(),
-                        ),
-                      );
-                    }
-                  },
-                ),
-
-                const Divider(height: 1),
+                      ),
+                      ...utilityItems,
+                      const Divider(height: 1),
+                    ],
 
                 // Settings Section
                 Padding(
@@ -203,7 +236,9 @@ class AppDrawer extends StatelessWidget {
                     }
                   },
                 ),
-              ],
+                  ],
+                );
+              },
             ),
           ),
         ],

@@ -5,6 +5,9 @@ import '../../core/constants.dart';
 part 'expense_model.g.dart';
 
 /// Hive model for Expense entity (typeId: 20).
+/// 
+/// Custom adapter to handle migration from old schema (without paidBy field)
+/// to new schema (with paidBy field at position 7).
 @HiveType(typeId: 20)
 class ExpenseModel extends HiveObject {
   @HiveField(0)
@@ -29,9 +32,12 @@ class ExpenseModel extends HiveObject {
   String? description;
 
   @HiveField(7)
-  DateTime createdAt;
+  String? paidBy; // Traveler ID who paid for the expense
 
   @HiveField(8)
+  DateTime createdAt;
+
+  @HiveField(9)
   DateTime updatedAt;
 
   ExpenseModel({
@@ -42,6 +48,7 @@ class ExpenseModel extends HiveObject {
     required this.amount,
     required this.currency,
     this.description,
+    this.paidBy,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -54,6 +61,7 @@ class ExpenseModel extends HiveObject {
         amount: expense.amount,
         currency: expense.currency,
         description: expense.description,
+        paidBy: expense.paidBy,
         createdAt: expense.createdAt,
         updatedAt: expense.updatedAt,
       );
@@ -66,6 +74,7 @@ class ExpenseModel extends HiveObject {
         amount: amount,
         currency: currency,
         description: description,
+        paidBy: paidBy,
         createdAt: createdAt,
         updatedAt: updatedAt,
       );

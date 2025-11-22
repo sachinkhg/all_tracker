@@ -27,6 +27,9 @@ class Expense extends Equatable {
   /// Optional description of the expense.
   final String? description;
 
+  /// Optional traveler ID who paid for this expense.
+  final String? paidBy;
+
   /// When the expense was created.
   final DateTime createdAt;
 
@@ -41,6 +44,7 @@ class Expense extends Equatable {
     required this.amount,
     required this.currency,
     this.description,
+    this.paidBy,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -54,6 +58,7 @@ class Expense extends Equatable {
         amount,
         currency,
         description,
+        paidBy,
         createdAt,
         updatedAt,
       ];

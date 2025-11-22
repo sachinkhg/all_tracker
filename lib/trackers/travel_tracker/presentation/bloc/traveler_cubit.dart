@@ -49,6 +49,33 @@ class TravelerCubit extends Cubit<TravelerState> {
     bool isMainTraveler = false,
   }) async {
     try {
+      // Check if a main traveler already exists
+      if (isMainTraveler) {
+        final currentState = state;
+        List<Traveler> travelers;
+        if (currentState is TravelersLoaded) {
+          travelers = currentState.travelers;
+        } else {
+          // If state is not loaded, load travelers first to check
+          travelers = await getTravelers(tripId);
+        }
+        
+        final hasMainTraveler = travelers.any((t) => t.isMainTraveler);
+        if (hasMainTraveler) {
+          // Preserve current state and emit error for UI to show snackbar
+          if (currentState is TravelersLoaded) {
+            emit(TravelersError('Only one main traveler (self) is allowed. Please edit the existing main traveler or remove them first.'));
+            // Restore the loaded state immediately so UI doesn't break
+            emit(TravelersLoaded(travelers));
+          } else {
+            emit(TravelersError('Only one main traveler (self) is allowed. Please edit the existing main traveler or remove them first.'));
+            // Load travelers to restore state
+            await loadTravelers(tripId);
+          }
+          return;
+        }
+      }
+
       final now = DateTime.now();
       final traveler = Traveler(
         id: _uuid.v4(),
@@ -72,6 +99,35 @@ class TravelerCubit extends Cubit<TravelerState> {
 
   Future<void> updateTraveler(Traveler traveler) async {
     try {
+      // Check if trying to set as main traveler when another main traveler already exists
+      if (traveler.isMainTraveler) {
+        final currentState = state;
+        List<Traveler> travelers;
+        if (currentState is TravelersLoaded) {
+          travelers = currentState.travelers;
+        } else {
+          // If state is not loaded, load travelers first to check
+          travelers = await getTravelers(traveler.tripId);
+        }
+        
+        final hasOtherMainTraveler = travelers.any(
+          (t) => t.isMainTraveler && t.id != traveler.id,
+        );
+        if (hasOtherMainTraveler) {
+          // Preserve current state and emit error for UI to show snackbar
+          if (currentState is TravelersLoaded) {
+            emit(TravelersError('Only one main traveler (self) is allowed. Please remove the existing main traveler status first.'));
+            // Restore the loaded state immediately so UI doesn't break
+            emit(TravelersLoaded(travelers));
+          } else {
+            emit(TravelersError('Only one main traveler (self) is allowed. Please remove the existing main traveler status first.'));
+            // Load travelers to restore state
+            await loadTravelers(traveler.tripId);
+          }
+          return;
+        }
+      }
+
       final updated = Traveler(
         id: traveler.id,
         tripId: traveler.tripId,

@@ -200,17 +200,17 @@ class _JournalEntryFormContentState extends State<_JournalEntryFormContent> {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final viewInsets = MediaQuery.of(context).viewInsets;
 
     return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
       child: Container(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -256,7 +256,11 @@ class _JournalEntryFormContentState extends State<_JournalEntryFormContent> {
                 labelText: 'Content *',
                 border: OutlineInputBorder(),
               ),
-              maxLines: 10,
+              maxLines: 5,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) {
+                FocusScope.of(context).unfocus();
+              },
             ),
             const SizedBox(height: 16),
             // Media section - always visible
@@ -432,7 +436,8 @@ class _JournalEntryFormContentState extends State<_JournalEntryFormContent> {
                     )
                   : Text(_currentEntryId == null ? 'Save' : 'Save Changes'),
             ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../core/app_theme.dart';
 import '../core/theme_notifier.dart';
+import '../core/organization_notifier.dart';
 import '../core/design_tokens.dart';
 import '../features/backup/backup_restore.dart';
 import '../features/backup/presentation/pages/backup_settings_page.dart';
@@ -267,6 +268,145 @@ class SettingsPage extends StatelessWidget {
                 },
               ),
             ],
+          ),
+          
+          const Divider(height: 32),
+          Text('Organize', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          
+          // Trackers Section
+          ExpansionTile(
+            title: const Text('Trackers'),
+            subtitle: const Text('Show or hide trackers in home page and drawer'),
+            leading: const Icon(Icons.track_changes),
+            initiallyExpanded: false,
+            children: [
+              Consumer<OrganizationNotifier>(
+                builder: (context, orgNotifier, _) {
+                  return Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Goal Tracker'),
+                        subtitle: const Text('Track your goals, milestones, tasks, and habits'),
+                        value: orgNotifier.goalTrackerEnabled,
+                        onChanged: (value) => orgNotifier.setGoalTrackerEnabled(value),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Travel Tracker'),
+                        subtitle: const Text('Plan trips, manage itineraries, and journal your travels'),
+                        value: orgNotifier.travelTrackerEnabled,
+                        onChanged: (value) => orgNotifier.setTravelTrackerEnabled(value),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 8),
+          
+          // Utilities Section
+          ExpansionTile(
+            title: const Text('Utilities'),
+            subtitle: const Text('Show or hide utilities in home page and drawer'),
+            leading: const Icon(Icons.build),
+            initiallyExpanded: false,
+            children: [
+              Consumer<OrganizationNotifier>(
+                builder: (context, orgNotifier, _) {
+                  return Column(
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Investment Planner'),
+                        subtitle: const Text('Plan your investments based on income and expenses'),
+                        value: orgNotifier.investmentPlannerEnabled,
+                        onChanged: (value) => orgNotifier.setInvestmentPlannerEnabled(value),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Retirement Planner'),
+                        subtitle: const Text('Calculate your retirement corpus and investment needs'),
+                        value: orgNotifier.retirementPlannerEnabled,
+                        onChanged: (value) => orgNotifier.setRetirementPlannerEnabled(value),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Default Home Page Section
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              final enabledOptions = orgNotifier.getEnabledHomePageOptions();
+              final currentValue = orgNotifier.defaultHomePage;
+              
+              // Map home page keys to display names
+              String getDisplayName(String key) {
+                switch (key) {
+                  case 'app_home':
+                    return 'App Home Page';
+                  case 'goal_tracker':
+                    return 'Goal Tracker Home Page';
+                  case 'travel_tracker':
+                    return 'Travel Tracker Home Page';
+                  case 'investment_planner':
+                    return 'Investment Planner Home Page';
+                  case 'retirement_planner':
+                    return 'Retirement Planner Home Page';
+                  default:
+                    return key;
+                }
+              }
+              
+              // Ensure current value is in enabled options, otherwise use app_home
+              final selectedValue = enabledOptions.contains(currentValue) 
+                  ? currentValue 
+                  : 'app_home';
+              
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Default Home Page',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedValue,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      filled: true,
+                      fillColor: Theme.of(context).colorScheme.surface,
+                    ),
+                    dropdownColor: Theme.of(context).colorScheme.surface,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    items: enabledOptions.map((String option) {
+                      return DropdownMenuItem<String>(
+                        value: option,
+                        child: Text(
+                          getDisplayName(option),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      if (newValue != null) {
+                        orgNotifier.setDefaultHomePage(newValue);
+                      }
+                    },
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

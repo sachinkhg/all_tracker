@@ -42,6 +42,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
     required double amount,
     required String currency,
     String? description,
+    String? paidBy,
   }) async {
     try {
       final now = DateTime.now();
@@ -53,6 +54,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
         amount: amount,
         currency: currency,
         description: description,
+        paidBy: paidBy,
         createdAt: now,
         updatedAt: now,
       );
@@ -74,6 +76,7 @@ class ExpenseCubit extends Cubit<ExpenseState> {
         amount: expense.amount,
         currency: expense.currency,
         description: expense.description,
+        paidBy: expense.paidBy,
         createdAt: expense.createdAt,
         updatedAt: DateTime.now(),
       );

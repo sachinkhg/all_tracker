@@ -10,6 +10,7 @@ import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
 import '../widgets/itinerary_day_card.dart';
 import '../widgets/itinerary_item_form_bottom_sheet.dart';
+import '../widgets/itinerary_day_notes_form_bottom_sheet.dart';
 
 /// Page displaying itinerary for a trip (day-wise).
 class ItineraryViewPage extends StatelessWidget {
@@ -125,28 +126,11 @@ class ItineraryViewPageView extends StatelessWidget {
 
   void _editDay(BuildContext context, day) async {
     final cubit = context.read<ItineraryCubit>();
-    final notesCtrl = TextEditingController(text: day.notes ?? '');
-    final notes = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Day Notes'),
-        content: TextField(
-          decoration: const InputDecoration(hintText: 'Notes'),
-          controller: notesCtrl,
-          maxLines: 3,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(notesCtrl.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+    final notes = await ItineraryDayNotesFormBottomSheet.show(
+      context,
+      initialNotes: day.notes,
     );
+    // notes is null if user cancelled, empty string if cleared, or string if saved
     if (notes != null) {
       final updated = ItineraryDay(
         id: day.id,

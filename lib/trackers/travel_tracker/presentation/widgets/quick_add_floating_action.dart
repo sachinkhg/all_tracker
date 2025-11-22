@@ -19,6 +19,9 @@ class QuickAddFloatingAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
+      heroTag: 'quickAddFab',
+      tooltip: 'Quick Add',
+      backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
       onPressed: () => _showQuickAddMenu(context),
       child: const Icon(Icons.add),
     );

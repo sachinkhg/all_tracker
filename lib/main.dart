@@ -5,6 +5,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/app_typography.dart';
 import 'pages/app_home_page.dart';
 import 'core/theme_notifier.dart';
+import 'core/organization_notifier.dart';
+import 'trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
+import 'trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
+import 'utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
+import 'utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import 'features/auth/core/injection.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
@@ -51,11 +56,21 @@ Future<void> main() async {
   /// is ready before the app runs.
   await HiveInitializer.initialize();
 
-  /// Step 3: Initialize and provide ThemeNotifier and AuthCubit.
-  /// This allows the app to listen for and react to theme changes and auth state globally.
+  /// Step 3: Initialize and provide ThemeNotifier, OrganizationNotifier, and AuthCubit.
+  /// This allows the app to listen for and react to theme changes, organization preferences, and auth state globally.
+  final themeNotifier = ThemeNotifier();
+  final organizationNotifier = OrganizationNotifier();
+  
+  // Initialize both notifiers
+  await themeNotifier.init();
+  await organizationNotifier.init();
+  
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => ThemeNotifier()..init(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: themeNotifier),
+        ChangeNotifierProvider.value(value: organizationNotifier),
+      ],
       child: BlocProvider(
         create: (_) => createAuthCubit()..checkAuthStatus(),
         child: const MyApp(),
@@ -113,13 +128,29 @@ class MyApp extends StatelessWidget {
         ),
       ),
 
-      /// Conditional routing based on authentication state
+      /// Conditional routing based on authentication state and default home page preference
       /// - Show LoginPage if user is not authenticated
-      /// - Show AppHomePage if user is authenticated
+      /// - Show default home page (from OrganizationNotifier) if user is authenticated
       home: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is AuthAuthenticated) {
-            return const AppHomePage();
+            final orgNotifier = Provider.of<OrganizationNotifier>(context, listen: false);
+            final defaultHomePage = orgNotifier.defaultHomePage;
+            
+            // Navigate to the default home page based on preference
+            switch (defaultHomePage) {
+              case 'goal_tracker':
+                return const HomePage();
+              case 'travel_tracker':
+                return const TravelTrackerHomePage();
+              case 'investment_planner':
+                return const InvestmentPlannerHomePage();
+              case 'retirement_planner':
+                return const RetirementPlannerHomePage();
+              case 'app_home':
+              default:
+                return const AppHomePage();
+            }
           } else if (state is AuthUnauthenticated || state is AuthInitial || state is AuthError) {
             return const LoginPage();
           } else {

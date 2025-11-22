@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:provider/provider.dart';
 import '../core/design_tokens.dart';
+import '../core/organization_notifier.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
@@ -17,66 +19,85 @@ class AppHomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final orgNotifier = context.watch<OrganizationNotifier>();
 
-    // Define tracker items
-    final trackerItems = [
-      _SectionItem(
-        title: 'Goal Tracker',
-        subtitle: 'Track your goals, milestones, tasks, and habits',
-        icon: AppIcons.goal,
-        gradient: AppGradients.primary(cs),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const HomePage(),
-            ),
-          );
-        },
-      ),
-      _SectionItem(
-        title: 'Travel Tracker',
-        subtitle: 'Plan trips, manage itineraries, and journal your travels',
-        icon: TravelTrackerIcons.trip,
-        gradient: AppGradients.primary(cs),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const TravelTrackerHomePage(),
-            ),
-          );
-        },
-      ),
-    ];
+    // Define tracker items (filtered based on toggle states)
+    final trackerItems = <_SectionItem>[];
+    
+    if (orgNotifier.goalTrackerEnabled) {
+      trackerItems.add(
+        _SectionItem(
+          title: 'Goal Tracker',
+          subtitle: 'Track your goals, milestones, tasks, and habits',
+          icon: AppIcons.goal,
+          gradient: AppGradients.primary(cs),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const HomePage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+    
+    if (orgNotifier.travelTrackerEnabled) {
+      trackerItems.add(
+        _SectionItem(
+          title: 'Travel Tracker',
+          subtitle: 'Plan trips, manage itineraries, and journal your travels',
+          icon: TravelTrackerIcons.trip,
+          gradient: AppGradients.primary(cs),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const TravelTrackerHomePage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
 
-    // Define utility items
-    final utilityItems = [
-      _SectionItem(
-        title: 'Investment Planner',
-        subtitle: 'Plan your investments based on income and expenses',
-        icon: Icons.account_balance,
-        gradient: AppGradients.secondary(cs),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const InvestmentPlannerHomePage(),
-            ),
-          );
-        },
-      ),
-      _SectionItem(
-        title: 'Retirement Planner',
-        subtitle: 'Calculate your retirement corpus and investment needs',
-        icon: Icons.account_balance_wallet,
-        gradient: AppGradients.secondary(cs),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const RetirementPlannerHomePage(),
-            ),
-          );
-        },
-      ),
-    ];
+    // Define utility items (filtered based on toggle states)
+    final utilityItems = <_SectionItem>[];
+    
+    if (orgNotifier.investmentPlannerEnabled) {
+      utilityItems.add(
+        _SectionItem(
+          title: 'Investment Planner',
+          subtitle: 'Plan your investments based on income and expenses',
+          icon: Icons.account_balance,
+          gradient: AppGradients.secondary(cs),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const InvestmentPlannerHomePage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
+    
+    if (orgNotifier.retirementPlannerEnabled) {
+      utilityItems.add(
+        _SectionItem(
+          title: 'Retirement Planner',
+          subtitle: 'Calculate your retirement corpus and investment needs',
+          icon: Icons.account_balance_wallet,
+          gradient: AppGradients.secondary(cs),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const RetirementPlannerHomePage(),
+              ),
+            );
+          },
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -115,33 +136,36 @@ class AppHomePage extends StatelessWidget {
             //     .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
             // const SizedBox(height: AppSpacing.l),
 
-            // Tracker Section
-            _SectionHeader(
-              title: 'TRACKER',
-              icon: Icons.track_changes,
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
-            const SizedBox(height: AppSpacing.m),
-            _SectionGrid(
-              items: trackerItems,
-              crossAxisCount: 3,
-            ),
+            // Tracker Section (only show if there are enabled trackers)
+            if (trackerItems.isNotEmpty) ...[
+              _SectionHeader(
+                title: 'TRACKER',
+                icon: Icons.track_changes,
+              )
+                  .animate()
+                  .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
+              const SizedBox(height: AppSpacing.m),
+              _SectionGrid(
+                items: trackerItems,
+                crossAxisCount: 3,
+              ),
+              const SizedBox(height: AppSpacing.s),
+            ],
 
-            const SizedBox(height: AppSpacing.s),
-
-            // Utility Section
-            _SectionHeader(
-              title: 'UTILITY',
-              icon: Icons.build,
-            )
-                .animate()
-                .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
-            const SizedBox(height: AppSpacing.m),
-            _SectionGrid(
-              items: utilityItems,
-              crossAxisCount: 3,
-            ),
+            // Utility Section (only show if there are enabled utilities)
+            if (utilityItems.isNotEmpty) ...[
+              _SectionHeader(
+                title: 'UTILITY',
+                icon: Icons.build,
+              )
+                  .animate()
+                  .fade(duration: AppAnimations.short, curve: AppAnimations.ease),
+              const SizedBox(height: AppSpacing.m),
+              _SectionGrid(
+                items: utilityItems,
+                crossAxisCount: 3,
+              ),
+            ],
 
             const SizedBox(height: AppSpacing.l),
           ],

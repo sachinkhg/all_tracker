@@ -222,6 +222,12 @@ class HiveInitializer {
     
     // Open sort preferences box (stores user sort settings)
     await Hive.openBox(sortPreferencesBoxName);
+    
+    // Open theme preferences box (stores theme, font, dark mode settings)
+    await Hive.openBox(themePreferencesBoxName);
+    
+    // Open organization preferences box (stores tracker/utility visibility and default home page)
+    await Hive.openBox(organizationPreferencesBoxName);
 
     // Open investment planner boxes
     await Hive.openBox<InvestmentComponentModel>(investmentComponentBoxName);

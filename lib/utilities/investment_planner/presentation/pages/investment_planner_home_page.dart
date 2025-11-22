@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/design_tokens.dart';
+import '../../../../core/organization_notifier.dart';
 import 'component_config_page.dart';
 import 'category_config_page.dart';
 import 'plan_list_page.dart';
@@ -17,14 +19,22 @@ class InvestmentPlannerHomePage extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Investment Planner'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.home),
-            tooltip: 'Home',
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const AppHomePage()),
-                (route) => false,
-              );
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  icon: const Icon(Icons.home),
+                  tooltip: 'Home',
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],

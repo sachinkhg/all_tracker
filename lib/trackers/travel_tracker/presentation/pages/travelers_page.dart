@@ -50,8 +50,27 @@ class TravelersPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<TravelerCubit>();
 
-    return BlocBuilder<TravelerCubit, TravelerState>(
-      builder: (context, state) {
+    return BlocListener<TravelerCubit, TravelerState>(
+      listener: (context, state) {
+        if (state is TravelersError) {
+          // Show snackbar for validation errors
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.message),
+              backgroundColor: Theme.of(context).colorScheme.error,
+              action: SnackBarAction(
+                label: 'Dismiss',
+                textColor: Theme.of(context).colorScheme.onError,
+                onPressed: () {
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                },
+              ),
+            ),
+          );
+        }
+      },
+      child: BlocBuilder<TravelerCubit, TravelerState>(
+        builder: (context, state) {
         if (state is TravelersLoading) {
           return const LoadingView();
         }
@@ -134,11 +153,11 @@ class TravelersPageView extends StatelessWidget {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (traveler.relationship != null && !traveler.isMainTraveler)
-                        Text(
-                          'Relationship: ${traveler.relationship}',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
+                      // if (traveler.relationship != null && !traveler.isMainTraveler)
+                      //   Text(
+                      //     'Relationship: ${traveler.relationship}',
+                      //     style: Theme.of(context).textTheme.bodySmall,
+                      //   ),
                       if (traveler.email != null)
                         Text(
                           traveler.email!,
@@ -210,6 +229,7 @@ class TravelersPageView extends StatelessWidget {
 
         return const SizedBox.shrink();
       },
+      ),
     );
   }
 

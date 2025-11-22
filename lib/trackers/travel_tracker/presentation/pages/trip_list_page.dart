@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 import '../bloc/trip_cubit.dart';
 import '../bloc/trip_state.dart';
 import '../../core/injection.dart';
@@ -10,6 +11,8 @@ import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
 import '../../../../widgets/app_drawer.dart';
+import '../../../../core/organization_notifier.dart';
+import '../../../../pages/app_home_page.dart';
 import 'trip_detail_page.dart';
 
 /// Page displaying the list of trips.
@@ -55,11 +58,22 @@ class _TripListPageViewState extends State<TripListPageView> {
       appBar: PrimaryAppBar(
         title: 'Travel Tracker',
         actions: [
-          IconButton(
-            tooltip: 'Home Page',
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  tooltip: 'Home Page',
+                  icon: const Icon(Icons.home),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],
@@ -135,9 +149,13 @@ class _TripListPageViewState extends State<TripListPageView> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'tripListFab',
+        tooltip: 'Create Trip',
+        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
         onPressed: () => _showCreateTripSheet(context),
         child: const Icon(Icons.add),
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 

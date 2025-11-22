@@ -73,3 +73,5 @@ const String filterPreferencesBoxName = 'filter_preferences_box';
 const String sortPreferencesBoxName = 'sort_preferences_box';
 /// Hive box name for theme preferences (color scheme, font, dark mode).
 const String themePreferencesBoxName = 'theme_preferences_box';
+/// Hive box name for organization preferences (tracker/utility visibility, default home page).
+const String organizationPreferencesBoxName = 'organization_preferences_box';

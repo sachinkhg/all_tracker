@@ -10,7 +10,9 @@ import '../bloc/expense_cubit.dart';
 import '../bloc/expense_state.dart';
 import '../bloc/traveler_cubit.dart';
 import '../bloc/traveler_state.dart';
+import '../../domain/entities/traveler.dart';
 import '../../core/injection.dart';
+import '../../core/constants.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../core/design_tokens.dart';
 import 'itinerary_view_page.dart';
@@ -59,19 +61,23 @@ class TripDetailPageView extends StatefulWidget {
 class _TripDetailPageViewState extends State<TripDetailPageView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late PageController _pageController;
   Trip? _trip;
   final GlobalKey _builderKey = GlobalKey();
+  int _currentPage = 0;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
+    _pageController = PageController();
     _loadTrip();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -278,79 +284,121 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
           ? const LoadingView()
           : Column(
               children: [
-                // Trip Information Card
-                if (_trip != null)
-                  Card(
-                    margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    elevation: 2,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Trip Title
-                          Text(
-                            _trip!.title,
-                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 16),
-                          // Destination
-                          if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
-                            _DetailRow(
-                              label: 'Destination',
-                              value: _trip!.destination!,
-                              icon: Icons.location_on,
-                            ),
-                          // Date Range
-                          if (_trip!.startDate != null || _trip!.endDate != null) ...[
-                            if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
-                              const SizedBox(height: 12),
-                            _DetailRow(
-                              label: 'Dates',
-                              value: dateRange(),
-                              icon: Icons.calendar_today,
-                            ),
-                          ],
-                          // Description
-                          if (_trip!.description != null && _trip!.description!.isNotEmpty) ...[
-                            if (_trip!.startDate != null || _trip!.endDate != null)
-                              const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(
-                                  Icons.description,
-                                  size: 20,
-                                  color: cs.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
+                // Swipeable Section: Trip Info and Expense Summary
+                SizedBox(
+                  height: 220,
+                  child: Column(
+                    children: [
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            setState(() {
+                              _currentPage = index;
+                            });
+                          },
+                          children: [
+                            // Page 1: Trip Information Card
+                            if (_trip != null)
+                              Card(
+                                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                elevation: 2,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
+                                      // Trip Title
                                       Text(
-                                        'Description',
-                                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                              color: cs.onSurfaceVariant,
+                                        _trip!.title,
+                                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                              fontWeight: FontWeight.bold,
                                             ),
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _trip!.description!,
-                                        style: Theme.of(context).textTheme.bodyMedium,
-                                      ),
+                                      const SizedBox(height: 16),
+                                      // Destination
+                                      if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
+                                        _DetailRow(
+                                          label: 'Destination',
+                                          value: _trip!.destination!,
+                                          icon: Icons.location_on,
+                                        ),
+                                      // Date Range
+                                      if (_trip!.startDate != null || _trip!.endDate != null) ...[
+                                        if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
+                                          const SizedBox(height: 12),
+                                        _DetailRow(
+                                          label: 'Dates',
+                                          value: dateRange(),
+                                          icon: Icons.calendar_today,
+                                        ),
+                                      ],
+                                      // Description
+                                      if (_trip!.description != null && _trip!.description!.isNotEmpty) ...[
+                                        if (_trip!.startDate != null || _trip!.endDate != null)
+                                          const SizedBox(height: 12),
+                                        Row(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Icon(
+                                              Icons.description,
+                                              size: 20,
+                                              color: cs.onSurfaceVariant,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Description',
+                                                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                                          color: cs.onSurfaceVariant,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _trip!.description!,
+                                                    style: Theme.of(context).textTheme.bodyMedium,
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            // Page 2: Expense Summary
+                            _ExpenseSummarySection(tripId: widget.tripId),
                           ],
-                        ],
+                        ),
                       ),
-                    ),
+                      // Page Indicators
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(2, (index) {
+                          return Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _currentPage == index
+                                  ? cs.primary
+                                  : cs.onSurfaceVariant.withOpacity(0.4),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
                   ),
+                ),
                 // TabBar
                 TabBar(
                   controller: _tabController,
@@ -457,8 +505,10 @@ class _QuickAddButton extends StatelessWidget {
         builder: (context, state) {
           if (state is JournalLoaded && state.entries.isNotEmpty) {
             return FloatingActionButton(
-              onPressed: () => _addJournalEntry(builderContext),
+              heroTag: 'journalFab',
               tooltip: 'Add Journal Entry',
+              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              onPressed: () => _addJournalEntry(builderContext),
               child: const Icon(Icons.add),
             );
           }
@@ -472,8 +522,10 @@ class _QuickAddButton extends StatelessWidget {
         builder: (context, state) {
           if (state is ExpensesLoaded && state.expenses.isNotEmpty) {
             return FloatingActionButton(
-              onPressed: () => _addExpense(builderContext),
+              heroTag: 'expenseFab',
               tooltip: 'Add Expense',
+              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              onPressed: () => _addExpense(builderContext),
               child: const Icon(Icons.add),
             );
           }
@@ -487,8 +539,10 @@ class _QuickAddButton extends StatelessWidget {
         builder: (context, state) {
           if (state is TravelersLoaded && state.travelers.isNotEmpty) {
             return FloatingActionButton(
-              onPressed: () => _addTraveler(builderContext),
+              heroTag: 'travelerFab',
               tooltip: 'Add Traveler',
+              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              onPressed: () => _addTraveler(builderContext),
               child: const Icon(Icons.add),
             );
           }
@@ -523,10 +577,23 @@ class _QuickAddButton extends StatelessWidget {
 
   void _addExpense(BuildContext context) {
     try {
+      // Get travelers if TravelerCubit is available
+      List<Traveler> travelers = [];
+      try {
+        final travelerCubit = context.read<TravelerCubit>();
+        final travelerState = travelerCubit.state;
+        if (travelerState is TravelersLoaded) {
+          travelers = travelerState.travelers;
+        }
+      } catch (_) {
+        // TravelerCubit not available
+      }
+
       ExpenseFormBottomSheet.show(
         context,
         tripId: tripId,
-        onSubmit: (date, category, amount, currency, description) async {
+        travelers: travelers.isNotEmpty ? travelers : null,
+        onSubmit: (date, category, amount, currency, description, paidBy) async {
           final cubit = context.read<ExpenseCubit>();
           await cubit.createExpenseEntry(
             tripId: tripId,
@@ -535,6 +602,7 @@ class _QuickAddButton extends StatelessWidget {
             amount: amount,
             currency: currency,
             description: description,
+            paidBy: paidBy,
           );
         },
       );
@@ -613,6 +681,229 @@ class _DetailRow extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+
+/// Expense Summary Section widget showing total expense and per-category breakdown.
+class _ExpenseSummarySection extends StatelessWidget {
+  final String tripId;
+
+  const _ExpenseSummarySection({
+    required this.tripId,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (_) {
+        final cubit = createExpenseCubit();
+        cubit.loadExpenses(tripId);
+        return cubit;
+      },
+      child: BlocBuilder<ExpenseCubit, ExpenseState>(
+        builder: (context, state) {
+          if (state is ExpensesLoading) {
+            return Card(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              elevation: 2,
+              child: const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+            );
+          }
+
+          if (state is ExpensesError) {
+            return Card(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Text(
+                    'Error loading expenses',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          if (state is ExpensesLoaded) {
+            final expenses = state.expenses;
+            
+            if (expenses.isEmpty) {
+              return Card(
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                elevation: 2,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Center(
+                    child: Text(
+                      'No expenses recorded',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            // Calculate total and per-category expenses
+            double totalExpense = 0.0;
+            final Map<ExpenseCategory, double> categoryExpenses = {};
+            String? primaryCurrency;
+
+            for (final expense in expenses) {
+              // For now, we'll show total in the first currency we encounter
+              // In a real app, you might want to handle currency conversion
+              if (primaryCurrency == null) {
+                primaryCurrency = expense.currency;
+              }
+              
+              // Only sum expenses in the primary currency for simplicity
+              if (expense.currency == primaryCurrency) {
+                totalExpense += expense.amount;
+                categoryExpenses[expense.category] = 
+                    (categoryExpenses[expense.category] ?? 0.0) + expense.amount;
+              }
+            }
+
+            final cs = Theme.of(context).colorScheme;
+
+            return Card(
+              margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Row(
+                      children: [
+                        const SizedBox(width: 8),
+                        Text(
+                          'Expense Summary: ${NumberFormat('#,##0.00').format(totalExpense)}',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                         
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 8),
+                    // Category Breakdown
+                    Expanded(
+                      child: GridView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 2.8,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                        itemCount: ExpenseCategory.values.length,
+                        itemBuilder: (context, index) {
+                          final category = ExpenseCategory.values[index];
+                          final amount = categoryExpenses[category] ?? 0.0;
+                          final percentage = totalExpense > 0 
+                              ? (amount / totalExpense * 100) 
+                              : 0.0;
+
+                          return Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: cs.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      _getCategoryIcon(category),
+                                      size: 14,
+                                      color: cs.primary,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        expenseCategoryLabels[category]!,
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              fontWeight: FontWeight.w500,
+                                              fontSize: 11,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        NumberFormat('#,##0.00').format(amount),
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 11,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (totalExpense > 0)
+                                      Text(
+                                        '${percentage.toStringAsFixed(0)}%',
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: cs.onSurfaceVariant,
+                                              fontSize: 9,
+                                            ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(ExpenseCategory category) {
+    switch (category) {
+      case ExpenseCategory.food:
+        return Icons.restaurant;
+      case ExpenseCategory.travel:
+        return Icons.directions_transit;
+      case ExpenseCategory.stay:
+        return Icons.hotel;
+      case ExpenseCategory.other:
+        return Icons.category;
+    }
   }
 }
 

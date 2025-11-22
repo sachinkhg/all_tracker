@@ -1,23 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants.dart';
+import '../../domain/entities/traveler.dart';
 
 /// Bottom sheet for creating/editing expenses.
 class ExpenseFormBottomSheet {
   static Future<void> show(
     BuildContext context, {
     required String tripId,
+    List<Traveler>? travelers,
     DateTime? initialDate,
     ExpenseCategory? initialCategory,
     double? initialAmount,
     String? initialCurrency,
     String? initialDescription,
+    String? initialPaidBy,
     required Future<void> Function(
       DateTime date,
       ExpenseCategory category,
       double amount,
       String currency,
       String? description,
+      String? paidBy,
     ) onSubmit,
     Future<void> Function()? onDelete,
   }) {
@@ -35,6 +39,19 @@ class ExpenseFormBottomSheet {
 
     DateTime selectedDate = initialDate ?? DateTime.now();
     ExpenseCategory? selectedCategory = initialCategory ?? ExpenseCategory.other;
+    // Default to traveler marked as self if no initialPaidBy is provided
+    String? selectedPaidBy = initialPaidBy;
+    if (selectedPaidBy == null && travelers != null && travelers.isNotEmpty) {
+      // Find the traveler marked as self (isMainTraveler or relationship == "Self")
+      try {
+        final selfTraveler = travelers.firstWhere(
+          (t) => t.isMainTraveler || (t.relationship?.toLowerCase() == 'self'),
+        );
+        selectedPaidBy = selfTraveler.id;
+      } catch (_) {
+        // No self traveler found, keep selectedPaidBy as null
+      }
+    }
 
     String formatDate(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
 
@@ -234,6 +251,107 @@ class ExpenseFormBottomSheet {
                       ),
                       maxLines: 2,
                     ),
+                    if (travelers != null && travelers.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      // --- Paid By Selector ---
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Paid By (Optional)', style: textTheme.labelLarge),
+                          const SizedBox(height: 6),
+                          GestureDetector(
+                            onTap: () async {
+                              final travelerId = await showModalBottomSheet<String>(
+                                context: ctx2,
+                                shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                                ),
+                                builder: (context) => Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Text(
+                                        'Select Who Paid',
+                                        style: textTheme.titleMedium,
+                                      ),
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.person_remove, color: cs.onSurfaceVariant),
+                                      title: Text(
+                                        'None',
+                                        style: TextStyle(
+                                          fontWeight: selectedPaidBy == null
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                        ),
+                                      ),
+                                      onTap: () => Navigator.pop(context, null),
+                                      selected: selectedPaidBy == null,
+                                    ),
+                                    const Divider(),
+                                    ...travelers.map((traveler) {
+                                      return ListTile(
+                                        leading: Icon(Icons.person, color: cs.primary),
+                                        title: Text(
+                                          traveler.name,
+                                          style: TextStyle(
+                                            fontWeight: selectedPaidBy == traveler.id
+                                                ? FontWeight.bold
+                                                : FontWeight.normal,
+                                          ),
+                                        ),
+                                        subtitle: traveler.relationship != null
+                                            ? Text(traveler.relationship!)
+                                            : null,
+                                        onTap: () => Navigator.pop(context, traveler.id),
+                                        selected: selectedPaidBy == traveler.id,
+                                      );
+                                    }).toList(),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ),
+                              );
+                              // Always update state, even if selecting "None" (null)
+                              setState(() => selectedPaidBy = travelerId);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.person,
+                                        color: cs.primary,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        selectedPaidBy != null
+                                            ? travelers
+                                                .firstWhere((t) => t.id == selectedPaidBy)
+                                                .name
+                                            : 'None',
+                                        style: textTheme.bodyLarge?.copyWith(
+                                          color: cs.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Icon(Icons.arrow_drop_down, size: 24, color: cs.onSurfaceVariant),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 20),
 
                     // --- Action Button ---
@@ -254,6 +372,7 @@ class ExpenseFormBottomSheet {
                             amount,
                             defaultCurrency, // Always use default currency
                             descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
+                            selectedPaidBy,
                           );
                           if (ctx2.mounted) {
                             Navigator.pop(ctx2);
