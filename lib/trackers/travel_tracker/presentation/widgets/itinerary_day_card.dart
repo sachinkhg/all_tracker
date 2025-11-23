@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../domain/entities/itinerary_day.dart';
 import '../../domain/entities/itinerary_item.dart';
 import '../../core/constants.dart';
+import '../../data/services/google_places_service.dart';
 
 /// Widget displaying an itinerary day with its items.
 class ItineraryDayCard extends StatefulWidget {
@@ -30,6 +31,7 @@ class ItineraryDayCard extends StatefulWidget {
 
 class _ItineraryDayCardState extends State<ItineraryDayCard> {
   bool _isExpanded = false;
+  final GooglePlacesService _placesService = GooglePlacesService();
 
   @override
   Widget build(BuildContext context) {
@@ -165,31 +167,25 @@ class _ItineraryDayCardState extends State<ItineraryDayCard> {
                     if (item.time != null)
                       Text('Time: ${formatTime(item.time)}'),
                     if (item.location != null)
-                      Text('Location: ${item.location}'),
+                      InkWell(
+                        onTap: () => _openLocationInMap(item.location!, item.mapLink),
+                        child: Text(
+                          'Location: ${item.location}',
+                          style: TextStyle(
+                            color: cs.primary,
+                            decoration: TextDecoration.underline,
+                            decorationColor: cs.primary,
+                          ),
+                        ),
+                      ),
                     if (item.notes != null && item.notes!.isNotEmpty)
                       Text(item.notes!),
                   ],
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (item.mapLink != null)
-                      IconButton(
-                        icon: const Icon(Icons.map),
-                        onPressed: () async {
-                          final uri = Uri.parse(item.mapLink!);
-                          if (await canLaunchUrl(uri)) {
-                            await launchUrl(uri);
-                          }
-                        },
-                        tooltip: 'Open Map',
-                      ),
-                    IconButton(
-                      icon: const Icon(Icons.edit),
-                      onPressed: () => widget.onEditItem(item),
-                      tooltip: 'Edit',
-                    ),
-                  ],
+                trailing: IconButton(
+                  icon: const Icon(Icons.edit),
+                  onPressed: () => widget.onEditItem(item),
+                  tooltip: 'Edit',
                 ),
               );
             }).toList(),
@@ -206,6 +202,29 @@ class _ItineraryDayCardState extends State<ItineraryDayCard> {
         ],
       ),
     );
+  }
+
+  Future<void> _openLocationInMap(String location, String? mapLink) async {
+    try {
+      String urlToOpen;
+      
+      // Prefer mapLink if available
+      if (mapLink != null && mapLink.isNotEmpty) {
+        urlToOpen = mapLink;
+      } else {
+        // Generate map link from location
+        urlToOpen = _placesService.generateMapLink(location);
+      }
+      
+      if (urlToOpen.isNotEmpty) {
+        final uri = Uri.parse(urlToOpen);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error opening location in map: $e');
+    }
   }
 }
 

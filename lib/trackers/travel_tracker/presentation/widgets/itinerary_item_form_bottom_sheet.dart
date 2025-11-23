@@ -29,7 +29,8 @@ class ItineraryItemFormBottomSheet {
     final titleCtrl = TextEditingController(text: initialTitle ?? '');
     final locationCtrl = TextEditingController(text: initialLocation ?? '');
     final notesCtrl = TextEditingController(text: initialNotes ?? '');
-    final mapLinkCtrl = TextEditingController(text: initialMapLink ?? '');
+    // Store map link internally (not shown to user)
+    String? currentMapLink = initialMapLink;
 
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -241,22 +242,16 @@ class ItineraryItemFormBottomSheet {
                     // --- Location Field with Google Places Integration ---
                     LocationPickerWidget(
                       controller: locationCtrl,
-                      placesService: GooglePlacesService(apiKey: null), // TODO: Add API key from config if available
+                      placesService: GooglePlacesService(), // Uses MapsConfigService for API key
                       onLocationSelected: (location) {
-                        // Location selected callback
+                        // Location selected callback - this is called when user types
+                        // Map link will be generated on submit if not already set
                       },
-                    ),
-                    const SizedBox(height: 12),
-
-                    // --- Map Link Field ---
-                    TextField(
-                      controller: mapLinkCtrl,
-                      style: TextStyle(color: cs.primary),
-                      decoration: InputDecoration(
-                        labelText: 'Map Link (URL)',
-                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
-                        border: const OutlineInputBorder(),
-                      ),
+                      onMapLinkGenerated: (mapLink) {
+                        // Store map link when generated from autocomplete selection
+                        // This uses the full description for accurate location
+                        currentMapLink = mapLink;
+                      },
                     ),
                     const SizedBox(height: 12),
 
@@ -285,13 +280,23 @@ class ItineraryItemFormBottomSheet {
                             );
                             return;
                           }
+                          // Generate map link if location exists but map link is missing
+                          String? finalMapLink = currentMapLink;
+                          if (finalMapLink == null || finalMapLink.isEmpty) {
+                            final location = locationCtrl.text.trim();
+                            if (location.isNotEmpty) {
+                              final placesService = GooglePlacesService();
+                              finalMapLink = placesService.generateMapLink(location);
+                            }
+                          }
+                          
                           await onSubmit(
                             selectedType!,
                             title,
                             selectedTime,
                             locationCtrl.text.trim().isEmpty ? null : locationCtrl.text.trim(),
                             notesCtrl.text.trim().isEmpty ? null : notesCtrl.text.trim(),
-                            mapLinkCtrl.text.trim().isEmpty ? null : mapLinkCtrl.text.trim(),
+                            finalMapLink?.isEmpty ?? true ? null : finalMapLink,
                           );
                           if (ctx2.mounted) {
                             Navigator.pop(ctx2);

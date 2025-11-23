@@ -32,6 +32,27 @@ class BackupBuilderService {
   static const String _currentVersion = '1';
   static const int _currentDbSchemaVersion = 8; // Updated to include all trackers
 
+  /// Serializes a date-only field to ISO string preserving the date component.
+  /// 
+  /// This extracts the date components (year, month, day) and creates a UTC
+  /// DateTime at midnight with those components, ensuring the date is preserved
+  /// correctly regardless of the original timezone. For example, if the user
+  /// selected "2024-01-15", it will always be saved as "2024-01-15T00:00:00.000Z".
+  static String? _serializeDateOnly(DateTime? date) {
+    if (date == null) return null;
+    // Extract date components from the local date (year, month, day)
+    // Create UTC date at midnight with those components to preserve the date
+    final utcDate = DateTime.utc(date.year, date.month, date.day);
+    return utcDate.toIso8601String();
+  }
+
+  /// Serializes a date-only field (non-nullable) to ISO string.
+  static String _serializeDateOnlyRequired(DateTime date) {
+    // Extract date components and create UTC date at midnight
+    final utcDate = DateTime.utc(date.year, date.month, date.day);
+    return utcDate.toIso8601String();
+  }
+
   /// Create a JSON snapshot of all Hive boxes.
   Future<Map<String, dynamic>> createBackupSnapshot() async {
     final snapshot = <String, dynamic>{
@@ -102,8 +123,8 @@ class BackupBuilderService {
           'id': t.id,
           'title': t.title,
           'destination': t.destination,
-          'startDate': t.startDate?.toUtc().toIso8601String(),
-          'endDate': t.endDate?.toUtc().toIso8601String(),
+          'startDate': _serializeDateOnly(t.startDate),
+          'endDate': _serializeDateOnly(t.endDate),
           'description': t.description,
           'createdAt': t.createdAt.toUtc().toIso8601String(),
           'updatedAt': t.updatedAt.toUtc().toIso8601String(),
@@ -138,7 +159,7 @@ class BackupBuilderService {
     snapshot['itinerary_days'] = itineraryDaysBox.values.map((id) => {
           'id': id.id,
           'tripId': id.tripId,
-          'date': id.date.toUtc().toIso8601String(),
+          'date': _serializeDateOnlyRequired(id.date),
           'createdAt': id.createdAt.toUtc().toIso8601String(),
           'updatedAt': id.updatedAt.toUtc().toIso8601String(),
         }).toList();
@@ -183,7 +204,7 @@ class BackupBuilderService {
     snapshot['expenses'] = expensesBox.values.map((e) => {
           'id': e.id,
           'tripId': e.tripId,
-          'date': e.date.toUtc().toIso8601String(),
+          'date': _serializeDateOnlyRequired(e.date),
           'categoryIndex': e.categoryIndex,
           'amount': e.amount,
           'currency': e.currency,

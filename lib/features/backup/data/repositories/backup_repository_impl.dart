@@ -340,6 +340,33 @@ class BackupRepositoryImpl implements BackupRepository {
     await Hive.box(goal_constants.themePreferencesBoxName).clear();
   }
 
+  /// Deserializes a date-only field from ISO string to local DateTime.
+  /// 
+  /// This parses the UTC date string, extracts the date components (year, month, day),
+  /// and creates a local DateTime at midnight to preserve the date correctly
+  /// in the user's timezone.
+  static DateTime? _deserializeDateOnly(String? dateStr) {
+    if (dateStr == null) return null;
+    try {
+      final parsed = DateTime.parse(dateStr);
+      // Extract date components and create local date at midnight
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Deserializes a required date-only field from ISO string to local DateTime.
+  static DateTime _deserializeDateOnlyRequired(String dateStr) {
+    try {
+      final parsed = DateTime.parse(dateStr);
+      // Extract date components and create local date at midnight
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
   Future<void> _importData(Map<String, dynamic> snapshot) async {
     // ========================================================================
     // Goal Tracker Data
@@ -432,8 +459,8 @@ class BackupRepositoryImpl implements BackupRepository {
           id: m['id'] as String,
           title: m['title'] as String,
           destination: m['destination'] as String?,
-          startDate: (m['startDate'] != null) ? DateTime.tryParse(m['startDate'] as String) : null,
-          endDate: (m['endDate'] != null) ? DateTime.tryParse(m['endDate'] as String) : null,
+          startDate: _deserializeDateOnly(m['startDate'] as String?),
+          endDate: _deserializeDateOnly(m['endDate'] as String?),
           description: m['description'] as String?,
           createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
           updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
@@ -489,7 +516,7 @@ class BackupRepositoryImpl implements BackupRepository {
         final model = ItineraryDayModel(
           id: m['id'] as String,
           tripId: m['tripId'] as String,
-          date: DateTime.tryParse(m['date'] as String) ?? DateTime.now(),
+          date: _deserializeDateOnlyRequired(m['date'] as String),
           createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
           updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
         );
@@ -562,7 +589,7 @@ class BackupRepositoryImpl implements BackupRepository {
         final model = ExpenseModel(
           id: m['id'] as String,
           tripId: m['tripId'] as String,
-          date: DateTime.tryParse(m['date'] as String) ?? DateTime.now(),
+          date: _deserializeDateOnlyRequired(m['date'] as String),
           categoryIndex: (m['categoryIndex'] as num?)?.toInt() ?? 0,
           amount: (m['amount'] as num).toDouble(),
           currency: m['currency'] as String,
