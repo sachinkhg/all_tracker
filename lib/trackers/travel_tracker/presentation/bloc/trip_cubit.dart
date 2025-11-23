@@ -6,6 +6,10 @@ import '../../domain/usecases/trip/create_trip.dart';
 import '../../domain/usecases/trip/update_trip.dart';
 import '../../domain/usecases/trip/delete_trip.dart';
 import '../../domain/usecases/trip/get_trip_by_id.dart';
+import '../../../goal_tracker/core/view_preferences_service.dart';
+import '../../../goal_tracker/core/filter_preferences_service.dart';
+import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
+import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
 import 'trip_state.dart';
 
 /// Cubit to manage Trip state.
@@ -15,8 +19,30 @@ class TripCubit extends Cubit<TripState> {
   final UpdateTrip update;
   final DeleteTrip delete;
   final GetTripById getById;
+  final ViewPreferencesService viewPreferencesService;
+  final FilterPreferencesService filterPreferencesService;
 
   static const _uuid = Uuid();
+
+  // Filter state
+  String? _currentDateFilter;
+
+  // View state
+  String _viewType = 'list';
+  Map<String, bool> _visibleFields = const {
+    'title': true,
+    'destination': true,
+    'description': false,
+  };
+
+  String get viewType => _viewType;
+  Map<String, bool> get visibleFields => Map<String, bool>.unmodifiable(_visibleFields);
+  bool get hasActiveFilters => _currentDateFilter != null;
+  String? get currentDateFilter => _currentDateFilter;
+  String get filterSummary {
+    if (_currentDateFilter != null) return 'Date: $_currentDateFilter';
+    return 'No filters';
+  }
 
   TripCubit({
     required this.getAll,
@@ -24,16 +50,169 @@ class TripCubit extends Cubit<TripState> {
     required this.update,
     required this.delete,
     required this.getById,
-  }) : super(TripsLoading());
+    required this.viewPreferencesService,
+    required this.filterPreferencesService,
+  }) : super(TripsLoading()) {
+    // Load saved preferences
+    final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.trip);
+    if (savedPrefs != null) {
+      _visibleFields = Map<String, bool>.from(savedPrefs);
+    }
+    final savedViewType = viewPreferencesService.loadViewType(ViewEntityType.trip);
+    if (savedViewType != null) {
+      _viewType = savedViewType;
+    }
+    final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.trip);
+    if (savedFilters != null) {
+      _currentDateFilter = savedFilters['targetDate'];
+    }
+  }
 
   Future<void> loadTrips() async {
     try {
       emit(TripsLoading());
       final trips = await getAll();
-      emit(TripsLoaded(List.from(trips)));
+      // Apply filters if any are active
+      final filteredTrips = _applyFilters(trips);
+      emit(TripsLoaded(
+        filteredTrips,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
     } catch (e) {
       emit(TripsError(e.toString()));
     }
+  }
+
+  void setViewType(String viewType) {
+    _viewType = viewType;
+    if (state is TripsLoaded) {
+      final current = state as TripsLoaded;
+      emit(TripsLoaded(
+        current.trips,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
+    }
+  }
+
+  void setVisibleFields(Map<String, bool> fields) {
+    _visibleFields = Map<String, bool>.from(fields);
+    if (state is TripsLoaded) {
+      final current = state as TripsLoaded;
+      emit(TripsLoaded(
+        current.trips,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
+    }
+  }
+
+  void applyFilter({
+    String? targetDate,
+  }) {
+    _currentDateFilter = targetDate;
+    loadTrips();
+  }
+
+  void clearFilters() {
+    _currentDateFilter = null;
+    loadTrips();
+  }
+
+  /// Apply filters to trips
+  List<Trip> _applyFilters(List<Trip> trips) {
+    if (_currentDateFilter == null) return trips;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    return trips.where((trip) {
+      final tripStartDate = trip.startDate;
+      final tripEndDate = trip.endDate;
+      if (tripStartDate == null && tripEndDate == null) return false;
+
+      final startDate = tripStartDate != null
+          ? DateTime(tripStartDate.year, tripStartDate.month, tripStartDate.day)
+          : null;
+      final endDate = tripEndDate != null
+          ? DateTime(tripEndDate.year, tripEndDate.month, tripEndDate.day)
+          : null;
+
+      switch (_currentDateFilter) {
+        case 'Today':
+          if (startDate != null && startDate.isAtSameMomentAs(today)) return true;
+          if (endDate != null && endDate.isAtSameMomentAs(today)) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.isBefore(today) && endDate.isAfter(today);
+          }
+          return false;
+        case 'Tomorrow':
+          final tomorrow = today.add(const Duration(days: 1));
+          if (startDate != null && startDate.isAtSameMomentAs(tomorrow)) return true;
+          if (endDate != null && endDate.isAtSameMomentAs(tomorrow)) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.isBefore(tomorrow) && endDate.isAfter(tomorrow);
+          }
+          return false;
+        case 'This Week':
+          final weekStart = today.subtract(Duration(days: today.weekday - 1));
+          final weekEnd = weekStart.add(const Duration(days: 6));
+          if (startDate != null && startDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+              startDate.isBefore(weekEnd.add(const Duration(days: 1)))) return true;
+          if (endDate != null && endDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+              endDate.isBefore(weekEnd.add(const Duration(days: 1)))) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.isBefore(weekEnd) && endDate.isAfter(weekStart);
+          }
+          return false;
+        case 'Next Week':
+          final nextWeekStart = today.add(Duration(days: 8 - today.weekday));
+          final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+          if (startDate != null && startDate.isAfter(nextWeekStart.subtract(const Duration(days: 1))) &&
+              startDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) return true;
+          if (endDate != null && endDate.isAfter(nextWeekStart.subtract(const Duration(days: 1))) &&
+              endDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.isBefore(nextWeekEnd) && endDate.isAfter(nextWeekStart);
+          }
+          return false;
+        case 'This Month':
+          if (startDate != null && startDate.year == today.year && startDate.month == today.month) return true;
+          if (endDate != null && endDate.year == today.year && endDate.month == today.month) return true;
+          if (startDate != null && endDate != null) {
+            final monthStart = DateTime(today.year, today.month, 1);
+            final monthEnd = DateTime(today.year, today.month + 1, 0);
+            return startDate.isBefore(monthEnd) && endDate.isAfter(monthStart);
+          }
+          return false;
+        case 'Next Month':
+          final nextMonth = DateTime(today.year, today.month + 1, 1);
+          if (startDate != null && startDate.year == nextMonth.year && startDate.month == nextMonth.month) return true;
+          if (endDate != null && endDate.year == nextMonth.year && endDate.month == nextMonth.month) return true;
+          if (startDate != null && endDate != null) {
+            final monthEnd = DateTime(nextMonth.year, nextMonth.month + 1, 0);
+            return startDate.isBefore(monthEnd) && endDate.isAfter(nextMonth);
+          }
+          return false;
+        case 'This Year':
+          if (startDate != null && startDate.year == today.year) return true;
+          if (endDate != null && endDate.year == today.year) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.year <= today.year && endDate.year >= today.year;
+          }
+          return false;
+        case 'Next Year':
+          if (startDate != null && startDate.year == today.year + 1) return true;
+          if (endDate != null && endDate.year == today.year + 1) return true;
+          if (startDate != null && endDate != null) {
+            return startDate.year <= today.year + 1 && endDate.year >= today.year + 1;
+          }
+          return false;
+        default:
+          return true;
+      }
+    }).toList();
   }
 
   Future<void> createNewTrip({

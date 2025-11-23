@@ -12,6 +12,10 @@ import '../../domain/usecases/itinerary/get_items_by_day_id.dart';
 import '../../domain/usecases/itinerary/update_itinerary_item.dart';
 import '../../domain/usecases/itinerary/delete_itinerary_item.dart';
 import '../../domain/usecases/trip/get_trip_by_id.dart';
+import '../../../goal_tracker/core/view_preferences_service.dart';
+import '../../../goal_tracker/core/filter_preferences_service.dart';
+import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
+import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
 import 'itinerary_state.dart';
 
 /// Cubit to manage Itinerary state.
@@ -25,8 +29,35 @@ class ItineraryCubit extends Cubit<ItineraryState> {
   final UpdateItineraryItem updateItem;
   final DeleteItineraryItem deleteItem;
   final GetTripById getTripById;
+  final ViewPreferencesService viewPreferencesService;
+  final FilterPreferencesService filterPreferencesService;
 
   static const _uuid = Uuid();
+
+  // Filter state
+  String? _currentDateFilter;
+  String? _currentItemTypeFilter;
+  String? _currentTripId; // Store current trip ID for filter operations
+
+  // View state
+  String _viewType = 'list';
+  Map<String, bool> _visibleFields = const {
+    'date': true,
+    'notes': false,
+    'itemType': true,
+    'itemTime': true,
+    'itemLocation': false,
+  };
+
+  String get viewType => _viewType;
+  Map<String, bool> get visibleFields => Map<String, bool>.unmodifiable(_visibleFields);
+  bool get hasActiveFilters => _currentDateFilter != null || _currentItemTypeFilter != null;
+  String get filterSummary {
+    final parts = <String>[];
+    if (_currentDateFilter != null) parts.add('Date: $_currentDateFilter');
+    if (_currentItemTypeFilter != null) parts.add('Type: $_currentItemTypeFilter');
+    return parts.isEmpty ? 'No filters' : parts.join(', ');
+  }
 
   ItineraryCubit({
     required this.createDay,
@@ -38,10 +69,28 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     required this.updateItem,
     required this.deleteItem,
     required this.getTripById,
-  }) : super(ItineraryLoading());
+    required this.viewPreferencesService,
+    required this.filterPreferencesService,
+  }) : super(ItineraryLoading()) {
+    // Load saved preferences
+    final savedPrefs = viewPreferencesService.loadViewPreferences(ViewEntityType.itinerary);
+    if (savedPrefs != null) {
+      _visibleFields = Map<String, bool>.from(savedPrefs);
+    }
+    final savedViewType = viewPreferencesService.loadViewType(ViewEntityType.itinerary);
+    if (savedViewType != null) {
+      _viewType = savedViewType;
+    }
+    final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.itinerary);
+    if (savedFilters != null) {
+      _currentDateFilter = savedFilters['targetDate'];
+      _currentItemTypeFilter = savedFilters['itemType'];
+    }
+  }
 
   Future<void> loadItinerary(String tripId) async {
     try {
+      _currentTripId = tripId;
       emit(ItineraryLoading());
       
       // Get trip to check start and end dates
@@ -69,7 +118,15 @@ class ItineraryCubit extends Cubit<ItineraryState> {
         itemsByDay[day.id] = items;
       }
 
-      emit(ItineraryLoaded(days, itemsByDay));
+      // Apply filters if any are active
+      final filteredDays = _applyFilters(days, itemsByDay);
+      
+      emit(ItineraryLoaded(
+        filteredDays.days,
+        filteredDays.itemsByDay,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
     } catch (e) {
       emit(ItineraryError(e.toString()));
     }
@@ -249,6 +306,114 @@ class ItineraryCubit extends Cubit<ItineraryState> {
     } catch (e) {
       emit(ItineraryError(e.toString()));
     }
+  }
+
+  void setViewType(String viewType) {
+    _viewType = viewType;
+    if (state is ItineraryLoaded) {
+      final current = state as ItineraryLoaded;
+      emit(ItineraryLoaded(
+        current.days,
+        current.itemsByDay,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
+    }
+  }
+
+  void setVisibleFields(Map<String, bool> fields) {
+    _visibleFields = Map<String, bool>.from(fields);
+    if (state is ItineraryLoaded) {
+      final current = state as ItineraryLoaded;
+      emit(ItineraryLoaded(
+        current.days,
+        current.itemsByDay,
+        viewType: _viewType,
+        visibleFields: _visibleFields,
+      ));
+    }
+  }
+
+  void applyFilter({
+    String? targetDate,
+    String? itemType,
+  }) {
+    _currentDateFilter = targetDate;
+    _currentItemTypeFilter = itemType;
+    if (_currentTripId != null) {
+      loadItinerary(_currentTripId!);
+    }
+  }
+
+  void clearFilters() {
+    _currentDateFilter = null;
+    _currentItemTypeFilter = null;
+    if (_currentTripId != null) {
+      loadItinerary(_currentTripId!);
+    }
+  }
+
+  /// Apply filters to days and items
+  ({List<ItineraryDay> days, Map<String, List<ItineraryItem>> itemsByDay}) _applyFilters(
+    List<ItineraryDay> days,
+    Map<String, List<ItineraryItem>> itemsByDay,
+  ) {
+    var filteredDays = List<ItineraryDay>.from(days);
+    var filteredItemsByDay = Map<String, List<ItineraryItem>>.from(itemsByDay);
+
+    // Apply date filter
+    if (_currentDateFilter != null) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      filteredDays = filteredDays.where((day) {
+        final dayDate = DateTime(day.date.year, day.date.month, day.date.day);
+        switch (_currentDateFilter) {
+          case 'Today':
+            return dayDate.isAtSameMomentAs(today);
+          case 'Tomorrow':
+            return dayDate.isAtSameMomentAs(today.add(const Duration(days: 1)));
+          case 'This Week':
+            final weekStart = today.subtract(Duration(days: today.weekday - 1));
+            final weekEnd = weekStart.add(const Duration(days: 6));
+            return dayDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                dayDate.isBefore(weekEnd.add(const Duration(days: 1)));
+          case 'Next Week':
+            final nextWeekStart = today.add(Duration(days: 8 - today.weekday));
+            final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
+            return dayDate.isAfter(nextWeekStart.subtract(const Duration(days: 1))) &&
+                dayDate.isBefore(nextWeekEnd.add(const Duration(days: 1)));
+          case 'This Month':
+            return dayDate.year == today.year && dayDate.month == today.month;
+          case 'Next Month':
+            final nextMonth = DateTime(today.year, today.month + 1, 1);
+            return dayDate.year == nextMonth.year && dayDate.month == nextMonth.month;
+          case 'This Year':
+            return dayDate.year == today.year;
+          case 'Next Year':
+            return dayDate.year == today.year + 1;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    // Apply item type filter
+    if (_currentItemTypeFilter != null) {
+      final itemType = ItineraryItemType.values.firstWhere(
+        (type) => type.name == _currentItemTypeFilter,
+        orElse: () => ItineraryItemType.sightseeing,
+      );
+      filteredItemsByDay = Map.fromEntries(
+        filteredItemsByDay.entries.map((entry) {
+          final filteredItems = entry.value.where((item) => item.type == itemType).toList();
+          return MapEntry(entry.key, filteredItems);
+        }).where((entry) => entry.value.isNotEmpty),
+      );
+      // Also filter days to only include those with matching items
+      filteredDays = filteredDays.where((day) => filteredItemsByDay.containsKey(day.id)).toList();
+    }
+
+    return (days: filteredDays, itemsByDay: filteredItemsByDay);
   }
 }
 

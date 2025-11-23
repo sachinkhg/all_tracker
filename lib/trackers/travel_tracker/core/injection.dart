@@ -69,6 +69,8 @@ import '../presentation/bloc/expense_cubit.dart';
 
 // Services
 import '../data/services/photo_storage_service.dart';
+import '../../goal_tracker/core/view_preferences_service.dart';
+import '../../goal_tracker/core/filter_preferences_service.dart';
 
 // Constants
 import 'constants.dart';
@@ -90,6 +92,10 @@ TripCubit createTripCubit() {
   final deleteTrip = DeleteTrip(tripRepo);
   final getTripById = GetTripById(tripRepo);
 
+  // Services
+  final viewPreferencesService = ViewPreferencesService();
+  final filterPreferencesService = FilterPreferencesService();
+
   // Presentation
   return TripCubit(
     getAll: getAllTrips,
@@ -97,6 +103,8 @@ TripCubit createTripCubit() {
     update: updateTrip,
     delete: deleteTrip,
     getById: getTripById,
+    viewPreferencesService: viewPreferencesService,
+    filterPreferencesService: filterPreferencesService,
   );
 }
 
@@ -139,6 +147,10 @@ ItineraryCubit createItineraryCubit() {
   final deleteItem = DeleteItineraryItem(itineraryRepo);
   final getTripById = GetTripById(tripRepo);
 
+  // Services
+  final viewPreferencesService = ViewPreferencesService();
+  final filterPreferencesService = FilterPreferencesService();
+
   // Presentation
   return ItineraryCubit(
     createDay: createDay,
@@ -150,6 +162,8 @@ ItineraryCubit createItineraryCubit() {
     updateItem: updateItem,
     deleteItem: deleteItem,
     getTripById: getTripById,
+    viewPreferencesService: viewPreferencesService,
+    filterPreferencesService: filterPreferencesService,
   );
 }
 

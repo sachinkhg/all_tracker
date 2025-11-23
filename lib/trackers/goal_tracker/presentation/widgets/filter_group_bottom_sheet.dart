@@ -1,6 +1,7 @@
 // lib/presentation/widgets/filter_group_bottom_sheet.dart
 import 'package:flutter/material.dart';
 import '../../core/constants.dart'; // path to kContextOptions
+import '../../../travel_tracker/core/constants.dart' as travel_constants; // for ItineraryItemType
 
 /// ---------------------------------------------------------------------------
 /// FilterGroupBottomSheet
@@ -32,7 +33,7 @@ import '../../core/constants.dart'; // path to kContextOptions
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
 
-enum FilterEntityType { goal, milestone, task, habit }
+enum FilterEntityType { goal, milestone, task, habit, itinerary, trip }
 
 class FilterGroupBottomSheet extends StatefulWidget {
   /// Which entity this filter sheet applies to.
@@ -69,6 +70,9 @@ class FilterGroupBottomSheet extends StatefulWidget {
   
   /// Initial hide completed setting
   final bool initialHideCompleted;
+  
+  /// For itinerary: initial item type filter
+  final String? initialItemType;
 
   const FilterGroupBottomSheet({
     super.key,
@@ -85,6 +89,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.initialSaveSort = false,
     this.initialSortOrder,
     this.initialHideCompleted = true,
+    this.initialItemType,
   });
 
   @override
@@ -96,6 +101,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
   String? _selectedDateFilter;
   String? _selectedStatus;
   String? _selectedGoalId; // For tasks: selected goal filter
+  String? _selectedItemType; // For itinerary: selected item type filter
   bool _saveFilter = false; // Save filter preference
   late final List<MapEntry<String, String>> _goalPairs; // id -> title
   late final List<MapEntry<String, String>> _milestonePairs; // id -> title
@@ -113,6 +119,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
     _selectedContext = widget.initialContext;
     _selectedDateFilter = widget.initialDateFilter;
     _selectedStatus = widget.initialStatus;
+    _selectedItemType = widget.initialItemType;
     
     // Set initial save filter checkbox state
     _saveFilter = widget.initialSaveFilter;
@@ -194,8 +201,10 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
 
     // Provide a TabController for TabBar & TabBarView
     final bool isHabit = widget.entity == FilterEntityType.habit;
+    final bool isTrip = widget.entity == FilterEntityType.trip;
+    final bool isItinerary = widget.entity == FilterEntityType.itinerary;
     return DefaultTabController(
-      length: isHabit ? 1 : 2,
+      length: (isHabit || isTrip || isItinerary) ? 1 : 2,
       child: Padding(
         // respect keyboard insets but do NOT permanently add bottom safe padding
         padding: EdgeInsets.only(bottom: viewInsets),
@@ -209,7 +218,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
               TabBar(
                 tabs: [
                   const Tab(text: 'Filter'),
-                  if (!isHabit) const Tab(text: 'Sort'),
+                  if (!isHabit && !isTrip && !isItinerary) const Tab(text: 'Sort'),
                 ],
               ),
               // Tab content
@@ -472,7 +481,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                         ),
                                     ],
                                   ),
-                                ] else ...[
+                                ] else if (widget.entity == FilterEntityType.habit) ...[
                                   // Habit filters - Cascading dropdowns: Goal first, then Milestone
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
@@ -592,6 +601,31 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     },
                                   ),
                                 ],
+                                if (widget.entity == FilterEntityType.itinerary) ...[
+                                  // Itinerary filters - Date range and Item type
+                                  Text("Filter by Item Type", style: textTheme.bodySmall),
+                                  const SizedBox(height: 8),
+                                  Wrap(
+                                    spacing: 8,
+                                    runSpacing: 8,
+                                    children: [
+                                      for (final itemType in travel_constants.ItineraryItemType.values)
+                                        ChoiceChip(
+                                          label: Text(travel_constants.itineraryItemTypeLabels[itemType]!),
+                                          selected: _selectedItemType == itemType.name,
+                                          onSelected: (sel) {
+                                            setState(() {
+                                              _selectedItemType = sel ? itemType.name : null;
+                                            });
+                                          },
+                                        ),
+                                    ],
+                                  ),
+                                ],
+                                if (widget.entity == FilterEntityType.trip) ...[
+                                  // Trip filters - only date range (no completed items filter)
+                                  // Date filters are already shown above for non-habit entities
+                                ],
                               ],
                             ),
                           ),
@@ -616,24 +650,25 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                           ),
                         ),
 
-                        // Hide completed items checkbox
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                          child: Row(
-                            children: [
-                              Checkbox(
-                                value: _hideCompleted,
-                                onChanged: (value) {
-                                  setState(() {
-                                    _hideCompleted = value ?? false;
-                                  });
-                                },
-                              ),
-                              const SizedBox(width: 8),
-                              const Text("Hide completed items"),
-                            ],
+                        // Hide completed items checkbox (excluded for itinerary and trips)
+                        if (widget.entity != FilterEntityType.itinerary && widget.entity != FilterEntityType.trip)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+                            child: Row(
+                              children: [
+                                Checkbox(
+                                  value: _hideCompleted,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _hideCompleted = value ?? false;
+                                    });
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                const Text("Hide completed items"),
+                              ],
+                            ),
                           ),
-                        ),
 
                         // Buttons — tight padding so they're close to content, not floating
                         Padding(
@@ -665,6 +700,19 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                       "saveFilter": _saveFilter,
                                       "hideCompleted": _hideCompleted,
                                     });
+                                  } else if (widget.entity == FilterEntityType.trip) {
+                                    // Trip entity — return date filter only (no completed items)
+                                    Navigator.of(context).pop({
+                                      "targetDate": _selectedDateFilter,
+                                      "saveFilter": _saveFilter,
+                                    });
+                                  } else if (widget.entity == FilterEntityType.itinerary) {
+                                    // Itinerary entity — return date filter and item type
+                                    Navigator.of(context).pop({
+                                      "targetDate": _selectedDateFilter,
+                                      "itemType": _selectedItemType,
+                                      "saveFilter": _saveFilter,
+                                    });
                                   } else {
                                     // Habit entity — return milestone/goal only
                                     Navigator.of(context).pop({
@@ -683,7 +731,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                       ],
                     ),
 
-                    if (!isHabit)
+                    if (!isHabit && !isTrip && !isItinerary)
                     // ===== SORT TAB =====
                     Column(
                       mainAxisSize: MainAxisSize.min,

@@ -17,11 +17,18 @@ class ItineraryLoading extends ItineraryState {}
 class ItineraryLoaded extends ItineraryState {
   final List<ItineraryDay> days;
   final Map<String, List<ItineraryItem>> itemsByDay;
+  final String viewType; // 'list' or 'calendar'
+  final Map<String, bool>? visibleFields; // Field visibility preferences
 
-  const ItineraryLoaded(this.days, this.itemsByDay);
+  const ItineraryLoaded(
+    this.days,
+    this.itemsByDay, {
+    this.viewType = 'list',
+    this.visibleFields,
+  });
 
   @override
-  List<Object?> get props => [days, itemsByDay];
+  List<Object?> get props => [days, itemsByDay, viewType, visibleFields];
 }
 
 /// Error state.

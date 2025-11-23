@@ -7,12 +7,16 @@ import '../../core/injection.dart';
 import '../../core/app_icons.dart';
 import '../widgets/trip_list_item.dart';
 import '../widgets/trip_form_bottom_sheet.dart';
+import '../widgets/trip_calendar_view.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
 import '../../../../widgets/app_drawer.dart';
+import '../../../../widgets/bottom_sheet_helpers.dart';
 import '../../../../core/organization_notifier.dart';
 import '../../../../pages/app_home_page.dart';
+import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
+import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
 import 'trip_detail_page.dart';
 
 /// Page displaying the list of trips.
@@ -86,6 +90,8 @@ class _TripListPageViewState extends State<TripListPageView> {
 
           if (state is TripsLoaded) {
             final trips = state.trips;
+            final viewType = state.viewType;
+            final visibleFields = state.visibleFields;
 
             if (trips.isEmpty) {
               return Center(
@@ -114,28 +120,48 @@ class _TripListPageViewState extends State<TripListPageView> {
               );
             }
 
-            return ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: trips.length,
-              itemBuilder: (context, index) {
-                final trip = trips[index];
-                return TripListItem(
-                  trip: trip,
-                  onTap: () async {
-                    // Navigate to detail page and refresh list when returning
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => TripDetailPage(tripId: trip.id),
-                      ),
-                    );
-                    // Refresh the trip list when returning from detail page
-                    if (mounted) {
-                      context.read<TripCubit>().loadTrips();
-                    }
-                  },
-                );
-              },
-            );
+            // Check view type - default to 'list' if not specified
+            if (viewType == 'calendar') {
+              return TripCalendarView(
+                trips: trips,
+                onTap: (ctx, trip) async {
+                  await Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (_) => TripDetailPage(tripId: trip.id),
+                    ),
+                  );
+                  if (mounted) {
+                    context.read<TripCubit>().loadTrips();
+                  }
+                },
+                visibleFields: visibleFields,
+                filterActive: cubit.hasActiveFilters,
+              );
+            } else {
+              return ListView.builder(
+                padding: const EdgeInsets.all(12),
+                itemCount: trips.length,
+                itemBuilder: (context, index) {
+                  final trip = trips[index];
+                  return TripListItem(
+                    trip: trip,
+                    onTap: () async {
+                      // Navigate to detail page and refresh list when returning
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => TripDetailPage(tripId: trip.id),
+                        ),
+                      );
+                      // Refresh the trip list when returning from detail page
+                      if (mounted) {
+                        context.read<TripCubit>().loadTrips();
+                      }
+                    },
+                    visibleFields: visibleFields,
+                  );
+                },
+              );
+            }
           }
 
           if (state is TripsError) {
@@ -148,12 +174,65 @@ class _TripListPageViewState extends State<TripListPageView> {
           return const SizedBox.shrink();
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        heroTag: 'tripListFab',
-        tooltip: 'Create Trip',
-        backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
-        onPressed: () => _showCreateTripSheet(context),
-        child: const Icon(Icons.add),
+      floatingActionButton: BlocBuilder<TripCubit, TripState>(
+        builder: (context, state) {
+          final filterActive = cubit.hasActiveFilters;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: 'viewFab',
+                    tooltip: 'Change View',
+                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                    onPressed: () => _onView(context, cubit),
+                    child: const Icon(Icons.remove_red_eye),
+                  ),
+                  const SizedBox(width: 8),
+                  FloatingActionButton.small(
+                    heroTag: 'filterFab',
+                    tooltip: 'Filter',
+                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                    onPressed: () => _onFilter(context, cubit),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        const Icon(Icons.filter_alt),
+                        if (filterActive)
+                          Positioned(
+                            top: 6,
+                            right: 6,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              FloatingActionButton(
+                heroTag: 'tripListFab',
+                tooltip: 'Create Trip',
+                backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                onPressed: () => _showCreateTripSheet(context),
+                child: const Icon(Icons.add),
+              ),
+            ],
+          );
+        },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
@@ -175,6 +254,77 @@ class _TripListPageViewState extends State<TripListPageView> {
         // The cubit.loadTrips() is called in createNewTrip, so list will refresh automatically
       },
     );
+  }
+
+  Future<void> _onView(BuildContext context, TripCubit cubit) async {
+    final currentState = cubit.state;
+    final Map<String, bool>? initial =
+        currentState is TripsLoaded ? currentState.visibleFields : <String, bool>{};
+    final String? initialViewType =
+        currentState is TripsLoaded ? currentState.viewType : 'list';
+
+    final result = await showAppBottomSheet<Map<String, dynamic>?>(
+      context,
+      ViewFieldsBottomSheet(
+        entity: ViewEntityType.trip,
+        initial: initial,
+        initialViewType: initialViewType,
+      ),
+    );
+    if (result == null) return;
+    
+    final fields = result['fields'] as Map<String, bool>;
+    final saveView = result['saveView'] as bool;
+    final viewType = result['viewType'] as String? ?? 'list';
+    
+    final viewPrefsService = cubit.viewPreferencesService;
+    
+    if (saveView) {
+      await viewPrefsService.saveViewPreferences(ViewEntityType.trip, fields);
+      await viewPrefsService.saveViewType(ViewEntityType.trip, viewType);
+    } else {
+      await viewPrefsService.clearViewPreferences(ViewEntityType.trip);
+      await viewPrefsService.clearViewType(ViewEntityType.trip);
+    }
+    
+    cubit.setVisibleFields(fields);
+    cubit.setViewType(viewType);
+  }
+
+  Future<void> _onFilter(BuildContext context, TripCubit cubit) async {
+    final savedFilters = cubit.filterPreferencesService.loadFilterPreferences(FilterEntityType.trip);
+    final hasSavedFilters = savedFilters != null && savedFilters['targetDate'] != null;
+    
+    // Use current filter from cubit if available, otherwise use saved filter
+    final currentFilter = cubit.currentDateFilter ?? savedFilters?['targetDate'];
+    
+    final result = await showAppBottomSheet<Map<String, dynamic>?>(
+      context,
+      FilterGroupBottomSheet(
+        entity: FilterEntityType.trip,
+        initialDateFilter: currentFilter,
+        initialSaveFilter: hasSavedFilters,
+      ),
+    );
+
+    if (result == null) return;
+
+    if (result.containsKey('targetDate')) {
+      final saveFilter = result['saveFilter'] as bool? ?? false;
+      
+      if (saveFilter) {
+        final filters = <String, String?>{
+          'targetDate': result['targetDate'] as String?,
+        };
+        await cubit.filterPreferencesService.saveFilterPreferences(FilterEntityType.trip, filters);
+      } else {
+        await cubit.filterPreferencesService.clearFilterPreferences(FilterEntityType.trip);
+      }
+      
+      cubit.applyFilter(
+        targetDate: result['targetDate'] as String?,
+      );
+    }
   }
 }
 

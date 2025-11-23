@@ -73,6 +73,10 @@ class FilterPreferencesService {
         return 'task_filters';
       case FilterEntityType.habit:
         return 'habit_filters';
+      case FilterEntityType.itinerary:
+        return 'itinerary_filters';
+      case FilterEntityType.trip:
+        return 'trip_filters';
     }
   }
 }

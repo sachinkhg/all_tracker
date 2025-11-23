@@ -7,11 +7,13 @@ import '../../core/app_icons.dart';
 class TripListItem extends StatelessWidget {
   final Trip trip;
   final VoidCallback onTap;
+  final Map<String, bool>? visibleFields;
 
   const TripListItem({
     super.key,
     required this.trip,
     required this.onTap,
+    this.visibleFields,
   });
 
   @override
@@ -64,7 +66,7 @@ class TripListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              if (trip.destination != null) ...[
+              if (trip.destination != null && (visibleFields?['destination'] ?? true)) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -92,14 +94,16 @@ class TripListItem extends StatelessWidget {
                   ),
                 ],
               ),
-              if (trip.description != null && trip.description!.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(
-                  trip.description!,
-                  style: textTheme.bodyMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
+              if (visibleFields?['description'] ?? false) ...[
+                if (trip.description != null && trip.description!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    trip.description!,
+                    style: textTheme.bodyMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ],
             ],
           ),

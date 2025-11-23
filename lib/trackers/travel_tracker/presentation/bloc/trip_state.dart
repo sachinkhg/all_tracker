@@ -15,11 +15,17 @@ class TripsLoading extends TripState {}
 /// Loaded state - holds the list of successfully fetched trips.
 class TripsLoaded extends TripState {
   final List<Trip> trips;
+  final String viewType; // 'list' or 'calendar'
+  final Map<String, bool>? visibleFields; // Field visibility preferences
 
-  const TripsLoaded(this.trips);
+  const TripsLoaded(
+    this.trips, {
+    this.viewType = 'list',
+    this.visibleFields,
+  });
 
   @override
-  List<Object?> get props => [trips];
+  List<Object?> get props => [trips, viewType, visibleFields];
 }
 
 /// Error state - emitted when fetching or modifying trips fails.

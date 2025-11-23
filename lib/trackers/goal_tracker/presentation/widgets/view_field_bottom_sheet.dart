@@ -40,7 +40,7 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
-enum ViewEntityType { goal, milestone, task, habit }
+enum ViewEntityType { goal, milestone, task, habit, itinerary, trip }
 
 class ViewFieldsBottomSheet extends StatefulWidget {
   /// Which entity's fields are being configured (goal or milestone).
@@ -90,14 +90,14 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
   /// When unchecked and APPLY is clicked, saved preferences are cleared.
   bool _saveView = true;
   
-  /// View type for tasks: 'list' or 'calendar'. Only used for task entity.
+  /// View type for tasks and itinerary: 'list' or 'calendar'. Only used for task and itinerary entities.
   String _viewType = 'list';
 
   @override
   void initState() {
     super.initState();
-    // Initialize view type for tasks
-    if (widget.entity == ViewEntityType.task) {
+    // Initialize view type for tasks, itinerary, and trips
+    if (widget.entity == ViewEntityType.task || widget.entity == ViewEntityType.itinerary || widget.entity == ViewEntityType.trip) {
       _viewType = widget.initialViewType ?? 'list';
     }
     
@@ -141,6 +141,22 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'goalName': widget.initial?['goalName'] ?? false,
         'rrule': widget.initial?['rrule'] ?? false,
         'targetCompletions': widget.initial?['targetCompletions'] ?? false,
+      };
+    } else if (widget.entity == ViewEntityType.itinerary) {
+      // Itinerary field set
+      _fields = {
+        'date': widget.initial?['date'] ?? true,
+        'notes': widget.initial?['notes'] ?? false,
+        'itemType': widget.initial?['itemType'] ?? true,
+        'itemTime': widget.initial?['itemTime'] ?? true,
+        'itemLocation': widget.initial?['itemLocation'] ?? false,
+      };
+    } else if (widget.entity == ViewEntityType.trip) {
+      // Trip field set
+      _fields = {
+        'title': true, // Always enforced ON
+        'destination': widget.initial?['destination'] ?? true,
+        'description': widget.initial?['description'] ?? false,
       };
     }
   }
@@ -233,6 +249,73 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               _buildToggle('milestoneName', 'Milestone'),
               _buildToggle('goalName', 'Goal'),
               _buildToggle('remainingDays', 'Remaining Days'),
+            ] else if (widget.entity == ViewEntityType.itinerary) ...[
+              // View type toggle for itinerary
+              const Divider(),
+              ListTile(
+                title: const Text('View Type'),
+                subtitle: const Text('Choose how to display itinerary'),
+                trailing: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'list',
+                      label: Text('List'),
+                      icon: Icon(Icons.list),
+                    ),
+                    ButtonSegment(
+                      value: 'calendar',
+                      label: Text('Calendar'),
+                      icon: Icon(Icons.calendar_month),
+                    ),
+                  ],
+                  selected: {_viewType},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    setState(() {
+                      _viewType = newSelection.first;
+                    });
+                  },
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              // Itinerary fields
+              _buildToggle('date', 'Date'),
+              _buildToggle('notes', 'Notes'),
+              _buildToggle('itemType', 'Item Type'),
+              _buildToggle('itemTime', 'Item Time'),
+              _buildToggle('itemLocation', 'Item Location'),
+            ] else if (widget.entity == ViewEntityType.trip) ...[
+              // View type toggle for trips
+              const Divider(),
+              ListTile(
+                title: const Text('View Type'),
+                subtitle: const Text('Choose how to display trips'),
+                trailing: SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 'list',
+                      label: Text('List'),
+                      icon: Icon(Icons.list),
+                    ),
+                    ButtonSegment(
+                      value: 'calendar',
+                      label: Text('Calendar'),
+                      icon: Icon(Icons.calendar_month),
+                    ),
+                  ],
+                  selected: {_viewType},
+                  onSelectionChanged: (Set<String> newSelection) {
+                    setState(() {
+                      _viewType = newSelection.first;
+                    });
+                  },
+                ),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              // Trip fields
+              _buildToggle('destination', 'Destination'),
+              _buildToggle('description', 'Description'),
             ] else ...[
               // Habit fields
               _buildToggle('description', 'Description'),
@@ -263,15 +346,19 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
                 ElevatedButton(
                   child: const Text('APPLY'),
                   onPressed: () {
-                    // Ensure 'name' remains enabled
-                    _fields['name'] = true;
-                    // Return fields, viewType (for tasks), and saveView preference
+                    // Ensure required fields remain enabled based on entity type
+                    if (widget.entity == ViewEntityType.trip) {
+                      _fields['title'] = true; // Title is always visible for trips
+                    } else {
+                      _fields['name'] = true; // Name is always visible for other entities
+                    }
+                    // Return fields, viewType (for tasks, itinerary, and trips), and saveView preference
                     final result = {
                       'fields': _fields,
                       'saveView': _saveView,
                     };
-                    // Only include viewType for tasks
-                    if (widget.entity == ViewEntityType.task) {
+                    // Only include viewType for tasks, itinerary, and trips
+                    if (widget.entity == ViewEntityType.task || widget.entity == ViewEntityType.itinerary || widget.entity == ViewEntityType.trip) {
                       result['viewType'] = _viewType;
                     }
                     Navigator.of(context).pop(result);
