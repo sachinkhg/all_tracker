@@ -9,6 +9,7 @@ class BackupMetadata extends Equatable {
   final String? deviceDescription;
   final int sizeBytes;
   final bool isE2EE;
+  final String? name;
 
   const BackupMetadata({
     required this.id,
@@ -18,6 +19,7 @@ class BackupMetadata extends Equatable {
     this.deviceDescription,
     required this.sizeBytes,
     required this.isE2EE,
+    this.name,
   });
 
   @override
@@ -29,6 +31,7 @@ class BackupMetadata extends Equatable {
         deviceDescription,
         sizeBytes,
         isE2EE,
+        name,
       ];
 }
 

@@ -35,6 +35,10 @@ class BackupMetadataModel extends HiveObject {
   @HiveField(6)
   String? deviceDescription;
 
+  /// User-provided backup name (optional)
+  @HiveField(7)
+  String? name;
+
   BackupMetadataModel({
     required this.id,
     required this.fileName,
@@ -43,6 +47,7 @@ class BackupMetadataModel extends HiveObject {
     required this.sizeBytes,
     required this.isE2EE,
     this.deviceDescription,
+    this.name,
   });
 }
 

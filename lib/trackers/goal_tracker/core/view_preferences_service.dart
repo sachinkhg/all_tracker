@@ -118,7 +118,7 @@ class ViewPreferencesService {
   /// Loads saved view type preference for a given entity type.
   ///
   /// Returns:
-  /// - String ('list' or 'calendar') if preference is found and valid
+  /// - String ('list', 'calendar', or 'map') if preference is found and valid
   /// - null if no preference is saved or if decoding fails
   String? loadViewType(ViewEntityType entity) {
     try {
@@ -126,7 +126,7 @@ class ViewPreferencesService {
       final key = '${_keyForEntity(entity)}_type';
       final viewType = box.get(key) as String?;
       
-      if (viewType == null || (viewType != 'list' && viewType != 'calendar')) {
+      if (viewType == null || (viewType != 'list' && viewType != 'calendar' && viewType != 'map')) {
         return null;
       }
       
@@ -139,8 +139,8 @@ class ViewPreferencesService {
   /// Saves view type preference for a given entity type.
   ///
   /// Parameters:
-  /// - entity: The entity type (goal, milestone, task, or habit)
-  /// - viewType: The view type ('list' or 'calendar')
+  /// - entity: The entity type (goal, milestone, task, itinerary, or trip)
+  /// - viewType: The view type ('list', 'calendar', or 'map')
   Future<void> saveViewType(
     ViewEntityType entity,
     String viewType,

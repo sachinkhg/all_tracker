@@ -12,10 +12,12 @@ class CreateBackup {
   Future<BackupResult> call({
     required BackupMode mode,
     String? passphrase,
+    String? name,
   }) {
     return repository.createBackup(
       mode: mode,
       passphrase: passphrase,
+      name: name,
     );
   }
 }

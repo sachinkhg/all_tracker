@@ -7,6 +7,7 @@ import '../cubit/backup_cubit.dart';
 import '../cubit/backup_state.dart';
 import '../widgets/backup_list_item.dart';
 import '../widgets/passphrase_dialog.dart';
+import '../widgets/backup_name_dialog.dart';
 import '../../domain/entities/backup_mode.dart';
 import '../../domain/entities/backup_metadata.dart';
 
@@ -293,6 +294,13 @@ class _BackupSettingsContent extends StatelessWidget {
                 ElevatedButton.icon(
                   onPressed: state is BackupSignedIn && state is! BackupInProgress
                       ? () async {
+                          // Show backup name dialog
+                          final backupName = await showBackupNameDialog(context);
+                          if (backupName == null) {
+                            // User cancelled
+                            return;
+                          }
+                          
                           // Show passphrase dialog if E2EE
                           final mode = cubit.backupMode;
                           String? passphrase;
@@ -302,7 +310,11 @@ class _BackupSettingsContent extends StatelessWidget {
                             if (passphrase == null) return;
                           }
                           
-                          await cubit.createBackup(mode: mode, passphrase: passphrase);
+                          await cubit.createBackup(
+                            mode: mode,
+                            passphrase: passphrase,
+                            name: backupName.isEmpty ? null : backupName,
+                          );
                         }
                       : null,
                   icon: const Icon(Icons.cloud_upload),
@@ -365,11 +377,12 @@ class _BackupSettingsContent extends StatelessWidget {
   }
 
   Future<void> _handleRestore(BuildContext context, BackupCubit cubit, BackupMetadata backup) async {
+    final backupDisplayName = backup.name ?? backup.deviceDescription ?? 'backup';
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Restore Backup?'),
-        content: Text('This will replace all current data with the backup from ${backup.createdAt.toString().split(' ').first}'),
+        content: Text('This will replace all current data with the backup "${backupDisplayName}" from ${backup.createdAt.toString().split(' ').first}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

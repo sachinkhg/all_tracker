@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/backup_metadata.dart';
-import 'package:intl/intl.dart';
 
 /// Widget for displaying a single backup in the backup list.
 class BackupListItem extends StatelessWidget {
@@ -29,7 +28,7 @@ class BackupListItem extends StatelessWidget {
             ? const Icon(Icons.lock_outlined, color: Colors.orange)
             : const Icon(Icons.lock_open_outlined, color: Colors.green),
         title: Text(
-          backup.deviceDescription ?? backup.deviceId,
+          backup.name ?? backup.deviceDescription ?? backup.deviceId,
           style: theme.textTheme.bodyLarge,
         ),
         subtitle: Column(

@@ -103,11 +103,13 @@ class BackupCubit extends Cubit<BackupState> {
   Future<void> createBackup({
     required BackupMode mode,
     String? passphrase,
+    String? name,
   }) async {
     try {
       final result = await _createBackup.call(
         mode: mode,
         passphrase: passphrase,
+        name: name,
       );
 
       if (result is domain.BackupSuccess) {

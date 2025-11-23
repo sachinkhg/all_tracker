@@ -288,36 +288,32 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               // View type toggle for trips
               const Divider(),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
                       'View Type',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'Choose how to display trips',
-                      style: TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     SegmentedButton<String>(
+                      style: SegmentedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                        textStyle: const TextStyle(fontSize: 12),
+                      ),
                       segments: const [
                         ButtonSegment(
                           value: 'list',
                           label: Text('List'),
-                          icon: Icon(Icons.list),
                         ),
                         ButtonSegment(
                           value: 'calendar',
                           label: Text('Calendar'),
-                          icon: Icon(Icons.calendar_month),
                         ),
                         ButtonSegment(
                           value: 'map',
                           label: Text('Map'),
-                          icon: Icon(Icons.map),
                         ),
                       ],
                       selected: {_viewType},

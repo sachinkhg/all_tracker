@@ -24,13 +24,14 @@ class BackupMetadataModelAdapter extends TypeAdapter<BackupMetadataModel> {
       sizeBytes: fields[4] as int,
       isE2EE: fields[5] as bool,
       deviceDescription: fields[6] as String?,
+      name: fields[7] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, BackupMetadataModel obj) {
     writer
-      ..writeByte(7)
+      ..writeByte(8)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -44,7 +45,9 @@ class BackupMetadataModelAdapter extends TypeAdapter<BackupMetadataModel> {
       ..writeByte(5)
       ..write(obj.isE2EE)
       ..writeByte(6)
-      ..write(obj.deviceDescription);
+      ..write(obj.deviceDescription)
+      ..writeByte(7)
+      ..write(obj.name);
   }
 
   @override

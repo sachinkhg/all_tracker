@@ -10,11 +10,13 @@ abstract class BackupRepository {
   /// 
   /// [mode]: The encryption mode (deviceKey or e2ee)
   /// [passphrase]: The passphrase for E2EE mode (required if mode is e2ee)
+  /// [name]: Optional user-provided name for the backup
   /// 
   /// Returns the result of the backup operation.
   Future<BackupResult> createBackup({
     required BackupMode mode,
     String? passphrase,
+    String? name,
   });
 
   /// List all available backups.

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../domain/entities/trip.dart';
+import '../../../../core/theme_notifier.dart';
 
 /// Map view widget for trip display.
 ///
@@ -34,12 +35,20 @@ class _TripMapViewState extends State<TripMapView> {
   Trip? _selectedTrip;
   bool _hasMapError = false;
   String? _mapErrorMessage;
+  bool _isMapReady = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadMarkers();
+    // Defer map initialization to avoid crashes during widget build
+    // Use a small delay to ensure the widget tree is fully built
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        setState(() {
+          _isMapReady = true;
+        });
+        _loadMarkers();
+      }
     });
   }
 
@@ -53,10 +62,173 @@ class _TripMapViewState extends State<TripMapView> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Update map style when theme changes
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: false);
+    final isDark = themeNotifier.isDark;
+    if (_mapController != null && mounted) {
+      _applyMapStyle(_mapController!, isDark);
+    }
+  }
+
+  @override
   void dispose() {
     _mapController?.dispose();
     super.dispose();
   }
+
+  Widget _buildMapWidget(LatLng initialCamera, ThemeData theme) {
+    // Get theme brightness from ThemeNotifier
+    final themeNotifier = Provider.of<ThemeNotifier>(context, listen: true);
+    final isDark = themeNotifier.isDark;
+    
+    return GoogleMap(
+      initialCameraPosition: CameraPosition(
+        target: initialCamera,
+        zoom: 10.0,
+      ),
+      markers: _markers,
+      myLocationButtonEnabled: false, // Disable to reduce potential issues
+      zoomControlsEnabled: true,
+      mapType: MapType.normal,
+      onMapCreated: (GoogleMapController controller) async {
+        if (mounted) {
+          setState(() {
+            _mapController = controller;
+          });
+          
+          // Apply dark or light map style based on theme
+          await _applyMapStyle(controller, isDark);
+          
+          // If markers are already loaded, update camera
+          if (_markers.isNotEmpty) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) {
+                _loadMarkers();
+              }
+            });
+          }
+        }
+      },
+    );
+  }
+
+  Future<void> _applyMapStyle(GoogleMapController controller, bool isDark) async {
+    if (isDark) {
+      // Dark mode map style
+      await controller.setMapStyle(_darkMapStyle);
+    } else {
+      // Light mode map style (default, or you can set a custom light style)
+      await controller.setMapStyle(null); // null resets to default
+    }
+  }
+
+  // Dark mode map style JSON
+  static const String _darkMapStyle = '''
+  [
+    {
+      "elementType": "geometry",
+      "stylers": [{"color": "#212121"}]
+    },
+    {
+      "elementType": "labels.icon",
+      "stylers": [{"visibility": "off"}]
+    },
+    {
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#757575"}]
+    },
+    {
+      "elementType": "labels.text.stroke",
+      "stylers": [{"color": "#212121"}]
+    },
+    {
+      "featureType": "administrative",
+      "elementType": "geometry",
+      "stylers": [{"color": "#757575"}]
+    },
+    {
+      "featureType": "administrative.country",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#9e9e9e"}]
+    },
+    {
+      "featureType": "administrative.land_parcel",
+      "stylers": [{"visibility": "off"}]
+    },
+    {
+      "featureType": "administrative.locality",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#bdbdbd"}]
+    },
+    {
+      "featureType": "poi",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#757575"}]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "geometry",
+      "stylers": [{"color": "#181818"}]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#616161"}]
+    },
+    {
+      "featureType": "poi.park",
+      "elementType": "labels.text.stroke",
+      "stylers": [{"color": "#1b1b1b"}]
+    },
+    {
+      "featureType": "road",
+      "elementType": "geometry.fill",
+      "stylers": [{"color": "#2c2c2c"}]
+    },
+    {
+      "featureType": "road",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#8a8a8a"}]
+    },
+    {
+      "featureType": "road.arterial",
+      "elementType": "geometry",
+      "stylers": [{"color": "#373737"}]
+    },
+    {
+      "featureType": "road.highway",
+      "elementType": "geometry",
+      "stylers": [{"color": "#3c3c3c"}]
+    },
+    {
+      "featureType": "road.highway.controlled_access",
+      "elementType": "geometry",
+      "stylers": [{"color": "#4e4e4e"}]
+    },
+    {
+      "featureType": "road.local",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#616161"}]
+    },
+    {
+      "featureType": "transit",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#757575"}]
+    },
+    {
+      "featureType": "water",
+      "elementType": "geometry",
+      "stylers": [{"color": "#000000"}]
+    },
+    {
+      "featureType": "water",
+      "elementType": "labels.text.fill",
+      "stylers": [{"color": "#3d3d3d"}]
+    }
+  ]
+  ''';
 
   void _loadMarkers() {
     if (_isLoadingMarkers || !mounted) return;
@@ -215,6 +387,7 @@ class _TripMapViewState extends State<TripMapView> {
     }
 
     // Default initial position (can be updated when markers load)
+    // Use a safe default location (San Francisco) instead of (0,0) which is in the ocean
     final initialCamera = _initialCameraPosition ??
         (tripsWithLocations.isNotEmpty &&
                 tripsWithLocations.first.destinationLatitude != null &&
@@ -223,7 +396,14 @@ class _TripMapViewState extends State<TripMapView> {
                 tripsWithLocations.first.destinationLatitude!,
                 tripsWithLocations.first.destinationLongitude!,
               )
-            : const LatLng(0.0, 0.0));
+            : const LatLng(37.7749, -122.4194)); // San Francisco as safe default
+
+    // Don't render map until ready to avoid initialization crashes
+    if (!_isMapReady) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -236,42 +416,54 @@ class _TripMapViewState extends State<TripMapView> {
 
         if (_hasMapError) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.error_outline,
-                  size: 64,
-                  color: theme.colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Unable to load map',
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                if (_mapErrorMessage != null)
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.map_outlined,
+                    size: 64,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Map unavailable',
+                    style: theme.textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 32),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Text(
-                      _mapErrorMessage!,
+                      _mapErrorMessage ?? 'Unable to load map. Please check your Google Maps API key configuration in android/app/src/main/res/values/strings.xml',
                       style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
                       textAlign: TextAlign.center,
                     ),
                   ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _hasMapError = false;
-                      _mapErrorMessage = null;
-                    });
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _hasMapError = false;
+                        _mapErrorMessage = null;
+                        _isMapReady = false;
+                      });
+                      // Retry after a delay
+                      Future.delayed(const Duration(milliseconds: 100), () {
+                        if (mounted) {
+                          setState(() {
+                            _isMapReady = true;
+                          });
+                          _loadMarkers();
+                        }
+                      });
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -281,71 +473,7 @@ class _TripMapViewState extends State<TripMapView> {
             SizedBox(
               width: constraints.maxWidth,
               height: constraints.maxHeight,
-              child: Builder(
-                builder: (context) {
-                  try {
-                    return GoogleMap(
-                      initialCameraPosition: CameraPosition(
-                        target: initialCamera,
-                        zoom: 10.0,
-                      ),
-                      markers: _markers,
-                      myLocationButtonEnabled: true,
-                      zoomControlsEnabled: true,
-                      mapType: MapType.normal,
-                      onMapCreated: (GoogleMapController controller) {
-                        if (mounted) {
-                          setState(() {
-                            _mapController = controller;
-                          });
-                          // If markers are already loaded, update camera
-                          if (_markers.isNotEmpty) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (mounted) {
-                                _loadMarkers();
-                              }
-                            });
-                          }
-                        }
-                      },
-                    );
-                  } catch (e, stackTrace) {
-                    debugPrint('TripMapView: Error creating GoogleMap: $e');
-                    debugPrint('TripMapView: Stack trace: $stackTrace');
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() {
-                          _hasMapError = true;
-                          _mapErrorMessage = 'Failed to initialize map: ${e.toString()}';
-                        });
-                      }
-                    });
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: theme.colorScheme.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Map unavailable',
-                            style: theme.textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Please check your Google Maps configuration',
-                            style: theme.textTheme.bodySmall,
-                            textAlign: TextAlign.center,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                },
-              ),
+              child: _buildMapWidget(initialCamera, theme),
             ),
             if (_isLoadingMarkers)
               Positioned(

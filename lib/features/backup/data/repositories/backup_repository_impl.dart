@@ -76,6 +76,7 @@ class BackupRepositoryImpl implements BackupRepository {
   Future<BackupResult> createBackup({
     required BackupMode mode,
     String? passphrase,
+    String? name,
   }) async {
     try {
       _emitProgress('Exporting data', 0.1);
@@ -136,6 +137,7 @@ class BackupRepositoryImpl implements BackupRepository {
         'createdAt': DateTime.now().toUtc().toIso8601String(),
         'isE2EE': (mode == BackupMode.e2ee).toString(),
         'schemaVersion': '8',
+        if (name != null && name.isNotEmpty) 'backupName': name,
       };
 
       final fileId = await _driveApi.uploadFile(fileName, backupBytes, appProperties);
@@ -150,6 +152,7 @@ class BackupRepositoryImpl implements BackupRepository {
         sizeBytes: backupBytes.length,
         isE2EE: mode == BackupMode.e2ee,
         deviceDescription: deviceDescription,
+        name: name,
       );
 
       await _metadataDataSource.create(metadata);
@@ -184,6 +187,7 @@ class BackupRepositoryImpl implements BackupRepository {
           deviceDescription: localMeta.deviceDescription,
           sizeBytes: localMeta.sizeBytes,
           isE2EE: localMeta.isE2EE,
+          name: localMeta.name,
         ));
       }
 
@@ -205,6 +209,7 @@ class BackupRepositoryImpl implements BackupRepository {
       sizeBytes: int.tryParse(file['size'] as String? ?? '0') ?? 0,
       isE2EE: file['appProperties']?['isE2EE'] == 'true',
       deviceDescription: null,
+      name: file['appProperties']?['backupName'] as String?,
     );
   }
 
