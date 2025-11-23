@@ -6,6 +6,7 @@ import '../../domain/usecases/trip/create_trip.dart';
 import '../../domain/usecases/trip/update_trip.dart';
 import '../../domain/usecases/trip/delete_trip.dart';
 import '../../domain/usecases/trip/get_trip_by_id.dart';
+import '../../core/constants.dart';
 import '../../../goal_tracker/core/view_preferences_service.dart';
 import '../../../goal_tracker/core/filter_preferences_service.dart';
 import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
@@ -217,7 +218,11 @@ class TripCubit extends Cubit<TripState> {
 
   Future<void> createNewTrip({
     required String title,
+    TripType? tripType,
     String? destination,
+    double? destinationLatitude,
+    double? destinationLongitude,
+    String? destinationMapLink,
     DateTime? startDate,
     DateTime? endDate,
     String? description,
@@ -227,7 +232,11 @@ class TripCubit extends Cubit<TripState> {
       final trip = Trip(
         id: _uuid.v4(),
         title: title,
+        tripType: tripType,
         destination: destination,
+        destinationLatitude: destinationLatitude,
+        destinationLongitude: destinationLongitude,
+        destinationMapLink: destinationMapLink,
         startDate: startDate,
         endDate: endDate,
         description: description,
@@ -247,7 +256,11 @@ class TripCubit extends Cubit<TripState> {
       final updated = Trip(
         id: trip.id,
         title: trip.title,
+        tripType: trip.tripType,
         destination: trip.destination,
+        destinationLatitude: trip.destinationLatitude,
+        destinationLongitude: trip.destinationLongitude,
+        destinationMapLink: trip.destinationMapLink,
         startDate: trip.startDate,
         endDate: trip.endDate,
         description: trip.description,

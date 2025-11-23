@@ -25,13 +25,17 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       description: fields[5] as String?,
       createdAt: fields[6] as DateTime,
       updatedAt: fields[7] as DateTime,
+      tripTypeIndex: fields[8] as int?,
+      destinationLatitude: fields[9] as double?,
+      destinationLongitude: fields[10] as double?,
+      destinationMapLink: fields[11] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, TripModel obj) {
     writer
-      ..writeByte(8)
+      ..writeByte(12)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -47,7 +51,15 @@ class TripModelAdapter extends TypeAdapter<TripModel> {
       ..writeByte(6)
       ..write(obj.createdAt)
       ..writeByte(7)
-      ..write(obj.updatedAt);
+      ..write(obj.updatedAt)
+      ..writeByte(8)
+      ..write(obj.tripTypeIndex)
+      ..writeByte(9)
+      ..write(obj.destinationLatitude)
+      ..writeByte(10)
+      ..write(obj.destinationLongitude)
+      ..writeByte(11)
+      ..write(obj.destinationMapLink);
   }
 
   @override

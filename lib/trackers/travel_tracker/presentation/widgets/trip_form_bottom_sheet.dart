@@ -1,19 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../core/constants.dart';
+import '../../data/services/google_places_service.dart';
+import 'location_picker_widget.dart';
 
 /// Bottom sheet for creating/editing a trip.
 class TripFormBottomSheet {
   static Future<void> show(
     BuildContext context, {
     String? initialTitle,
+    TripType? initialTripType,
     String? initialDestination,
+    double? initialDestinationLatitude,
+    double? initialDestinationLongitude,
+    String? initialDestinationMapLink,
     DateTime? initialStartDate,
     DateTime? initialEndDate,
     String? initialDescription,
     String? tripId,
     required Future<void> Function(
       String title,
+      TripType? tripType,
       String? destination,
+      double? destinationLatitude,
+      double? destinationLongitude,
+      String? destinationMapLink,
       DateTime? startDate,
       DateTime? endDate,
       String? description,
@@ -24,6 +35,12 @@ class TripFormBottomSheet {
     final titleCtrl = TextEditingController(text: initialTitle ?? '');
     final destCtrl = TextEditingController(text: initialDestination ?? '');
     final descCtrl = TextEditingController(text: initialDescription ?? '');
+
+    TripType? tripType = initialTripType;
+    double? destinationLatitude = initialDestinationLatitude;
+    double? destinationLongitude = initialDestinationLongitude;
+    String? destinationMapLink = initialDestinationMapLink;
+    final placesService = GooglePlacesService();
 
     DateTime? startDate = initialStartDate;
     DateTime? endDate = initialEndDate;
@@ -82,12 +99,44 @@ class TripFormBottomSheet {
                 ),
               ),
               const SizedBox(height: 16),
-              TextField(
-                controller: destCtrl,
+              // Trip Type Selector
+              DropdownButtonFormField<TripType>(
+                value: tripType,
                 decoration: const InputDecoration(
-                  labelText: 'Destination',
+                  labelText: 'Trip Type',
                   border: OutlineInputBorder(),
                 ),
+                items: TripType.values.map((type) {
+                  return DropdownMenuItem<TripType>(
+                    value: type,
+                    child: Row(
+                      children: [
+                        Icon(
+                          tripTypeIcons[type],
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(tripTypeLabels[type]!),
+                      ],
+                    ),
+                  );
+                }).toList(),
+                onChanged: (value) {
+                  tripType = value;
+                  (ctx as Element).markNeedsBuild();
+                },
+              ),
+              const SizedBox(height: 16),
+              // Destination with Location Picker
+              LocationPickerWidget(
+                controller: destCtrl,
+                placesService: placesService,
+                onLocationSelected: (location) {
+                  // Location selected - coordinates will be fetched on submit if needed
+                },
+                onMapLinkGenerated: (mapLink) {
+                  destinationMapLink = mapLink;
+                },
               ),
               // Only show date fields when creating a new trip (tripId is null)
               if (tripId == null) ...[
@@ -229,9 +278,33 @@ class TripFormBottomSheet {
                       }
                     }
                   }
+                  // Fetch coordinates if destination is provided
+                  String? finalDestination = destCtrl.text.trim().isEmpty ? null : destCtrl.text.trim();
+                  double? finalLatitude = destinationLatitude;
+                  double? finalLongitude = destinationLongitude;
+                  
+                  // If destination is provided but coordinates are not, try to fetch them
+                  if (finalDestination != null && finalDestination.isNotEmpty && 
+                      (finalLatitude == null || finalLongitude == null)) {
+                    try {
+                      final coords = await placesService.getCoordinates(finalDestination);
+                      if (coords != null) {
+                        finalLatitude = coords['lat'];
+                        finalLongitude = coords['lng'];
+                      }
+                    } catch (e) {
+                      // If coordinate fetch fails, continue without coordinates
+                      debugPrint('Failed to fetch coordinates: $e');
+                    }
+                  }
+
                   await onSubmit(
                     titleCtrl.text.trim(),
-                    destCtrl.text.trim().isEmpty ? null : destCtrl.text.trim(),
+                    tripType,
+                    finalDestination,
+                    finalLatitude,
+                    finalLongitude,
+                    destinationMapLink,
                     startDate,
                     endDate,
                     descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),

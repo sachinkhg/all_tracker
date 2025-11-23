@@ -15,7 +15,7 @@ class TripsLoading extends TripState {}
 /// Loaded state - holds the list of successfully fetched trips.
 class TripsLoaded extends TripState {
   final List<Trip> trips;
-  final String viewType; // 'list' or 'calendar'
+  final String viewType; // 'list', 'calendar', or 'map'
   final Map<String, bool>? visibleFields; // Field visibility preferences
 
   const TripsLoaded(

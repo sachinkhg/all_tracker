@@ -287,28 +287,47 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
             ] else if (widget.entity == ViewEntityType.trip) ...[
               // View type toggle for trips
               const Divider(),
-              ListTile(
-                title: const Text('View Type'),
-                subtitle: const Text('Choose how to display trips'),
-                trailing: SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                      value: 'list',
-                      label: Text('List'),
-                      icon: Icon(Icons.list),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'View Type',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
                     ),
-                    ButtonSegment(
-                      value: 'calendar',
-                      label: Text('Calendar'),
-                      icon: Icon(Icons.calendar_month),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Choose how to display trips',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 12),
+                    SegmentedButton<String>(
+                      segments: const [
+                        ButtonSegment(
+                          value: 'list',
+                          label: Text('List'),
+                          icon: Icon(Icons.list),
+                        ),
+                        ButtonSegment(
+                          value: 'calendar',
+                          label: Text('Calendar'),
+                          icon: Icon(Icons.calendar_month),
+                        ),
+                        ButtonSegment(
+                          value: 'map',
+                          label: Text('Map'),
+                          icon: Icon(Icons.map),
+                        ),
+                      ],
+                      selected: {_viewType},
+                      onSelectionChanged: (Set<String> newSelection) {
+                        setState(() {
+                          _viewType = newSelection.first;
+                        });
+                      },
                     ),
                   ],
-                  selected: {_viewType},
-                  onSelectionChanged: (Set<String> newSelection) {
-                    setState(() {
-                      _viewType = newSelection.first;
-                    });
-                  },
                 ),
               ),
               const Divider(),

@@ -116,11 +116,15 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
       title: 'Edit Trip',
       tripId: trip.id,
       initialTitle: trip.title,
+      initialTripType: trip.tripType,
       initialDestination: trip.destination,
+      initialDestinationLatitude: trip.destinationLatitude,
+      initialDestinationLongitude: trip.destinationLongitude,
+      initialDestinationMapLink: trip.destinationMapLink,
       initialStartDate: trip.startDate,
       initialEndDate: trip.endDate,
       initialDescription: trip.description,
-      onSubmit: (title, destination, startDate, endDate, description) async {
+      onSubmit: (title, tripType, destination, destinationLatitude, destinationLongitude, destinationMapLink, startDate, endDate, description) async {
         // Check if dates changed
         final oldStartDate = trip.startDate != null
             ? DateTime(trip.startDate!.year, trip.startDate!.month, trip.startDate!.day)
@@ -140,7 +144,11 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
         final updated = Trip(
           id: trip.id,
           title: title,
+          tripType: tripType,
           destination: destination,
+          destinationLatitude: destinationLatitude,
+          destinationLongitude: destinationLongitude,
+          destinationMapLink: destinationMapLink,
           startDate: startDate,
           endDate: endDate,
           description: description,
@@ -510,16 +518,25 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                                         ],
                                       ),
                                       const SizedBox(height: 16),
+                                      // Trip Type
+                                      if (_trip!.tripType != null)
+                                        _DetailRow(
+                                          label: tripTypeLabels[_trip!.tripType]!,
+                                          icon: tripTypeIcons[_trip!.tripType]!,
+                                        ),
                                       // Destination
-                                      if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
+                                      if (_trip!.destination != null && _trip!.destination!.isNotEmpty) ...[
+                                        if (_trip!.tripType != null)
+                                          const SizedBox(height: 12),
                                         _DetailRow(
                                           label:  _trip!.destination!,
                                           //value: _trip!.destination!,
                                           icon: Icons.location_on,
                                         ),
+                                      ],
                                       // Date Range
                                       if (_trip!.startDate != null || _trip!.endDate != null) ...[
-                                        if (_trip!.destination != null && _trip!.destination!.isNotEmpty)
+                                        if ((_trip!.destination != null && _trip!.destination!.isNotEmpty) || _trip!.tripType != null)
                                           const SizedBox(height: 12),
                                         _DetailRow(
                                           label: dateRange(),

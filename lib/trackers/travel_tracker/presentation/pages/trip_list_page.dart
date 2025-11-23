@@ -8,6 +8,7 @@ import '../../core/app_icons.dart';
 import '../widgets/trip_list_item.dart';
 import '../widgets/trip_form_bottom_sheet.dart';
 import '../widgets/trip_calendar_view.dart';
+import '../widgets/trip_map_view.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
@@ -137,6 +138,22 @@ class _TripListPageViewState extends State<TripListPageView> {
                 visibleFields: visibleFields,
                 filterActive: cubit.hasActiveFilters,
               );
+            } else if (viewType == 'map') {
+              return TripMapView(
+                trips: trips,
+                onTap: (ctx, trip) async {
+                  await Navigator.of(ctx).push(
+                    MaterialPageRoute(
+                      builder: (_) => TripDetailPage(tripId: trip.id),
+                    ),
+                  );
+                  if (mounted) {
+                    context.read<TripCubit>().loadTrips();
+                  }
+                },
+                visibleFields: visibleFields,
+                filterActive: cubit.hasActiveFilters,
+              );
             } else {
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
@@ -243,10 +260,14 @@ class _TripListPageViewState extends State<TripListPageView> {
     TripFormBottomSheet.show(
       context,
       title: 'Create Trip',
-      onSubmit: (title, destination, startDate, endDate, description) async {
+      onSubmit: (title, tripType, destination, destinationLatitude, destinationLongitude, destinationMapLink, startDate, endDate, description) async {
         await cubit.createNewTrip(
           title: title,
+          tripType: tripType,
           destination: destination,
+          destinationLatitude: destinationLatitude,
+          destinationLongitude: destinationLongitude,
+          destinationMapLink: destinationMapLink,
           startDate: startDate,
           endDate: endDate,
           description: description,

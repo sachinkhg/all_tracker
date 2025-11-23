@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../core/constants.dart';
 
 /// Domain model for a Trip.
 ///
@@ -11,8 +12,20 @@ class Trip extends Equatable {
   /// Title/name of the trip.
   final String title;
 
+  /// Type of trip (work or leisure).
+  final TripType? tripType;
+
   /// Destination(s) for the trip.
   final String? destination;
+
+  /// Latitude coordinate for the destination.
+  final double? destinationLatitude;
+
+  /// Longitude coordinate for the destination.
+  final double? destinationLongitude;
+
+  /// Map link (Google Maps or Apple Maps URL) for the destination.
+  final String? destinationMapLink;
 
   /// Start date of the trip.
   final DateTime? startDate;
@@ -32,7 +45,11 @@ class Trip extends Equatable {
   const Trip({
     required this.id,
     required this.title,
+    this.tripType,
     this.destination,
+    this.destinationLatitude,
+    this.destinationLongitude,
+    this.destinationMapLink,
     this.startDate,
     this.endDate,
     this.description,
@@ -44,7 +61,11 @@ class Trip extends Equatable {
   List<Object?> get props => [
         id,
         title,
+        tripType,
         destination,
+        destinationLatitude,
+        destinationLongitude,
+        destinationMapLink,
         startDate,
         endDate,
         description,

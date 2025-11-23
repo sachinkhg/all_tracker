@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import '../../domain/entities/trip.dart';
+import '../../core/constants.dart';
 
 part 'trip_model.g.dart';
 
@@ -30,6 +31,18 @@ class TripModel extends HiveObject {
   @HiveField(7)
   DateTime updatedAt;
 
+  @HiveField(8)
+  int? tripTypeIndex; // Store enum as int
+
+  @HiveField(9)
+  double? destinationLatitude;
+
+  @HiveField(10)
+  double? destinationLongitude;
+
+  @HiveField(11)
+  String? destinationMapLink;
+
   TripModel({
     required this.id,
     required this.title,
@@ -39,6 +52,10 @@ class TripModel extends HiveObject {
     this.description,
     required this.createdAt,
     required this.updatedAt,
+    this.tripTypeIndex,
+    this.destinationLatitude,
+    this.destinationLongitude,
+    this.destinationMapLink,
   });
 
   factory TripModel.fromEntity(Trip trip) => TripModel(
@@ -50,12 +67,20 @@ class TripModel extends HiveObject {
         description: trip.description,
         createdAt: trip.createdAt,
         updatedAt: trip.updatedAt,
+        tripTypeIndex: trip.tripType?.index,
+        destinationLatitude: trip.destinationLatitude,
+        destinationLongitude: trip.destinationLongitude,
+        destinationMapLink: trip.destinationMapLink,
       );
 
   Trip toEntity() => Trip(
         id: id,
         title: title,
+        tripType: tripTypeIndex != null ? TripType.values[tripTypeIndex!] : null,
         destination: destination,
+        destinationLatitude: destinationLatitude,
+        destinationLongitude: destinationLongitude,
+        destinationMapLink: destinationMapLink,
         startDate: startDate,
         endDate: endDate,
         description: description,

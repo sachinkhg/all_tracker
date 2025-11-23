@@ -76,3 +76,21 @@ const List<String> commonCurrencies = [
 /// Default currency code.
 const String defaultCurrency = 'USD';
 
+/// Trip types.
+enum TripType {
+  work,
+  leisure,
+}
+
+/// Trip type labels for display.
+const Map<TripType, String> tripTypeLabels = {
+  TripType.work: 'Work',
+  TripType.leisure: 'Leisure',
+};
+
+/// Trip type icons for display.
+final Map<TripType, IconData> tripTypeIcons = {
+  TripType.work: Icons.business,
+  TripType.leisure: Icons.beach_access,
+};
+

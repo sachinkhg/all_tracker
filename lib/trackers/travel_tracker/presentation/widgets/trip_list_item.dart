@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/trip.dart';
 import '../../core/app_icons.dart';
+import '../../core/constants.dart';
 
 /// Widget displaying a single trip item in the list.
 class TripListItem extends StatelessWidget {
@@ -47,6 +48,7 @@ class TripListItem extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -64,6 +66,33 @@ class TripListItem extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (trip.tripType != null) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Chip(
+                        label: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              tripTypeIcons[trip.tripType]!,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                tripTypeLabels[trip.tripType]!,
+                                style: textTheme.bodySmall,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               if (trip.destination != null && (visibleFields?['destination'] ?? true)) ...[
@@ -72,10 +101,14 @@ class TripListItem extends StatelessWidget {
                   children: [
                     Icon(Icons.location_on, size: 16, color: cs.onSurfaceVariant),
                     const SizedBox(width: 4),
-                    Text(
-                      trip.destination!,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: cs.onSurfaceVariant,
+                    Expanded(
+                      child: Text(
+                        trip.destination!,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -86,10 +119,14 @@ class TripListItem extends StatelessWidget {
                 children: [
                   Icon(Icons.calendar_today, size: 16, color: cs.onSurfaceVariant),
                   const SizedBox(width: 4),
-                  Text(
-                    dateRange(),
-                    style: textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
+                  Expanded(
+                    child: Text(
+                      dateRange(),
+                      style: textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
