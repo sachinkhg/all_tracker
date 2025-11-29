@@ -261,16 +261,16 @@ class ExpenseListPageView extends StatelessWidget {
                                     if (expense.paidBy != null)
                                       Builder(
                                         builder: (context) {
-                                          final traveler = travelers.firstWhere(
-                                            (t) => t.id == expense.paidBy,
-                                            orElse: () => Traveler(
-                                              id: '',
-                                              tripId: '',
-                                              name: 'Unknown',
-                                              createdAt: DateTime.now(),
-                                              updatedAt: DateTime.now(),
-                                            ),
-                                          );
+                                          // final traveler = travelers.firstWhere(
+                                          //   (t) => t.id == expense.paidBy,
+                                          //   orElse: () => Traveler(
+                                          //     id: '',
+                                          //     tripId: '',
+                                          //     name: 'Unknown',
+                                          //     createdAt: DateTime.now(),
+                                          //     updatedAt: DateTime.now(),
+                                          //   ),
+                                          // );
                                           return Row(
                                             // children: [
                                             //   Icon(

@@ -1,19 +1,18 @@
 import 'dart:convert';
-import 'box_provider.dart';
-import '../presentation/widgets/view_field_bottom_sheet.dart';
-import 'constants.dart';
+import 'package:all_tracker/core/services/box_provider.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
+import 'package:all_tracker/core/constants/app_constants.dart';
 
-/// ---------------------------------------------------------------------------
 /// ViewPreferencesService
 ///
 /// File purpose:
 /// - Provides a centralized service for persisting and retrieving user view
 ///   field preferences across app sessions.
-/// - Manages which fields are visible for each entity type (Goal, Milestone, Task).
+/// - Manages which fields are visible for each entity type (Goal, Milestone, Task, etc.).
 ///
 /// Storage strategy:
 /// - Uses a dedicated Hive box (view_preferences_box) to store preferences.
-/// - Each entity type has its own key: 'goal_view', 'milestone_view', 'task_view'
+/// - Each entity type has its own key: 'goal_view', 'milestone_view', 'task_view', etc.
 /// - Values are JSON-encoded Map<String, bool> structures representing field visibility.
 ///
 /// Compatibility guidance:
@@ -26,12 +25,11 @@ import 'constants.dart';
 /// - Methods are synchronous for reads (Hive is fast) and async for writes.
 /// - Keep this service simple and focused on persistence only; business logic
 ///   belongs in cubits or use cases.
-/// ---------------------------------------------------------------------------
-
 class ViewPreferencesService {
   final BoxProvider boxes;
 
   ViewPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
+  
   /// Loads saved view preferences for a given entity type.
   ///
   /// Returns:
@@ -61,7 +59,7 @@ class ViewPreferencesService {
   /// Saves view preferences for a given entity type.
   ///
   /// Parameters:
-  /// - entity: The entity type (goal, milestone, or task)
+  /// - entity: The entity type (goal, milestone, task, etc.)
   /// - fields: Map of field names to visibility booleans
   ///
   /// The fields map is JSON-encoded and stored in the Hive box with an entity-specific key.

@@ -201,7 +201,7 @@ class _HabitCalendarViewState extends State<HabitCalendarView> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Column(
         children: [
@@ -266,7 +266,7 @@ class _HabitCalendarViewState extends State<HabitCalendarView> {
           shape: BoxShape.circle,
         ),
         todayDecoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.3),
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         markerDecoration: BoxDecoration(
@@ -318,9 +318,9 @@ class _HabitCalendarViewState extends State<HabitCalendarView> {
             margin: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               color: isCompleted
-                  ? theme.colorScheme.primary.withOpacity(0.8)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.8)
                   : isSelected
-                      ? theme.colorScheme.primary.withOpacity(0.3)
+                      ? theme.colorScheme.primary.withValues(alpha: 0.3)
                       : null,
               shape: BoxShape.circle,
             ),

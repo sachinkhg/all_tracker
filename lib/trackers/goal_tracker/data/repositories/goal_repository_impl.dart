@@ -34,6 +34,7 @@ import '../../domain/entities/goal.dart';
 import '../../domain/repositories/goal_repository.dart';
 import '../datasources/goal_local_data_source.dart';
 import '../models/goal_model.dart';
+import '../mappers/goal_mapper.dart';
 
 /// Concrete implementation of [GoalRepository].
 ///
@@ -50,18 +51,21 @@ import '../models/goal_model.dart';
 class GoalRepositoryImpl implements GoalRepository {
   /// Local data source that owns the Hive adapters / actual persistence.
   final GoalLocalDataSource local;
+  
+  /// Mapper for converting between domain entities and data models.
+  final GoalMapper mapper;
 
   /// Creates a repository backed by the provided local data source.
   ///
   /// Use dependency injection at app bootstrap to supply the proper
   /// implementation (e.g., Hive-backed [GoalLocalDataSource]).
-  GoalRepositoryImpl(this.local);
+  GoalRepositoryImpl(this.local, {GoalMapper? mapper}) 
+      : mapper = mapper ?? GoalMapper();
 
   @override
   Future<void> createGoal(Goal goal) async {
-    // Convert domain entity -> data model. Any serialization rules /
-    // legacy-value handling are executed inside GoalModel.fromEntity().
-    final model = GoalModel.fromEntity(goal);
+    // Convert domain entity -> data model using mapper.
+    final model = mapper.toModel(goal);
 
     // Persist via local data source (Hive adapter). Keep repository logic
     // minimal; do not introduce business logic here.
@@ -77,29 +81,27 @@ class GoalRepositoryImpl implements GoalRepository {
 
   @override
   Future<List<Goal>> getAllGoals() async {
-    // Fetch DTOs/models from the local data source and convert each to the
-    // domain entity. Any backward-compatibility conversions applied when
-    // reading from storage are performed by GoalModel.toEntity().
+    // Fetch DTOs/models from the local data source.
     final models = await local.getAllGoals();
 
-    // Map to domain entities. Preserve ordering provided by the data source.
-    return models.map((m) => m.toEntity()).toList();
+    // Map to domain entities using mapper. Preserve ordering provided by the data source.
+    return mapper.toEntityList(models);
   }
 
   @override
   Future<Goal?> getGoalById(String id) async {
     // Retrieve model by id (may return null if not found) and convert to
-    // domain entity. Null indicates absence.
+    // domain entity using mapper. Null indicates absence.
     final model = await local.getGoalById(id);
-    return model?.toEntity();
+    return model != null ? mapper.toEntity(model) : null;
   }
 
   @override
   Future<void> updateGoal(Goal goal) async {
-    // Convert domain entity -> model and delegate update to data source.
+    // Convert domain entity -> model using mapper and delegate update to data source.
     // Any field-level migration (e.g., migrating an older flag to the new
     // representation) should be handled inside the model or the data source.
-    final model = GoalModel.fromEntity(goal);
+    final model = mapper.toModel(goal);
     await local.updateGoal(model);
   }
 }

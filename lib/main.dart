@@ -1,4 +1,5 @@
 import 'package:all_tracker/core/hive_initializer.dart';
+import 'package:all_tracker/core/injection.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -55,6 +56,11 @@ Future<void> main() async {
   /// This ensures that local persistence (for Goals, Settings, etc.)
   /// is ready before the app runs.
   await HiveInitializer.initialize();
+
+  /// Step 2.5: Configure dependency injection container.
+  /// This registers all shared services and prepares the DI container
+  /// for module-specific dependency registration.
+  configureDependencies();
 
   /// Step 3: Initialize and provide ThemeNotifier, OrganizationNotifier, and AuthCubit.
   /// This allows the app to listen for and react to theme changes, organization preferences, and auth state globally.

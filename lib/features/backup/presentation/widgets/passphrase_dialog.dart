@@ -63,7 +63,7 @@ Future<String?> showPassphraseDialog(
                   Text(
                     'Minimum 8 characters required',
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],

@@ -37,14 +37,13 @@ import '../../domain/usecases/task/get_task_by_id.dart';
 import '../../domain/usecases/task/get_tasks_by_milestone_id.dart';
 import '../../domain/usecases/task/update_task.dart';
 import '../../domain/usecases/task/delete_task.dart';
-import '../../core/view_preferences_service.dart';
-import '../../core/filter_preferences_service.dart';
-import '../../core/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
-import '../widgets/view_field_bottom_sheet.dart';
-import '../widgets/filter_group_bottom_sheet.dart';
 import 'task_state.dart';
 
 /// Custom exception thrown when a milestone is not found during task create/update.

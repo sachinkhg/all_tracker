@@ -59,49 +59,11 @@ import '../domain/usecases/habit_completion/toggle_completion_for_date.dart';
 import '../presentation/bloc/habit_completion_cubit.dart';
 
 import 'constants.dart';
-import 'view_preferences_service.dart';
-import 'filter_preferences_service.dart';
-import 'sort_preferences_service.dart';
+import 'package:all_tracker/core/injection.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
 
-
-// Voice note feature imports
-import '../data/services/speech_to_text_service.dart';
-import '../data/services/text_processing_service.dart';
-import '../data/services/voice_recording_service.dart';
-import '../presentation/bloc/voice_note_cubit.dart';
-
-/// Singleton instance of ViewPreferencesService.
-/// 
-/// Shared across all cubits to manage view field preferences.
-/// Created lazily on first access.
-ViewPreferencesService? _viewPreferencesService;
-
-ViewPreferencesService getViewPreferencesService() {
-  _viewPreferencesService ??= ViewPreferencesService();
-  return _viewPreferencesService!;
-}
-
-/// Singleton instance of FilterPreferencesService.
-/// 
-/// Shared across all cubits to manage filter preferences.
-/// Created lazily on first access.
-FilterPreferencesService? _filterPreferencesService;
-
-FilterPreferencesService getFilterPreferencesService() {
-  _filterPreferencesService ??= FilterPreferencesService();
-  return _filterPreferencesService!;
-}
-
-/// Singleton instance of SortPreferencesService.
-/// 
-/// Shared across all cubits to manage sort preferences.
-/// Created lazily on first access.
-SortPreferencesService? _sortPreferencesService;
-
-SortPreferencesService getSortPreferencesService() {
-  _sortPreferencesService ??= SortPreferencesService();
-  return _sortPreferencesService!;
-}
 
 /// Composition root for the goal_tracker feature.
 ///
@@ -199,11 +161,11 @@ GoalCubit createGoalCubit() {
   // Presentation
   // ---------------------------------------------------------------------------
   // Presentation layer (Cubit) depends on use-cases and ViewPreferencesService.
-  // - Consider registering Cubits via `registerFactory` in a DI container so each consumer receives a fresh instance.
+  // - Services are resolved from the DI container (registered as singletons).
   // - In this manual wiring approach we return a ready-to-use instance; callers (e.g., the UI) are responsible for disposing it.
-  final viewPrefsService = getViewPreferencesService();
-  final filterPrefsService = getFilterPreferencesService();
-  final sortPrefsService = getSortPreferencesService();
+  final viewPrefsService = getIt<ViewPreferencesService>();
+  final filterPrefsService = getIt<FilterPreferencesService>();
+  final sortPrefsService = getIt<SortPreferencesService>();
   
   return GoalCubit(
     getAll: getAll, 
@@ -252,9 +214,9 @@ MilestoneCubit createMilestoneCubit() {
   // ---------------------------------------------------------------------------
   // Presentation
   // ---------------------------------------------------------------------------
-  final viewPrefsService = getViewPreferencesService();
-  final filterPrefsService = getFilterPreferencesService();
-  final sortPrefsService = getSortPreferencesService();
+  final viewPrefsService = getIt<ViewPreferencesService>();
+  final filterPrefsService = getIt<FilterPreferencesService>();
+  final sortPrefsService = getIt<SortPreferencesService>();
   
   return MilestoneCubit(
     getAll: getAll,
@@ -311,9 +273,9 @@ TaskCubit createTaskCubit() {
   // ---------------------------------------------------------------------------
   // Presentation
   // ---------------------------------------------------------------------------
-  final viewPrefsService = getViewPreferencesService();
-  final filterPrefsService = getFilterPreferencesService();
-  final sortPrefsService = getSortPreferencesService();
+  final viewPrefsService = getIt<ViewPreferencesService>();
+  final filterPrefsService = getIt<FilterPreferencesService>();
+  final sortPrefsService = getIt<SortPreferencesService>();
   
   return TaskCubit(
     getAll: getAll,
@@ -362,9 +324,9 @@ HabitCubit createHabitCubit() {
   // ---------------------------------------------------------------------------
   // Presentation
   // ---------------------------------------------------------------------------
-  final viewPrefsService = getViewPreferencesService();
-  final filterPrefsService = getFilterPreferencesService();
-  final sortPrefsService = getSortPreferencesService();
+  final viewPrefsService = getIt<ViewPreferencesService>();
+  final filterPrefsService = getIt<FilterPreferencesService>();
+  final sortPrefsService = getIt<SortPreferencesService>();
   
   // Get milestone repository for auto-assigning goalId
   final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
@@ -439,22 +401,3 @@ HabitCompletionCubit createHabitCompletionCubit() {
 }
 
 
-/// Creates a VoiceNoteCubit instance for managing voice note recording and processing.
-///
-/// This factory method wires up the voice note services:
-/// - SpeechToTextService: Handles speech-to-text conversion
-/// - TextProcessingService: Extracts name and description from transcribed text
-/// - VoiceRecordingService: Manages recording lifecycle
-/// - VoiceNoteCubit: Manages state for recording and processing
-VoiceNoteCubit createVoiceNoteCubit() {
-  final speechToTextService = SpeechToTextService();
-  final textProcessingService = TextProcessingService();
-  final voiceRecordingService = VoiceRecordingService(
-    speechToTextService: speechToTextService,
-    textProcessingService: textProcessingService,
-  );
-  
-  return VoiceNoteCubit(
-    voiceRecordingService: voiceRecordingService,
-  );
-}

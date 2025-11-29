@@ -33,14 +33,13 @@ import '../../domain/usecases/habit/get_habits_by_milestone_id.dart';
 import '../../domain/usecases/habit/update_habit.dart';
 import '../../domain/usecases/habit/delete_habit.dart';
 import '../../domain/repositories/milestone_repository.dart';
-import '../../core/view_preferences_service.dart';
-import '../../core/filter_preferences_service.dart';
-import '../../core/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
-import '../widgets/view_field_bottom_sheet.dart';
-import '../widgets/filter_group_bottom_sheet.dart';
 import 'habit_state.dart';
 
 /// Cubit to manage Habit state.

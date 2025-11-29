@@ -168,6 +168,7 @@ Future<String?> exportTasksToXlsx(BuildContext context, List<Task> tasks) async 
     return destPath;
   } catch (e, st) {
     debugPrint('Export failed: $e\n$st');
+    if (!context.mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Export failed')),
     );
@@ -188,6 +189,7 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
     final Uint8List bytes = await picked.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
     if (excel.tables.isEmpty) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('No sheets found in Excel file.')));
       return;
@@ -196,6 +198,7 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
     final String firstSheet = excel.tables.keys.first;
     final Sheet? sheet = excel.tables[firstSheet];
     if (sheet == null) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Sheet parsing failed.')));
       return;
@@ -203,6 +206,7 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
 
     final rows = sheet.rows;
     if (rows.isEmpty || rows.length == 1) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Excel file contains no data rows.')));
       return;
@@ -221,11 +225,13 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
     final milestoneNameIdx = headerNormalized.indexOf('milestonename');
 
     if (nameIdx == -1) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Template invalid: "name" column is required.')));
       return;
     }
 
+    if (!context.mounted) return;
     final cubit = context.read<TaskCubit>();
     int created = 0, updated = 0, skipped = 0;
 
@@ -308,11 +314,13 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
     // Refresh
     await cubit.loadTasks();
 
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Import complete — created: $created, updated: $updated, skipped: $skipped')),
     );
   } catch (e, st) {
     debugPrint('Import error: $e\n$st');
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('Import failed: ${e.toString()}')));
   }

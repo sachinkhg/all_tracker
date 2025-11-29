@@ -126,7 +126,7 @@ class _ItineraryCalendarViewState extends State<ItineraryCalendarView> {
           shape: BoxShape.circle,
         ),
         todayDecoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.3),
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         markerDecoration: BoxDecoration(
@@ -192,14 +192,14 @@ class _ItineraryCalendarViewState extends State<ItineraryCalendarView> {
 
           Color? dayColor;
           if (hasItems) {
-            dayColor = theme.colorScheme.primary.withOpacity(0.3);
+            dayColor = theme.colorScheme.primary.withValues(alpha: 0.3);
           }
 
           return Container(
             margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.5)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
                   : dayColor,
               shape: BoxShape.circle,
             ),

@@ -141,7 +141,7 @@ class GoalListItem extends StatelessWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: cs.outline.withOpacity(0.3), width: 1),
+        side: BorderSide(color: cs.outline.withValues(alpha: 0.3), width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(

@@ -193,7 +193,7 @@ class GoalFormBottomSheet {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                                    border: Border.all(color: cs.onSurface.withValues(alpha: 0.12)),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(
@@ -256,7 +256,7 @@ class GoalFormBottomSheet {
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
                                   decoration: BoxDecoration(
-                                    border: Border.all(color: cs.onSurface.withOpacity(0.12)),
+                                    border: Border.all(color: cs.onSurface.withValues(alpha: 0.12)),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Row(

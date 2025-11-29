@@ -15,7 +15,7 @@ import '../../data/models/goal_model.dart';
 import '../../data/models/milestone_model.dart';
 import '../../core/injection.dart'; // factory that wires everything (createHabitCubit)
 import '../../core/constants.dart'; // for goalBoxName, milestoneBoxName
-import '../../core/sort_preferences_service.dart'; // for SortEntityType
+import 'package:all_tracker/core/services/view_entity_type.dart'; // for SortEntityType
 import '../bloc/habit_cubit.dart';
 import '../bloc/habit_state.dart';
 import '../bloc/habit_completion_cubit.dart';
@@ -556,7 +556,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'viewFab',
               tooltip: 'Change View',
-              backgroundColor: cs.surface.withOpacity(0.85),
+              backgroundColor: cs.surface.withValues(alpha: 0.85),
               onPressed: () => onView(),
               child: const Icon(Icons.remove_red_eye),
             ),
@@ -564,7 +564,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'filterFab',
               tooltip: 'Filter',
-              backgroundColor: cs.surface.withOpacity(0.85),
+              backgroundColor: cs.surface.withValues(alpha: 0.85),
               onPressed: () => onFilter(),
               child: Stack(
                 alignment: Alignment.center,
@@ -581,7 +581,7 @@ class _ActionsFab extends StatelessWidget {
                           color: cs.primary,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: cs.surface.withOpacity(0.85),
+                            color: cs.surface.withValues(alpha: 0.85),
                             width: 1.5,
                           ),
                         ),
@@ -599,7 +599,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'addHabitFab',
               tooltip: 'Add Habit',
-              backgroundColor: cs.surface.withOpacity(0.85),
+              backgroundColor: cs.surface.withValues(alpha: 0.85),
               onPressed: onAdd,
               child: const Icon(Icons.add),
             ),
@@ -607,7 +607,7 @@ class _ActionsFab extends StatelessWidget {
             FloatingActionButton.small(
               heroTag: 'moreFab',
               tooltip: 'More actions',
-              backgroundColor: cs.surface.withOpacity(0.85),
+              backgroundColor: cs.surface.withValues(alpha: 0.85),
               onPressed: onMore,
               child: const Icon(Icons.more_vert),
             ),

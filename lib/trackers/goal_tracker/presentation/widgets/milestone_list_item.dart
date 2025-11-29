@@ -116,7 +116,7 @@ class MilestoneListItem extends StatelessWidget {
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: cs.outline.withOpacity(0.3), width: 1),
+        side: BorderSide(color: cs.outline.withValues(alpha: 0.3), width: 1),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: InkWell(
@@ -192,7 +192,7 @@ class MilestoneListItem extends StatelessWidget {
                   valueWidgets.add(Row(
                     children: [
                       Text('Planned: ', style: Theme.of(context).textTheme.bodySmall),
-                      Text(plannedStr!,
+                      Text(plannedStr,
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall
@@ -206,7 +206,7 @@ class MilestoneListItem extends StatelessWidget {
                   valueWidgets.add(Row(
                     children: [
                       Text('Actual: ', style: Theme.of(context).textTheme.bodySmall),
-                      Text(actualStr!,
+                      Text(actualStr,
                           style: Theme.of(context)
                               .textTheme
                               .bodySmall

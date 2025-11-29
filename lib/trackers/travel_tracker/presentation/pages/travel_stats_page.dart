@@ -68,6 +68,17 @@ class TravelStatsPageView extends StatelessWidget {
                   icon: Icons.calendar_today,
                 ),
                 const SizedBox(height: 16),
+                _StatsCard(
+                  title: 'Countries Visited',
+                  value: '${countries.length}',
+                  icon: Icons.public,
+                ),
+                const SizedBox(height: 16),
+                _StatsCard(
+                  title: 'Total Days Traveled',
+                  value: '$totalDays days',
+                  icon: Icons.flight_takeoff,
+                ),
               ],
             ),
           );

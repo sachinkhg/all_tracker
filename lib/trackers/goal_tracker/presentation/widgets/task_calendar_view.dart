@@ -124,7 +124,7 @@ class _TaskCalendarViewState extends State<TaskCalendarView> {
           shape: BoxShape.circle,
         ),
         todayDecoration: BoxDecoration(
-          color: theme.colorScheme.primary.withOpacity(0.3),
+          color: theme.colorScheme.primary.withValues(alpha: 0.3),
           shape: BoxShape.circle,
         ),
         markerDecoration: BoxDecoration(
@@ -190,11 +190,11 @@ class _TaskCalendarViewState extends State<TaskCalendarView> {
             final hasToDo = tasksForDay.any((t) => t.status == 'To Do');
 
             if (hasComplete && !hasToDo && !hasInProgress) {
-              dayColor = theme.colorScheme.tertiary.withOpacity(0.3);
+              dayColor = theme.colorScheme.tertiary.withValues(alpha: 0.3);
             } else if (hasInProgress) {
-              dayColor = theme.colorScheme.primary.withOpacity(0.3);
+              dayColor = theme.colorScheme.primary.withValues(alpha: 0.3);
             } else if (hasToDo) {
-              dayColor = theme.colorScheme.secondary.withOpacity(0.3);
+              dayColor = theme.colorScheme.secondary.withValues(alpha: 0.3);
             }
           }
 
@@ -202,7 +202,7 @@ class _TaskCalendarViewState extends State<TaskCalendarView> {
             margin: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
             decoration: BoxDecoration(
               color: isSelected
-                  ? theme.colorScheme.primary.withOpacity(0.5)
+                  ? theme.colorScheme.primary.withValues(alpha: 0.5)
                   : dayColor,
               shape: BoxShape.circle,
             ),

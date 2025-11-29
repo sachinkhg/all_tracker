@@ -7,10 +7,9 @@ import '../../domain/usecases/trip/update_trip.dart';
 import '../../domain/usecases/trip/delete_trip.dart';
 import '../../domain/usecases/trip/get_trip_by_id.dart';
 import '../../core/constants.dart';
-import '../../../goal_tracker/core/view_preferences_service.dart';
-import '../../../goal_tracker/core/filter_preferences_service.dart';
-import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
-import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import 'trip_state.dart';
 
 /// Cubit to manage Trip state.

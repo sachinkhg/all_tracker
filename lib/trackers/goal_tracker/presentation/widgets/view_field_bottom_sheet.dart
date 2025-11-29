@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 
 /// ---------------------------------------------------------------------------
 /// ViewFieldsBottomSheet
@@ -40,7 +41,6 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
-enum ViewEntityType { goal, milestone, task, habit, itinerary, trip }
 
 class ViewFieldsBottomSheet extends StatefulWidget {
   /// Which entity's fields are being configured (goal or milestone).

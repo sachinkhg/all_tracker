@@ -31,13 +31,12 @@ import '../../domain/usecases/milestone/get_milestone_by_id.dart';
 import '../../domain/usecases/milestone/get_milestones_by_goal_id.dart';
 import '../../domain/usecases/milestone/update_milestone.dart';
 import '../../domain/usecases/milestone/delete_milestone.dart';
-import '../../core/view_preferences_service.dart';
-import '../../core/filter_preferences_service.dart';
-import '../../core/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
-import '../widgets/view_field_bottom_sheet.dart';
-import '../widgets/filter_group_bottom_sheet.dart';
 import 'milestone_state.dart';
 
 /// Cubit to manage Milestone state.

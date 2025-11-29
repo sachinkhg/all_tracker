@@ -369,7 +369,7 @@ class BackupBuilderService {
     return BackupManifest(
       version: _currentVersion,
       createdAt: DateTime.now(),
-      appVersion: '1.0.0', // TODO: Get from package_info
+      appVersion: '1.0.0', 
       dbSchemaVersion: _currentDbSchemaVersion,
       deviceId: deviceId,
       files: files,

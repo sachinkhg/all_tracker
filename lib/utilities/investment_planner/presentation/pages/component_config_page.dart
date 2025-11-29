@@ -38,13 +38,13 @@ class ComponentConfigPageView extends StatelessWidget {
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -130,7 +130,7 @@ class ComponentConfigPageView extends StatelessWidget {
           return FloatingActionButton.small(
             heroTag: 'addComponentFab',
             tooltip: 'Add Component',
-            backgroundColor: cs.surface.withOpacity(0.85),
+            backgroundColor: cs.surface.withValues(alpha: 0.85),
             onPressed: () => _showAddComponentForm(context),
             child: const Icon(Icons.add),
           );

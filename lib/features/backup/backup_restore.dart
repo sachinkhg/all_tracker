@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:file_selector/file_selector.dart';
@@ -170,6 +169,7 @@ Future<String?> createBackupZip(BuildContext context) async {
     return fallbackPath;
   } catch (e, st) {
     debugPrint('Backup failed: $e\n$st');
+    if (!context.mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Backup failed')));
     return null;
   }
@@ -331,9 +331,11 @@ Future<void> restoreFromBackupZip(BuildContext context) async {
       if (themePrefs['is_dark'] != null) await themeBox2.put('is_dark', themePrefs['is_dark']);
     }
 
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restore complete')));
   } catch (e, st) {
     debugPrint('Restore failed: $e\n$st');
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restore failed')));
   }
 }

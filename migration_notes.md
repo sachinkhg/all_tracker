@@ -14,6 +14,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **3**  | HabitModel     | `habits_box`      | Active    | 2025-01-27 | Habit entity linked to Milestone and Goal  |
 | **4**  | HabitCompletionModel | `habit_completions_box` | Active | 2025-01-27 | Habit completion tracking entity |
 | **5**  | BackupMetadataModel | `backup_metadata_box` | Active | 2025-10-27 | Cloud backup metadata tracking |
+| **14** | TripModel | `trips_box` | Active | 2025-01-27 | Travel trip entity |
 
 ---
 
@@ -175,6 +176,38 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 
 ---
 
+## 📦 Model: TripModel (TypeId: 14)
+
+### Schema Version: 2.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name              | Type     | Nullable | Default | Notes                                           |
+|--------------|-------------------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `id`                    | String   | No       | -       | Unique identifier (GUID)                        |
+| 1            | `title`                 | String   | No       | -       | Trip title                                      |
+| 2            | `destination`           | String   | Yes      | null    | Destination location name/address               |
+| 3            | `startDate`             | DateTime | Yes      | null    | Trip start date                                 |
+| 4            | `endDate`               | DateTime | Yes      | null    | Trip end date                                   |
+| 5            | `description`           | String   | Yes      | null    | Optional description                             |
+| 6            | `createdAt`             | DateTime | No       | -       | Creation timestamp                              |
+| 7            | `updatedAt`             | DateTime | No       | -       | Last update timestamp                           |
+| 8            | `tripTypeIndex`         | int      | Yes      | null    | Trip type enum index (work=0, leisure=1)        |
+| 9            | `destinationLatitude`   | double   | Yes      | null    | Destination latitude coordinate                 |
+| 10           | `destinationLongitude`  | double   | Yes      | null    | Destination longitude coordinate                |
+| 11           | `destinationMapLink`    | String   | Yes      | null    | Map link (Google Maps or Apple Maps URL)        |
+
+**Migration History:**
+- v1.0 (Initial): Fields 0-7 defined (id, title, destination, startDate, endDate, description, createdAt, updatedAt).
+- v2.0 (2025-01-27): Added fields 8-11 (tripTypeIndex, destinationLatitude, destinationLongitude, destinationMapLink) for trip type classification and enhanced destination location support.
+
+**Notes:**
+- `tripTypeIndex` stores the TripType enum as an integer (0=work, 1=leisure). Nullable for backward compatibility.
+- Destination location can be specified via string (`destination`), coordinates (`destinationLatitude`/`destinationLongitude`), or map link (`destinationMapLink`).
+- All new fields (8-11) are nullable to ensure backward compatibility with existing trip data.
+
+---
+
 ## 🔄 Migration Procedures
 
 ### Adding a New Field to an Existing Model
@@ -303,7 +336,9 @@ try {
 - **2**: TaskModel
 - **3**: HabitModel
 - **4**: HabitCompletionModel
-- **Next Available**: 5
+- **5**: BackupMetadataModel
+- **14**: TripModel
+- **Next Available**: 6 (Note: TypeIds 6-13 may be used by other modules)
 
 ### Current Box Names
 - `goals_box` - Goal entities
@@ -324,7 +359,7 @@ try {
 ---
 
 **Last Updated:** 2025-01-27  
-**Version:** 2.0  
+**Version:** 2.1  
 **Maintained by:** Development Team  
 **Review Frequency:** On every schema change  
 **Next Review:** On next model addition

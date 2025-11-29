@@ -1,27 +1,26 @@
 // lib/core/constants.dart
 
+// Re-export shared constants from app_constants for backward compatibility
+export 'package:all_tracker/core/constants/app_constants.dart'
+    show
+        viewPreferencesBoxName,
+        filterPreferencesBoxName,
+        sortPreferencesBoxName,
+        themePreferencesBoxName,
+        organizationPreferencesBoxName,
+        backupPreferencesBoxName;
+
 /// ---------------------------------------------------------------------------
-/// App-wide Constants and Design Tokens
+/// Goal Tracker Constants
 /// ---------------------------------------------------------------------------
 ///
 /// Purpose:
-/// - Acts as a single source of truth for immutable values shared across features.
-/// - Ensures consistency across modules and prevents "magic strings" or numbers
-///   from being duplicated in different layers.
-///
-/// Organization:
-/// - **Configuration constants**: environment-dependent (e.g., API URLs, timeouts) — keep them isolated in
-///   an environment file (not here).
-/// - **Design tokens / domain constants**: stable identifiers, option lists, or box names used across modules.
-///   Those belong here to promote uniformity.
+/// - Constants specific to the goal_tracker module.
+/// - Module-level box names and configuration values.
 ///
 /// Cross-module guidance:
-/// - Do **not** import feature-level constants (e.g., `goal_tracker/constants.dart`) into this file to avoid circular dependencies.
-///   Instead, define shared tokens here and let modules extend them locally.
-///
-/// Maintenance note:
-/// - Treat this file as a foundation. Any value here affects multiple modules — update cautiously and document reasons.
-/// - When removing or renaming constants, check for usages in repositories, data sources, and UI widgets.
+/// - Do **not** import feature-level constants from other modules to avoid circular dependencies.
+/// - Shared constants are re-exported from app_constants.dart above.
 /// ---------------------------------------------------------------------------
 
 /// Context categories used across goal creation and filtering screens.
@@ -49,29 +48,3 @@ const String taskBoxName = 'tasks_box';
 const String habitBoxName = 'habits_box';
 const String habitCompletionBoxName = 'habit_completions_box';
 const String backupMetadataBoxName = 'backup_metadata_box';
-const String backupPreferencesBoxName = 'backup_preferences_box';
-
-/// Hive box name for view field preferences.
-///
-/// - Stores user preferences for which fields are visible in list views.
-/// - Keys within this box: 'goal_view', 'milestone_view', 'task_view'
-/// - Each key maps to a JSON-encoded Map<String, bool> of field visibility settings.
-const String viewPreferencesBoxName = 'view_preferences_box';
-
-/// Hive box name for filter preferences.
-///
-/// - Stores user preferences for filter settings across entity types.
-/// - Keys within this box: 'goal_filters', 'milestone_filters', 'task_filters'
-/// - Each key maps to a Map<String, String?> of filter key-value pairs.
-const String filterPreferencesBoxName = 'filter_preferences_box';
-
-/// Hive box name for sort preferences.
-///
-/// - Stores user preferences for sort settings across entity types.
-/// - Keys within this box: 'goal_sort', 'milestone_sort', 'task_sort'
-/// - Each key maps to a Map<String, dynamic> of sort order and hide completed settings.
-const String sortPreferencesBoxName = 'sort_preferences_box';
-/// Hive box name for theme preferences (color scheme, font, dark mode).
-const String themePreferencesBoxName = 'theme_preferences_box';
-/// Hive box name for organization preferences (tracker/utility visibility, default home page).
-const String organizationPreferencesBoxName = 'organization_preferences_box';

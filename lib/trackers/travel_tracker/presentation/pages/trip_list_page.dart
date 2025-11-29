@@ -18,6 +18,7 @@ import '../../../../core/organization_notifier.dart';
 import '../../../../pages/app_home_page.dart';
 import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
 import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import 'trip_detail_page.dart';
 
 /// Page displaying the list of trips.
@@ -203,7 +204,7 @@ class _TripListPageViewState extends State<TripListPageView> {
                   FloatingActionButton.small(
                     heroTag: 'viewFab',
                     tooltip: 'Change View',
-                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                    backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
                     onPressed: () => _onView(context, cubit),
                     child: const Icon(Icons.remove_red_eye),
                   ),
@@ -211,7 +212,7 @@ class _TripListPageViewState extends State<TripListPageView> {
                   FloatingActionButton.small(
                     heroTag: 'filterFab',
                     tooltip: 'Filter',
-                    backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                    backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
                     onPressed: () => _onFilter(context, cubit),
                     child: Stack(
                       alignment: Alignment.center,
@@ -228,7 +229,7 @@ class _TripListPageViewState extends State<TripListPageView> {
                                 color: Theme.of(context).colorScheme.primary,
                                 shape: BoxShape.circle,
                                 border: Border.all(
-                                  color: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                                  color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
                                   width: 1.5,
                                 ),
                               ),
@@ -243,7 +244,7 @@ class _TripListPageViewState extends State<TripListPageView> {
               FloatingActionButton(
                 heroTag: 'tripListFab',
                 tooltip: 'Create Trip',
-                backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
                 onPressed: () => _showCreateTripSheet(context),
                 child: const Icon(Icons.add),
               ),

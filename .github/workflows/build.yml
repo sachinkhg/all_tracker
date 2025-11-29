@@ -10,6 +10,11 @@ jobs:
   sonarqube:
     name: SonarQube
     runs-on: macos-latest
+    # Environment variables for SonarQube scan
+    # SONAR_TOKEN must be configured as a repository secret in GitHub Settings
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_HOST_URL: https://sonarcloud.io
 
     steps:
       - uses: actions/checkout@v4
@@ -35,5 +40,3 @@ jobs:
 
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

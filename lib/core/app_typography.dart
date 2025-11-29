@@ -91,7 +91,7 @@ class AppTypography {
       bodySmall: TextStyle(
         fontFamily: fontFamily,
         fontSize: 14,
-        color: colorScheme.primary.withOpacity(0.8),
+        color: colorScheme.primary.withValues(alpha: 0.8),
       ),
     );
   }

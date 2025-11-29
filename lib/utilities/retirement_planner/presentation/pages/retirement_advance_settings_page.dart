@@ -101,13 +101,13 @@ class _RetirementAdvanceSettingsPageState extends State<RetirementAdvanceSetting
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),

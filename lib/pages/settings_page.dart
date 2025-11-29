@@ -42,13 +42,13 @@ class SettingsPage extends StatelessWidget {
         backgroundColor: Colors.transparent,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -439,7 +439,7 @@ class _ColorPresetTile extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? cs.primary : cs.outline.withOpacity(0.3),
+            color: selected ? cs.primary : cs.outline.withValues(alpha: 0.3),
             width: selected ? 2 : 1,
           ),
           color: Theme.of(context).cardColor,
@@ -453,7 +453,7 @@ class _ColorPresetTile extends StatelessWidget {
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
-                border: Border.all(color: cs.outline.withOpacity(0.2)),
+                border: Border.all(color: cs.outline.withValues(alpha: 0.2)),
               ),
             ),
             const SizedBox(height: 8),

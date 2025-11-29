@@ -111,13 +111,13 @@ class AppHomePage extends StatelessWidget {
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -170,41 +170,6 @@ class AppHomePage extends StatelessWidget {
             const SizedBox(height: AppSpacing.l),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Welcome section at the top of the landing page
-class _WelcomeSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.l),
-      decoration: BoxDecoration(
-        gradient: AppGradients.appBar(cs),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome to All Tracker',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: cs.onPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(
-            'Your productivity hub',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onPrimary.withOpacity(0.9),
-                ),
-          ),
-        ],
       ),
     );
   }

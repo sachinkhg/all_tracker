@@ -38,13 +38,13 @@ class PlanListPageView extends StatelessWidget {
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -137,7 +137,7 @@ class PlanListPageView extends StatelessWidget {
       floatingActionButton: FloatingActionButton.small(
         heroTag: 'addPlanFab',
         tooltip: 'Add Plan',
-        backgroundColor: cs.surface.withOpacity(0.85),
+        backgroundColor: cs.surface.withValues(alpha: 0.85),
         onPressed: () async {
           await Navigator.push(
             context,

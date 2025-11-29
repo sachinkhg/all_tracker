@@ -50,7 +50,7 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     // Enhanced icon color for better contrast against gradient background
     final iconColor = cs.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.95)
+        ? Colors.white.withValues(alpha: 0.95)
         : Colors.black87;
 
     // Use themed colors and gradient to maintain consistency across screens.
