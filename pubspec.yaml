@@ -41,25 +41,25 @@ dependencies:
   hive: ^2.1.0
   uuid: ^4.5.1
   flutter_bloc: ^9.1.1
-  get_it: ^8.2.0
-  intl: ^0.19.0
+  get_it: ^9.1.1
+  intl: ^0.20.2
   path_provider: ^2.1.5
   equatable: ^2.0.7
   excel: ^4.0.6    # read/write xlsx
-  share_plus: ^8.0.0   # optional
+  share_plus: ^12.0.1   # optional
   rrule: ^0.2.17    # recurrence rule parsing for habits
   table_calendar: ^3.1.2  # calendar widget for habit tracking
   file_selector: ^1.0.4
-  file_picker: ^8.0.7
+  file_picker: ^10.3.7
   permission_handler: ^12.0.1
-  speech_to_text: ^6.6.0
+  speech_to_text: ^7.3.0
   archive: ^3.6.1
   flutter_animate: ^4.5.0
-  google_sign_in: ^6.2.1
+  google_sign_in: ^7.2.0
   http: ^1.2.0
   cryptography: ^2.7.0
-  flutter_secure_storage: ^9.0.0
-  device_info_plus: ^10.0.0
+  flutter_secure_storage: ^10.0.0-beta.5
+  device_info_plus: ^12.3.0
   image_picker: ^1.0.7
   google_places_flutter: ^2.0.9
   google_maps_flutter: ^2.5.0
