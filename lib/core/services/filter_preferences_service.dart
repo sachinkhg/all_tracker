@@ -1,12 +1,12 @@
-import 'box_provider.dart';
-import '../presentation/widgets/filter_group_bottom_sheet.dart';
-import 'constants.dart';
+import 'package:flutter/foundation.dart';
+import 'package:all_tracker/core/services/box_provider.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
+import 'package:all_tracker/core/constants/app_constants.dart';
 
-/// ---------------------------------------------------------------------------
 /// FilterPreferencesService
 ///
 /// File purpose:
-/// - Manages persistence of filter preferences for Goals, Milestones, and Tasks.
+/// - Manages persistence of filter preferences for Goals, Milestones, Tasks, etc.
 /// - Similar to ViewPreferencesService but for filter settings.
 /// - Stores filter preferences in Hive box for persistence across app sessions.
 ///
@@ -16,14 +16,13 @@ import 'constants.dart';
 /// - Clear preferences when user unchecks "Save Filter"
 ///
 /// Storage format:
-/// - Keys: 'goal_filters', 'milestone_filters', 'task_filters'
+/// - Keys: 'goal_filters', 'milestone_filters', 'task_filters', etc.
 /// - Values: Map<String, String?> containing filter key-value pairs
-/// ---------------------------------------------------------------------------
-
 class FilterPreferencesService {
   final BoxProvider boxes;
 
   FilterPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
+  
   /// Save filter preferences for a specific entity type
   Future<void> saveFilterPreferences(FilterEntityType entityType, Map<String, String?> filters) async {
     try {
@@ -32,7 +31,7 @@ class FilterPreferencesService {
       await box.put(key, filters);
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error saving filter preferences: $e');
+      debugPrint('Error saving filter preferences: $e');
     }
   }
 
@@ -45,7 +44,7 @@ class FilterPreferencesService {
       return saved != null ? Map<String, String?>.from(saved) : null;
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error loading filter preferences: $e');
+      debugPrint('Error loading filter preferences: $e');
       return null;
     }
   }
@@ -58,7 +57,7 @@ class FilterPreferencesService {
       await box.delete(key);
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error clearing filter preferences: $e');
+      debugPrint('Error clearing filter preferences: $e');
     }
   }
 
@@ -80,3 +79,4 @@ class FilterPreferencesService {
     }
   }
 }
+

@@ -19,4 +19,3 @@ class HiveBoxProvider implements BoxProvider {
   Future<Box<T>> openBox<T>(String name) => Hive.openBox<T>(name);
 }
 
-

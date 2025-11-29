@@ -276,11 +276,11 @@ class _TaskFormBottomSheetState extends State<TaskFormBottomSheet> {
                     child: Text(
                       selectedGoalName ?? '(Select a milestone first)',
                       style: TextStyle(
-                        color: cs.onSurfaceVariant.withOpacity(0.6),
+                        color: cs.onSurfaceVariant.withValues(alpha: 0.6),
                       ),
                     ),
                   ),
-                  Icon(Icons.lock, size: 16, color: cs.onSurfaceVariant.withOpacity(0.5)),
+                  Icon(Icons.lock, size: 16, color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
                 ],
               ),
             ),

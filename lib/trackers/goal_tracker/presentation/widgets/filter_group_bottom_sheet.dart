@@ -1,5 +1,6 @@
 // lib/presentation/widgets/filter_group_bottom_sheet.dart
 import 'package:flutter/material.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../core/constants.dart'; // path to kContextOptions
 import '../../../travel_tracker/core/constants.dart' as travel_constants; // for ItineraryItemType
 
@@ -32,8 +33,6 @@ import '../../../travel_tracker/core/constants.dart' as travel_constants; // for
 /// - The grouping tab is intentionally minimal; implement grouping behavior
 ///   in the feature layer and map selections to domain logic there.
 /// ---------------------------------------------------------------------------
-
-enum FilterEntityType { goal, milestone, task, habit, itinerary, trip }
 
 class FilterGroupBottomSheet extends StatefulWidget {
   /// Which entity this filter sheet applies to.
@@ -73,6 +72,9 @@ class FilterGroupBottomSheet extends StatefulWidget {
   
   /// For itinerary: initial item type filter
   final String? initialItemType;
+  
+  /// Whether this is for standalone tasks (without milestone/goal). Only used for task entity.
+  final bool isStandalone;
 
   const FilterGroupBottomSheet({
     super.key,
@@ -90,6 +92,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.initialSortOrder,
     this.initialHideCompleted = true,
     this.initialItemType,
+    this.isStandalone = false,
   });
 
   @override
@@ -303,7 +306,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ),
                                     hint: Text(
                                       "All Goals",
-                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                                     ),
                                     items: [
                                       DropdownMenuItem<String>(
@@ -344,8 +347,10 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     },
                                   ),
                                 ] else if (widget.entity == FilterEntityType.task) ...[
-                                  // Task filters - Cascading dropdowns: Goal first, then Milestone
-                                  Text("Filter by Goal", style: textTheme.bodySmall),
+                                  // Task filters - Only show Goal/Milestone filters if not standalone
+                                  if (!widget.isStandalone) ...[
+                                    // Task filters - Cascading dropdowns: Goal first, then Milestone
+                                    Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
                                     value: _selectedGoalId,
@@ -359,7 +364,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ),
                                     hint: Text(
                                       "All Goals",
-                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                                     ),
                                     items: [
                                       DropdownMenuItem<String>(
@@ -422,7 +427,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ),
                                     hint: Text(
                                       "All Milestones",
-                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                                     ),
                                     items: [
                                       DropdownMenuItem<String>(
@@ -463,6 +468,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     },
                                   ),
                                   const SizedBox(height: 16),
+                                  ],
                                   Text("Filter by Status", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   Wrap(
@@ -497,7 +503,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ),
                                     hint: Text(
                                       "All Goals",
-                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                                     ),
                                     items: [
                                       DropdownMenuItem<String>(
@@ -560,7 +566,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     ),
                                     hint: Text(
                                       "All Milestones",
-                                      style: TextStyle(color: colorScheme.onSurface.withOpacity(0.6)),
+                                      style: TextStyle(color: colorScheme.onSurface.withValues(alpha: 0.6)),
                                     ),
                                     items: [
                                       DropdownMenuItem<String>(

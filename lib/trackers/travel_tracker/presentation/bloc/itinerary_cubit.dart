@@ -12,10 +12,9 @@ import '../../domain/usecases/itinerary/get_items_by_day_id.dart';
 import '../../domain/usecases/itinerary/update_itinerary_item.dart';
 import '../../domain/usecases/itinerary/delete_itinerary_item.dart';
 import '../../domain/usecases/trip/get_trip_by_id.dart';
-import '../../../goal_tracker/core/view_preferences_service.dart';
-import '../../../goal_tracker/core/filter_preferences_service.dart';
-import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart';
-import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import 'itinerary_state.dart';
 
 /// Cubit to manage Itinerary state.

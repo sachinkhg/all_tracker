@@ -1,6 +1,6 @@
 import 'package:hive_flutter/hive_flutter.dart';
-import '../trackers/goal_tracker/core/constants.dart';
-import '../trackers/goal_tracker/core/box_provider.dart';
+import 'package:all_tracker/core/services/box_provider.dart';
+import 'package:all_tracker/core/constants/app_constants.dart';
 
 const String _kGoalTrackerEnabled = 'goal_tracker_enabled';
 const String _kTravelTrackerEnabled = 'travel_tracker_enabled';

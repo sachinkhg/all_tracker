@@ -63,17 +63,19 @@ class Task extends Equatable {
 
   /// Foreign key linking this task to its parent Milestone.
   ///
-  /// Required — every task must belong to a milestone.
+  /// Nullable — tasks can be standalone (not linked to a milestone).
+  /// Required only when creating tasks within the goal tracker context.
   /// Expected Hive field number (data layer): 3.
-  final String milestoneId;
+  final String? milestoneId;
 
   /// Foreign key linking this task to its parent Goal.
   ///
   /// This is a derived/denormalized field automatically set from the milestone's goalId.
+  /// Nullable for standalone tasks (not linked to a goal/milestone).
   /// The UI should treat this as read-only; it's populated by the cubit/repository
   /// during create/update operations.
   /// Expected Hive field number (data layer): 4.
-  final String goalId;
+  final String? goalId;
 
   /// Current status of the task.
   ///
@@ -89,8 +91,8 @@ class Task extends Equatable {
     required this.id,
     required this.name,
     this.targetDate,
-    required this.milestoneId,
-    required this.goalId,
+    this.milestoneId,
+    this.goalId,
     this.status = 'To Do',
   });
 

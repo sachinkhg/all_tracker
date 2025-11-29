@@ -69,8 +69,9 @@ import '../presentation/bloc/expense_cubit.dart';
 
 // Services
 import '../data/services/photo_storage_service.dart';
-import '../../goal_tracker/core/view_preferences_service.dart';
-import '../../goal_tracker/core/filter_preferences_service.dart';
+import 'package:all_tracker/core/injection.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
 
 // Constants
 import 'constants.dart';
@@ -92,9 +93,9 @@ TripCubit createTripCubit() {
   final deleteTrip = DeleteTrip(tripRepo);
   final getTripById = GetTripById(tripRepo);
 
-  // Services
-  final viewPreferencesService = ViewPreferencesService();
-  final filterPreferencesService = FilterPreferencesService();
+  // Services - resolved from DI container
+  final viewPreferencesService = getIt<ViewPreferencesService>();
+  final filterPreferencesService = getIt<FilterPreferencesService>();
 
   // Presentation
   return TripCubit(
@@ -147,9 +148,9 @@ ItineraryCubit createItineraryCubit() {
   final deleteItem = DeleteItineraryItem(itineraryRepo);
   final getTripById = GetTripById(tripRepo);
 
-  // Services
-  final viewPreferencesService = ViewPreferencesService();
-  final filterPreferencesService = FilterPreferencesService();
+  // Services - resolved from DI container
+  final viewPreferencesService = getIt<ViewPreferencesService>();
+  final filterPreferencesService = getIt<FilterPreferencesService>();
 
   // Presentation
   return ItineraryCubit(

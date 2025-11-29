@@ -198,35 +198,35 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
     );
   }
 
-  Future<void> _deleteTrip(BuildContext context, Trip trip, TripCubit cubit) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Trip'),
-        content: Text('Are you sure you want to delete "${trip.title}"? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(ctx).colorScheme.error,
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true && mounted) {
-      await cubit.deleteTrip(trip.id);
-      // Navigate back to trip list if trip is deleted
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-  }
+  // Future<void> _deleteTrip(BuildContext context, Trip trip, TripCubit cubit) async {
+  //   final confirmed = await showDialog<bool>(
+  //     context: context,
+  //     builder: (ctx) => AlertDialog(
+  //       title: const Text('Delete Trip'),
+  //       content: Text('Are you sure you want to delete "${trip.title}"? This action cannot be undone.'),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () => Navigator.of(ctx).pop(false),
+  //           child: const Text('Cancel'),
+  //         ),
+  //         TextButton(
+  //           onPressed: () => Navigator.of(ctx).pop(true),
+  //           style: TextButton.styleFrom(
+  //             foregroundColor: Theme.of(ctx).colorScheme.error,
+  //           ),
+  //           child: const Text('Delete'),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  //   if (confirmed == true && mounted) {
+  //     await cubit.deleteTrip(trip.id);
+  //     // Navigate back to trip list if trip is deleted
+  //     if (mounted) {
+  //       Navigator.of(context).pop();
+  //     }
+  //   }
+  // }
 
   Future<void> _shiftDates(BuildContext context, Trip trip, TripCubit cubit) async {
     if (trip.startDate == null || trip.endDate == null) {
@@ -389,13 +389,13 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -565,7 +565,7 @@ class _TripDetailPageViewState extends State<TripDetailPageView>
                               shape: BoxShape.circle,
                               color: _currentPage == index
                                   ? cs.primary
-                                  : cs.onSurfaceVariant.withOpacity(0.4),
+                                  : cs.onSurfaceVariant.withValues(alpha: 0.4),
                             ),
                           );
                         }),
@@ -682,7 +682,7 @@ class _QuickAddButton extends StatelessWidget {
             return FloatingActionButton(
               heroTag: 'journalFab',
               tooltip: 'Add Journal Entry',
-              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
               onPressed: () => _addJournalEntry(builderContext),
               child: const Icon(Icons.add),
             );
@@ -699,7 +699,7 @@ class _QuickAddButton extends StatelessWidget {
             return FloatingActionButton(
               heroTag: 'expenseFab',
               tooltip: 'Add Expense',
-              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
               onPressed: () => _addExpense(builderContext),
               child: const Icon(Icons.add),
             );
@@ -716,7 +716,7 @@ class _QuickAddButton extends StatelessWidget {
             return FloatingActionButton(
               heroTag: 'travelerFab',
               tooltip: 'Add Traveler',
-              backgroundColor: Theme.of(context).colorScheme.surface.withOpacity(0.85),
+              backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
               onPressed: () => _addTraveler(builderContext),
               child: const Icon(Icons.add),
             );

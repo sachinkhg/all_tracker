@@ -5,6 +5,7 @@ import '../core/design_tokens.dart';
 import '../core/organization_notifier.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
+import '../trackers/goal_tracker/presentation/pages/standalone_task_list_page.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
 import '../trackers/travel_tracker/core/app_icons.dart';
 import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
@@ -59,6 +60,23 @@ class AppHomePage extends StatelessWidget {
         ),
       );
     }
+    
+    // Task Tracker is always available (standalone tasks)
+    trackerItems.add(
+      _SectionItem(
+        title: 'Task Tracker',
+        subtitle: 'Manage your tasks without milestones',
+        icon: AppIcons.task,
+        gradient: AppGradients.tertiary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const StandaloneTaskListPage(),
+            ),
+          );
+        },
+      ),
+    );
 
     // Define utility items (filtered based on toggle states)
     final utilityItems = <_SectionItem>[];
@@ -111,13 +129,13 @@ class AppHomePage extends StatelessWidget {
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -170,41 +188,6 @@ class AppHomePage extends StatelessWidget {
             const SizedBox(height: AppSpacing.l),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// Welcome section at the top of the landing page
-class _WelcomeSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.l),
-      decoration: BoxDecoration(
-        gradient: AppGradients.appBar(cs),
-        borderRadius: BorderRadius.circular(AppRadii.card),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Welcome to All Tracker',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: cs.onPrimary,
-                  fontWeight: FontWeight.bold,
-                ),
-          ),
-          const SizedBox(height: AppSpacing.s),
-          Text(
-            'Your productivity hub',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onPrimary.withOpacity(0.9),
-                ),
-          ),
-        ],
       ),
     );
   }

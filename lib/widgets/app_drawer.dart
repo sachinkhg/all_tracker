@@ -63,7 +63,7 @@ class AppDrawer extends StatelessWidget {
                 Text(
                   'Your productivity hub',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: cs.onPrimary.withOpacity(0.9),
+                        color: cs.onPrimary.withValues(alpha: 0.9),
                       ),
                 ),
               ],
@@ -269,7 +269,7 @@ class _DrawerTile extends StatelessWidget {
       leading: Icon(icon, color: cs.onSurface),
       title: Text(title),
       selected: isSelected,
-      selectedTileColor: cs.primaryContainer.withOpacity(0.3),
+      selectedTileColor: cs.primaryContainer.withValues(alpha: 0.3),
       onTap: onTap,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppRadii.button),

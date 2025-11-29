@@ -46,7 +46,7 @@ class LoginPage extends StatelessWidget {
                   Text(
                     'Your productivity hub',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: cs.onPrimary.withOpacity(0.9),
+                          color: cs.onPrimary.withValues(alpha: 0.9),
                         ),
                   ),
                   const SizedBox(height: AppSpacing.l * 2),
@@ -137,7 +137,7 @@ class LoginPage extends StatelessWidget {
                     child: Text(
                       'Sign in with your Google account to access all features and sync your data securely.',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onPrimary.withOpacity(0.8),
+                            color: cs.onPrimary.withValues(alpha: 0.8),
                           ),
                       textAlign: TextAlign.center,
                     ),

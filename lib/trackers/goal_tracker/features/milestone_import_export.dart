@@ -175,6 +175,7 @@ Future<void> importMilestonesFromXlsx(BuildContext context) async {
     final Uint8List bytes = await picked.readAsBytes();
     final excel = Excel.decodeBytes(bytes);
     if (excel.tables.isEmpty) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('No sheets found in Excel file.')));
       return;
@@ -183,6 +184,7 @@ Future<void> importMilestonesFromXlsx(BuildContext context) async {
     final String firstSheet = excel.tables.keys.first;
     final Sheet? sheet = excel.tables[firstSheet];
     if (sheet == null) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Sheet parsing failed.')));
       return;
@@ -190,6 +192,7 @@ Future<void> importMilestonesFromXlsx(BuildContext context) async {
 
     final rows = sheet.rows;
     if (rows.isEmpty || rows.length == 1) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Excel file contains no data rows.')));
       return;
@@ -210,11 +213,13 @@ Future<void> importMilestonesFromXlsx(BuildContext context) async {
     final goalNameIdx = headerNormalized.indexOf('goalname');
 
     if (nameIdx == -1) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Template invalid: "name" column is required.')));
       return;
     }
 
+    if (!context.mounted) return;
     final cubit = context.read<MilestoneCubit>();
     int created = 0, updated = 0, skipped = 0;
 
@@ -304,11 +309,13 @@ Future<void> importMilestonesFromXlsx(BuildContext context) async {
     // Refresh
     await cubit.loadMilestones();
 
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Import complete — created: $created, updated: $updated, skipped: $skipped')),
     );
   } catch (e, st) {
     debugPrint('Import error: $e\n$st');
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text('Import failed: ${e.toString()}')));
   }

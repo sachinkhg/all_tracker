@@ -37,14 +37,13 @@ import '../../domain/usecases/task/get_task_by_id.dart';
 import '../../domain/usecases/task/get_tasks_by_milestone_id.dart';
 import '../../domain/usecases/task/update_task.dart';
 import '../../domain/usecases/task/delete_task.dart';
-import '../../core/view_preferences_service.dart';
-import '../../core/filter_preferences_service.dart';
-import '../../core/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../data/models/milestone_model.dart';
 import '../../data/models/goal_model.dart';
 import '../../core/constants.dart';
-import '../widgets/view_field_bottom_sheet.dart';
-import '../widgets/filter_group_bottom_sheet.dart';
 import 'task_state.dart';
 
 /// Custom exception thrown when a milestone is not found during task create/update.
@@ -154,6 +153,10 @@ class TaskCubit extends Cubit<TaskState> {
   String? get currentTargetDateFilter => _currentTargetDateFilter;
   String get currentSortOrder => _sortOrder;
   bool get hideCompleted => _hideCompleted;
+  
+  /// Returns all tasks (unfiltered) for dashboard statistics.
+  /// This includes all tasks regardless of filters, so dashboard can show accurate counts.
+  List<Task> get allTasks => List<Task>.unmodifiable(_allTasks);
 
   /// Returns true when any filter or sort is active.
   bool get hasActiveFilters =>
@@ -350,13 +353,16 @@ class TaskCubit extends Cubit<TaskState> {
       // Milestone filter
       if (_currentMilestoneIdFilter != null &&
           _currentMilestoneIdFilter!.isNotEmpty) {
-        if (t.milestoneId != _currentMilestoneIdFilter) return false;
+        if (t.milestoneId == null || t.milestoneId != _currentMilestoneIdFilter) return false;
       }
 
       // Goal filter
       if (_currentGoalIdFilter != null && _currentGoalIdFilter!.isNotEmpty) {
-        if (t.goalId != _currentGoalIdFilter) return false;
+        if (t.goalId == null || t.goalId != _currentGoalIdFilter) return false;
       }
+      
+      // Filter for standalone tasks (null milestoneId and goalId)
+      // This is handled implicitly by the above filters
 
       // Status filter
       if (_currentStatusFilter != null && _currentStatusFilter!.isNotEmpty) {
@@ -431,40 +437,49 @@ class TaskCubit extends Cubit<TaskState> {
 
   /// Create a new task and reload list.
   ///
-  /// **CRITICAL LOGIC**: This method fetches the associated Milestone to retrieve
-  /// its goalId and auto-sets it on the task before persisting. The UI must not
-  /// provide goalId directly; it will be ignored.
+  /// **CRITICAL LOGIC**: 
+  /// - If milestoneId is provided, this method fetches the associated Milestone to retrieve
+  ///   its goalId and auto-sets it on the task before persisting.
+  /// - If milestoneId is null, creates a standalone task without milestone/goal association.
+  /// - The UI must not provide goalId directly; it will be ignored.
   ///
   /// Throws:
-  /// - [MilestoneNotFoundException] if the milestone does not exist.
-  /// - [InvalidMilestoneException] if the milestone's goalId is null.
+  /// - [MilestoneNotFoundException] if the milestone does not exist (when milestoneId is provided).
+  /// - [InvalidMilestoneException] if the milestone's goalId is null (when milestoneId is provided).
   Future<void> addTask({
     required String name,
     DateTime? targetDate,
-    required String milestoneId,
+    String? milestoneId,
     String status = 'To Do',
   }) async {
     try {
-      // Fetch the milestone to get its goalId
-      final milestone = await milestoneRepository.getMilestoneById(milestoneId);
+      String? goalId;
+      
+      // Only fetch milestone if milestoneId is provided (for goal tracker tasks)
+      if (milestoneId != null && milestoneId.isNotEmpty) {
+        final milestone = await milestoneRepository.getMilestoneById(milestoneId);
 
-      if (milestone == null) {
-        throw MilestoneNotFoundException(milestoneId);
+        if (milestone == null) {
+          throw MilestoneNotFoundException(milestoneId);
+        }
+
+        // Validate that the milestone has a goalId
+        if (milestone.goalId.isEmpty) {
+          throw InvalidMilestoneException(milestoneId);
+        }
+
+        // Auto-assign goalId from milestone
+        goalId = milestone.goalId;
       }
 
-      // Validate that the milestone has a goalId
-      if (milestone.goalId.isEmpty) {
-        throw InvalidMilestoneException(milestoneId);
-      }
-
-      // Auto-assign goalId from milestone
+      // Create task with optional milestone/goal (null for standalone tasks)
       final id = const Uuid().v4();
       final task = Task(
         id: id,
         name: name,
         targetDate: targetDate,
         milestoneId: milestoneId,
-        goalId: milestone.goalId, // AUTO-ASSIGNED from milestone
+        goalId: goalId, // AUTO-ASSIGNED from milestone or null for standalone
         status: status,
       );
 
@@ -482,40 +497,49 @@ class TaskCubit extends Cubit<TaskState> {
 
   /// Edit an existing task and reload list.
   ///
-  /// **CRITICAL LOGIC**: This method fetches the associated Milestone to retrieve
-  /// its goalId and auto-sets it on the task before persisting. The UI must not
-  /// provide goalId directly; it will be ignored.
+  /// **CRITICAL LOGIC**: 
+  /// - If milestoneId is provided, this method fetches the associated Milestone to retrieve
+  ///   its goalId and auto-sets it on the task before persisting.
+  /// - If milestoneId is null, updates a standalone task without milestone/goal association.
+  /// - The UI must not provide goalId directly; it will be ignored.
   ///
   /// Throws:
-  /// - [MilestoneNotFoundException] if the milestone does not exist.
-  /// - [InvalidMilestoneException] if the milestone's goalId is null.
+  /// - [MilestoneNotFoundException] if the milestone does not exist (when milestoneId is provided).
+  /// - [InvalidMilestoneException] if the milestone's goalId is null (when milestoneId is provided).
   Future<void> editTask({
     required String id,
     required String name,
     DateTime? targetDate,
-    required String milestoneId,
+    String? milestoneId,
     required String status,
   }) async {
     try {
-      // Fetch the milestone to get its goalId
-      final milestone = await milestoneRepository.getMilestoneById(milestoneId);
+      String? goalId;
+      
+      // Only fetch milestone if milestoneId is provided (for goal tracker tasks)
+      if (milestoneId != null && milestoneId.isNotEmpty) {
+        final milestone = await milestoneRepository.getMilestoneById(milestoneId);
 
-      if (milestone == null) {
-        throw MilestoneNotFoundException(milestoneId);
+        if (milestone == null) {
+          throw MilestoneNotFoundException(milestoneId);
+        }
+
+        // Validate that the milestone has a goalId
+        if (milestone.goalId.isEmpty) {
+          throw InvalidMilestoneException(milestoneId);
+        }
+
+        // Auto-assign goalId from milestone
+        goalId = milestone.goalId;
       }
 
-      // Validate that the milestone has a goalId
-      if (milestone.goalId.isEmpty) {
-        throw InvalidMilestoneException(milestoneId);
-      }
-
-      // Auto-assign goalId from milestone
+      // Update task with optional milestone/goal (null for standalone tasks)
       final task = Task(
         id: id,
         name: name,
         targetDate: targetDate,
         milestoneId: milestoneId,
-        goalId: milestone.goalId, // AUTO-ASSIGNED from milestone
+        goalId: goalId, // AUTO-ASSIGNED from milestone or null for standalone
         status: status,
       );
 

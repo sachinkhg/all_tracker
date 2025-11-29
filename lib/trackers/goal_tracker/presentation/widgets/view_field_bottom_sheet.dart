@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 
 /// ---------------------------------------------------------------------------
 /// ViewFieldsBottomSheet
@@ -40,7 +41,6 @@ import 'package:flutter/material.dart';
 ///
 /// By default, Name and Description are ON.
 /// Others (Target Date, Context, Remaining Days) are OFF.
-enum ViewEntityType { goal, milestone, task, habit, itinerary, trip }
 
 class ViewFieldsBottomSheet extends StatefulWidget {
   /// Which entity's fields are being configured (goal or milestone).
@@ -65,12 +65,16 @@ class ViewFieldsBottomSheet extends StatefulWidget {
   
   /// Optional initial view type ('list' or 'calendar'). Only used for task entity.
   final String? initialViewType;
+  
+  /// Whether this is for standalone tasks (without milestone/goal). Only used for task entity.
+  final bool isStandalone;
 
   const ViewFieldsBottomSheet({
     Key? key, 
     required this.entity, 
     this.initial,
     this.initialViewType,
+    this.isStandalone = false,
   }) : super(key: key);
 
   @override
@@ -129,9 +133,12 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
         'targetDate': widget.initial?['targetDate'] ?? true,
         'remainingDays': widget.initial?['remainingDays'] ?? false,
         'status': widget.initial?['status'] ?? true,
-        'milestoneName': widget.initial?['milestoneName'] ?? false,
-        'goalName': widget.initial?['goalName'] ?? false,
       };
+      // Only add milestone/goal fields if not standalone
+      if (!widget.isStandalone) {
+        _fields['milestoneName'] = widget.initial?['milestoneName'] ?? false;
+        _fields['goalName'] = widget.initial?['goalName'] ?? false;
+      }
     } else if (widget.entity == ViewEntityType.habit) {
       // Habit field set
       _fields = {
@@ -246,8 +253,11 @@ class _ViewFieldsBottomSheetState extends State<ViewFieldsBottomSheet> {
               // Task fields
               _buildToggle('targetDate', 'Target Date'),
               _buildToggle('status', 'Status'),
-              _buildToggle('milestoneName', 'Milestone'),
-              _buildToggle('goalName', 'Goal'),
+              // Only show milestone/goal fields if not standalone
+              if (!widget.isStandalone) ...[
+                _buildToggle('milestoneName', 'Milestone'),
+                _buildToggle('goalName', 'Goal'),
+              ],
               _buildToggle('remainingDays', 'Remaining Days'),
             ] else if (widget.entity == ViewEntityType.itinerary) ...[
               // View type toggle for itinerary

@@ -20,8 +20,8 @@ class TaskModelAdapter extends TypeAdapter<TaskModel> {
       id: fields[0] as String,
       name: fields[1] as String,
       targetDate: fields[2] as DateTime?,
-      milestoneId: fields[3] as String,
-      goalId: fields[4] as String,
+      milestoneId: fields[3] as String?,
+      goalId: fields[4] as String?,
       status: fields[5] as String,
     );
   }

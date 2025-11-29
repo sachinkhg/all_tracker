@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:all_tracker/core/theme_preferences_service.dart';
-import 'package:all_tracker/trackers/goal_tracker/core/box_provider.dart';
+import 'package:all_tracker/core/services/box_provider.dart';
 import '../../helpers/fake_hive_box.dart';
 import 'package:hive/hive.dart';
 

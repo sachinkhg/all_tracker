@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/goal.dart';
@@ -7,11 +8,10 @@ import '../../domain/usecases/goal/create_goal.dart';
 import '../../domain/usecases/goal/update_goal.dart';
 import '../../domain/usecases/goal/delete_goal.dart';
 import '../../domain/usecases/milestone/get_all_milestones.dart';
-import '../../core/view_preferences_service.dart';
-import '../../core/filter_preferences_service.dart';
-import '../../core/sort_preferences_service.dart';
-import '../widgets/view_field_bottom_sheet.dart';
-import '../widgets/filter_group_bottom_sheet.dart';
+import 'package:all_tracker/core/services/view_preferences_service.dart';
+import 'package:all_tracker/core/services/filter_preferences_service.dart';
+import 'package:all_tracker/core/services/sort_preferences_service.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
 import 'goal_state.dart';
 
 /// ---------------------------------------------------------------------------
@@ -206,7 +206,7 @@ class GoalCubit extends Cubit<GoalState> {
 
   void applyGrouping({required String groupBy}) {
     _currentGrouping = groupBy;
-    print("🔎 Applying grouping by $groupBy");
+    debugPrint("🔎 Applying grouping by $groupBy");
 
     var filtered = _filterGoals(_allGoals);
 
@@ -219,7 +219,7 @@ class GoalCubit extends Cubit<GoalState> {
     }
 
     final sorted = _sortGoals(filtered);
-    print("📊 Grouped goals count: ${sorted.length}");
+    debugPrint("📊 Grouped goals count: ${sorted.length}");
     emit(GoalsLoaded(sorted, visibleFields, milestoneSummaries));
   }
 

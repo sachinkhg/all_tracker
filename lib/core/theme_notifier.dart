@@ -97,37 +97,37 @@ class ThemeNotifier extends ChangeNotifier {
   /// Non-trivial merges:
   /// - The `copyWith` call below is where we provide component defaults that should align with the ColorScheme.
   ///   Module-level themes should merge with this ThemeData rather than replace it to avoid token drift.
-  ThemeData _themeFromSeed(Color seedColor, {Brightness brightness = Brightness.light}) {
-    // Derive a ColorScheme so component defaults follow the seed's palette.
-    final cs = ColorScheme.fromSeed(seedColor: seedColor, brightness: brightness);
+  // ThemeData _themeFromSeed(Color seedColor, {Brightness brightness = Brightness.light}) {
+  //   // Derive a ColorScheme so component defaults follow the seed's palette.
+  //   final cs = ColorScheme.fromSeed(seedColor: seedColor, brightness: brightness);
 
-    return ThemeData.from(colorScheme: cs, useMaterial3: true).copyWith(
-      // Make ElevatedButtons use the color scheme by default.
-      // Using `styleFrom` ties button backgrounds/foregrounds to the ColorScheme ensuring contrast.
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: cs.primary,
-          foregroundColor: cs.onPrimary,
-        ),
-      ),
-      // AppBar uses primary / onPrimary so it contrasts with scaffold background.
-      // Elevation is a small UX choice; keep it modest for a lightweight material feel.
-      appBarTheme: AppBarTheme(
-        backgroundColor: cs.primary,
-        foregroundColor: cs.onPrimary,
-        elevation: 2,
-      ),
-      // Icon theme: a sensible fallback for icons that don't set color explicitly.
-      // Uses onSurface to ensure icons remain visible across light/dark backgrounds.
-      iconTheme: IconThemeData(
-        color: cs.onSurface,
-      ),
-      // You can add more theme customizations here (textTheme, inputDecorationTheme, etc.)
-      // Prefer adding semantic tokens (e.g., highContrast theme) rather than hard-coded overrides.
-    );
-  }
+  //   return ThemeData.from(colorScheme: cs, useMaterial3: true).copyWith(
+  //     // Make ElevatedButtons use the color scheme by default.
+  //     // Using `styleFrom` ties button backgrounds/foregrounds to the ColorScheme ensuring contrast.
+  //     elevatedButtonTheme: ElevatedButtonThemeData(
+  //       style: ElevatedButton.styleFrom(
+  //         backgroundColor: cs.primary,
+  //         foregroundColor: cs.onPrimary,
+  //       ),
+  //     ),
+  //     // AppBar uses primary / onPrimary so it contrasts with scaffold background.
+  //     // Elevation is a small UX choice; keep it modest for a lightweight material feel.
+  //     appBarTheme: AppBarTheme(
+  //       backgroundColor: cs.primary,
+  //       foregroundColor: cs.onPrimary,
+  //       elevation: 2,
+  //     ),
+  //     // Icon theme: a sensible fallback for icons that don't set color explicitly.
+  //     // Uses onSurface to ensure icons remain visible across light/dark backgrounds.
+  //     iconTheme: IconThemeData(
+  //       color: cs.onSurface,
+  //     ),
+  //     // You can add more theme customizations here (textTheme, inputDecorationTheme, etc.)
+  //     // Prefer adding semantic tokens (e.g., highContrast theme) rather than hard-coded overrides.
+  //   );
+  // }
 
   // Legacy getters retained for compatibility; not used when presets are active.
-  ThemeData get _lightTheme => _themeFromSeed(Colors.blue, brightness: Brightness.light);
-  ThemeData get _darkTheme => _themeFromSeed(Colors.green, brightness: Brightness.dark);
+  // ThemeData get _lightTheme => _themeFromSeed(Colors.blue, brightness: Brightness.light);
+  // ThemeData get _darkTheme => _themeFromSeed(Colors.green, brightness: Brightness.dark);
 }

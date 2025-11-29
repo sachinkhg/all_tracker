@@ -42,9 +42,6 @@ import '../widgets/goal_form_bottom_sheet.dart';
 import '../widgets/milestone_form_bottom_sheet.dart';
 import '../widgets/task_form_bottom_sheet.dart';
 import '../widgets/habit_form_bottom_sheet.dart';
-import '../widgets/voice_note_recorder_bottom_sheet.dart';
-import '../bloc/voice_note_cubit.dart';
-import '../../domain/usecases/voice_note/voice_entity_type.dart';
 import 'goal_list_page.dart';
 import 'milestone_list_page.dart';
 import 'task_list_page.dart';
@@ -69,7 +66,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   late final TaskCubit _taskCubit;
   late final HabitCubit _habitCubit;
   late final BackupSchedulerService _backupScheduler;
-  late final VoiceNoteCubit _voiceNoteCubit;
   
   // Filter state for home page
   String? _targetDateFilter;
@@ -84,7 +80,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _taskCubit = createTaskCubit();
     _habitCubit = createHabitCubit();
     _backupScheduler = createBackupSchedulerService();
-    _voiceNoteCubit = createVoiceNoteCubit();
     
     // Load initial data
     _goalCubit.loadGoals();
@@ -102,7 +97,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     _milestoneCubit.close();
     _taskCubit.close();
     _habitCubit.close();
-    _voiceNoteCubit.close();
     super.dispose();
   }
 
@@ -164,13 +158,13 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         foregroundColor: cs.onPrimary,
         iconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
         actionsIconTheme: IconThemeData(
           color: cs.brightness == Brightness.dark
-              ? Colors.white.withOpacity(0.95)
+              ? Colors.white.withValues(alpha: 0.95)
               : Colors.black87,
           opacity: 1.0,
         ),
@@ -199,7 +193,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
               onAddMilestone: _addMilestone,
               onAddTask: _addTask,
               onAddHabit: _addHabit,
-              onAddVoiceNote: _addVoiceNote,
             ).animate().fade(duration: AppAnimations.short, curve: AppAnimations.ease),
           ],
         ),
@@ -209,7 +202,7 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
         tooltip: 'Filter by Target Date',
         backgroundColor: _targetDateFilter != null 
             ? Theme.of(context).colorScheme.primary 
-            : Theme.of(context).colorScheme.surface.withOpacity(0.85),
+            : Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
         onPressed: () => _showFilterBottomSheet(context),
         child: Stack(
           alignment: Alignment.center,
@@ -383,205 +376,6 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _addVoiceNote() async {
-    // Reset cubit state
-    _voiceNoteCubit.reset();
-
-    // Capture context before showing bottom sheet
-    final homeContext = context;
-
-    // Show voice note recorder
-    await VoiceNoteRecorderBottomSheet.show(
-      context,
-      cubit: _voiceNoteCubit,
-      onProcessed: (name, description) async {
-        // Wait a moment for the bottom sheet to fully close
-        await Future.delayed(const Duration(milliseconds: 200));
-        
-        // Ensure we have a valid context
-        if (!homeContext.mounted) {
-          print('Home context not mounted, cannot open form');
-          return;
-        }
-        
-        // Get entity type from current state
-        final entityType = _voiceNoteCubit.state.selectedEntityType;
-        if (entityType == null) {
-          print('No entity type selected');
-          return;
-        }
-
-        print('Opening form for entity type: $entityType with name: $name');
-
-        switch (entityType) {
-          case VoiceEntityType.goal:
-            await _openGoalFormWithVoiceNote(name, description);
-            break;
-          case VoiceEntityType.milestone:
-            await _openMilestoneFormWithVoiceNote(name, description);
-            break;
-          case VoiceEntityType.task:
-            await _openTaskFormWithVoiceNote(name, description);
-            break;
-          case VoiceEntityType.habit:
-            await _openHabitFormWithVoiceNote(name, description);
-            break;
-        }
-      },
-    );
-  }
-
-  Future<void> _openGoalFormWithVoiceNote(String name, String description) async {
-    if (!mounted) return;
-    
-    // Ensure name is not empty - use description if name is empty
-    final finalName = name.trim().isNotEmpty ? name.trim() : (description.trim().isNotEmpty ? description.trim() : 'New Goal');
-    final finalDescription = description.trim().isNotEmpty ? description.trim() : null;
-    
-    print('Opening goal form with name: "$finalName", description: "$finalDescription"');
-    
-    if (!context.mounted) return;
-    
-    await GoalFormBottomSheet.show(
-      context,
-      title: 'Create Goal',
-      initialName: finalName,
-      initialDescription: finalDescription,
-      onSubmit: (name, description, targetDate, context, isCompleted) async {
-        print('Goal form submitted with name: "$name"');
-        if (!mounted) return;
-        await _goalCubit.addGoal(name, description, targetDate, context, isCompleted);
-        print('Goal added successfully');
-        // loadGoals() is already called in addGoal
-      },
-    );
-  }
-
-  Future<void> _openMilestoneFormWithVoiceNote(String name, String description) async {
-    final goals = _goalCubit.state is GoalsLoaded
-        ? ((_goalCubit.state as GoalsLoaded).goals)
-        : <Goal>[];
-
-    final goalOptions = goals.map((goal) => '${goal.id}::${goal.name}').toList();
-
-    if (goalOptions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please create a goal first before adding a milestone'),
-        ),
-      );
-      return;
-    }
-
-    await MilestoneFormBottomSheet.show(
-      context,
-      title: 'Create Milestone',
-      initialName: name,
-      initialDescription: description.isEmpty ? null : description,
-      goalOptions: goalOptions,
-      onSubmit: (name, description, plannedValue, actualValue, targetDate, goalId) async {
-        await _milestoneCubit.addMilestone(
-          name: name,
-          description: description,
-          plannedValue: plannedValue,
-          actualValue: actualValue,
-          targetDate: targetDate,
-          goalId: goalId,
-        );
-      },
-    );
-  }
-
-  Future<void> _openTaskFormWithVoiceNote(String name, String description) async {
-    final milestones = _milestoneCubit.state is MilestonesLoaded
-        ? ((_milestoneCubit.state as MilestonesLoaded).milestones)
-        : <Milestone>[];
-
-    final milestoneOptions =
-        milestones.map((milestone) => '${milestone.id}::${milestone.name}').toList();
-
-    if (milestoneOptions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please create a milestone first before adding a task'),
-        ),
-      );
-      return;
-    }
-
-    final milestoneGoalMap = <String, String>{};
-    for (final milestone in milestones) {
-      final goals = _goalCubit.state is GoalsLoaded
-          ? ((_goalCubit.state as GoalsLoaded).goals)
-          : <Goal>[];
-      try {
-        final goal = goals.firstWhere((g) => g.id == milestone.goalId);
-        milestoneGoalMap[milestone.id] = goal.name;
-      } catch (e) {
-        // Goal not found, skip this milestone
-      }
-    }
-
-    await TaskFormBottomSheet.show(
-      context,
-      title: 'Create Task',
-      initialName: name,
-      milestoneOptions: milestoneOptions,
-      milestoneGoalMap: milestoneGoalMap,
-      onSubmit: (name, targetDate, milestoneId, status) async {
-        await _taskCubit.addTask(
-          name: name,
-          targetDate: targetDate,
-          milestoneId: milestoneId,
-          status: status,
-        );
-      },
-    );
-  }
-
-  Future<void> _openHabitFormWithVoiceNote(String name, String description) async {
-    final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
-    final goalBox = Hive.box<GoalModel>(goalBoxName);
-
-    final milestones = milestoneBox.values.toList();
-    final goalMap = <String, String>{};
-    for (final m in milestones) {
-      final goal = goalBox.get(m.goalId);
-      if (goal != null) {
-        goalMap[m.id] = goal.name;
-      }
-    }
-
-    final milestoneOptions = milestones.map((m) => '${m.id}::${m.name}').toList();
-
-    if (milestoneOptions.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please create a milestone first before adding a habit'),
-        ),
-      );
-      return;
-    }
-
-    await HabitFormBottomSheet.show(
-      context,
-      title: 'Create Habit',
-      initialName: name,
-      initialDescription: description.isEmpty ? null : description,
-      milestoneOptions: milestoneOptions,
-      milestoneGoalMap: goalMap,
-      onSubmit: (name, description, milestoneId, rrule, targetCompletions, isActive) async {
-        await _habitCubit.addHabit(
-          name: name,
-          description: description,
-          milestoneId: milestoneId,
-          rrule: rrule,
-          targetCompletions: targetCompletions,
-          isActive: isActive,
-        );
-      },
-    );
-  }
 }
 
 /// Dashboard section showing insights and statistics
@@ -978,7 +772,7 @@ class _InsightCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                   minHeight: 8,
                 ),
@@ -1080,7 +874,7 @@ class _TaskInsightCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(4),
                 child: LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: color.withOpacity(0.2),
+                  backgroundColor: color.withValues(alpha: 0.2),
                   valueColor: AlwaysStoppedAnimation<Color>(color),
                   minHeight: 8,
                 ),
@@ -1171,14 +965,12 @@ class _QuickActionsSection extends StatelessWidget {
     required this.onAddMilestone,
     required this.onAddTask,
     required this.onAddHabit,
-    required this.onAddVoiceNote,
   });
 
   final VoidCallback onAddGoal;
   final VoidCallback onAddMilestone;
   final VoidCallback onAddTask;
   final VoidCallback onAddHabit;
-  final VoidCallback onAddVoiceNote;
 
   @override
   Widget build(BuildContext context) {
@@ -1344,7 +1136,7 @@ class _AddOverlayIcon extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
+                    color: Colors.black.withValues(alpha: 0.2),
                     blurRadius: 4,
                     offset: const Offset(0, 1),
                   ),
@@ -1453,9 +1245,9 @@ class _HabitInsightCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

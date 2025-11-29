@@ -115,13 +115,13 @@ class TaskLocalDataSourceImpl implements TaskLocalDataSource {
   @override
   Future<List<TaskModel>> getTasksByMilestoneId(String milestoneId) async {
     // Simple in-memory filter. Optimized solutions could use indexes if needed.
-    return box.values.where((t) => t.milestoneId == milestoneId).toList();
+    return box.values.where((t) => t.milestoneId != null && t.milestoneId == milestoneId).toList();
   }
 
   @override
   Future<List<TaskModel>> getTasksByGoalId(String goalId) async {
     // Simple in-memory filter. Optimized solutions could use indexes if needed.
-    return box.values.where((t) => t.goalId == goalId).toList();
+    return box.values.where((t) => t.goalId != null && t.goalId == goalId).toList();
   }
 }
 

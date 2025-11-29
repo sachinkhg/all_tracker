@@ -216,7 +216,7 @@ class _TwitterStyleJournalEntry extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: cs.outline.withOpacity(0.2),
+            color: cs.outline.withValues(alpha: 0.2),
             width: 0.5,
           ),
         ),
@@ -343,7 +343,7 @@ class _TwitterStyleJournalEntry extends StatelessWidget {
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(8),
                                         border: Border.all(
-                                          color: cs.outline.withOpacity(0.2),
+                                          color: cs.outline.withValues(alpha: 0.2),
                                         ),
                                       ),
                                       child: Stack(
@@ -460,9 +460,9 @@ class _RefreshingIndicatorState extends State<_RefreshingIndicator>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
-                cs.primary.withOpacity(0.3),
+                cs.primary.withValues(alpha: 0.3),
                 cs.primary,
-                cs.primary.withOpacity(0.3),
+                cs.primary.withValues(alpha: 0.3),
               ],
               stops: [
                 (_animation.value - 0.3).clamp(0.0, 1.0),

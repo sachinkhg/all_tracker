@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/usecases/create_backup.dart';
@@ -20,6 +21,8 @@ class BackupCubit extends Cubit<BackupState> {
   final BackupPreferencesService _preferencesService;
   final GoogleAuthDataSource _googleAuth;
 
+  bool _isSigningIn = false;
+
   BackupCubit({
     required CreateBackup createBackup,
     required ListBackups listBackups,
@@ -36,25 +39,36 @@ class BackupCubit extends Cubit<BackupState> {
         super(BackupInitial());
 
   /// Check authentication status and initialize state.
+  /// Automatically initiates sign-in if user is not signed in.
   Future<void> checkAuthStatus() async {
     emit(BackupInitial());
 
+    // Check if user is already signed in (this checks for existing sessions)
+    // The isSignedIn() method now properly checks for existing sessions
     final isSignedIn = await _googleAuth.isSignedIn();
-    if (!isSignedIn) {
-      emit(BackupSignedOut());
-      return;
+    if (isSignedIn) {
+      // User is already signed in, load backups immediately
+      final account = await _googleAuth.getCurrentAccount();
+      if (account != null) {
+        debugPrint('User already signed in: ${account.email}');
+        await loadBackups();
+        return;
+      }
     }
 
-    final account = await _googleAuth.getCurrentAccount();
-    if (account != null) {
-      await loadBackups();
-    } else {
-      emit(BackupSignedOut());
-    }
+    // If not signed in, automatically initiate sign-in flow
+    debugPrint('No existing session found, initiating sign-in...');
+    await signIn();
   }
 
   /// Sign in to Google.
   Future<void> signIn() async {
+    // Prevent concurrent sign-in attempts
+    if (_isSigningIn) {
+      return;
+    }
+
+    _isSigningIn = true;
     emit(BackupSigningIn());
 
     try {
@@ -62,10 +76,16 @@ class BackupCubit extends Cubit<BackupState> {
       if (success) {
         await loadBackups();
       } else {
-        emit(BackupError(message: 'Sign-in cancelled or failed'));
+        // Sign-in was cancelled or failed - show signed-out state
+        // This allows the user to try again if they want
+        emit(BackupSignedOut());
       }
     } catch (e) {
-      emit(BackupError(message: 'Sign-in error: $e'));
+      // On error, still show signed-out state so user can retry
+      // Silently handle cancellation exceptions - they're expected user behavior
+      emit(BackupSignedOut());
+    } finally {
+      _isSigningIn = false;
     }
   }
 

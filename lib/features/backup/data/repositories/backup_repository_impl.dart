@@ -45,7 +45,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 /// Implementation of BackupRepository.
 class BackupRepositoryImpl implements BackupRepository {
-  final GoogleAuthDataSource _googleAuth;
   final DriveApiClient _driveApi;
   final EncryptionService _encryptionService;
   final BackupBuilderService _backupBuilder;
@@ -62,8 +61,7 @@ class BackupRepositoryImpl implements BackupRepository {
     required BackupBuilderService backupBuilder,
     required BackupMetadataLocalDataSource metadataDataSource,
     required DeviceInfoService deviceInfoService,
-  })  : _googleAuth = googleAuth,
-        _driveApi = driveApi,
+  })  : _driveApi = driveApi,
         _encryptionService = encryptionService,
         _backupBuilder = backupBuilder,
         _metadataDataSource = metadataDataSource,
@@ -127,7 +125,7 @@ class BackupRepositoryImpl implements BackupRepository {
       };
 
       final backupBytes = Uint8List.fromList(utf8.encode(jsonEncode(backupData)));
-      final fileName = 'alltracker-backup-${DateTime.now().toUtc().toIso8601String().replaceAll(':', '-')}-${deviceId}.enc';
+      final fileName = 'alltracker-backup-${DateTime.now().toUtc().toIso8601String().replaceAll(':', '-')}-$deviceId.enc';
 
       _emitProgress('Uploading to Google Drive', 0.8);
 

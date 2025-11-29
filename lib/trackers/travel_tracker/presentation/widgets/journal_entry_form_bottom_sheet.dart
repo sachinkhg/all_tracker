@@ -305,7 +305,7 @@ class _JournalEntryFormContentState extends State<_JournalEntryFormContent> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           border: Border.all(
-                            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
                           ),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -334,7 +334,7 @@ class _JournalEntryFormContentState extends State<_JournalEntryFormContent> {
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
-                                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
                                 ),
                               ),
                               child: Stack(

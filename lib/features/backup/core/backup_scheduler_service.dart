@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'backup_preferences_service.dart';
 import '../domain/usecases/create_backup.dart';
 import '../domain/entities/backup_mode.dart';
@@ -33,7 +34,7 @@ class BackupSchedulerService {
     // Check if user is signed in - automatic backups require authentication
     final isSignedIn = await _googleAuth.isSignedIn();
     if (!isSignedIn) {
-      print('Automatic backup skipped: user not signed in');
+      debugPrint('Automatic backup skipped: user not signed in');
       return;
     }
 
@@ -50,14 +51,14 @@ class BackupSchedulerService {
 
       if (result is BackupSuccess) {
         await _preferencesService.setLastBackupTime(DateTime.now());
-        print('Automatic backup completed successfully');
+        debugPrint('Automatic backup completed successfully');
       } else if (result is BackupFailure) {
-        print('Automatic backup failed: ${result.error}');
+        debugPrint('Automatic backup failed: ${result.error}');
       }
     } catch (e) {
       // Silently fail automatic backups - don't disturb user
       // Errors will be logged for debugging
-      print('Automatic backup failed: $e');
+      debugPrint('Automatic backup failed: $e');
     }
   }
 
@@ -78,7 +79,7 @@ class BackupSchedulerService {
       }
       return false;
     } catch (e) {
-      print('Manual backup failed: $e');
+      debugPrint('Manual backup failed: $e');
       return false;
     }
   }

@@ -39,13 +39,13 @@ class CategoryConfigPage extends StatelessWidget {
                 foregroundColor: cs.onPrimary,
                 iconTheme: IconThemeData(
                   color: cs.brightness == Brightness.dark
-                      ? Colors.white.withOpacity(0.95)
+                      ? Colors.white.withValues(alpha: 0.95)
                       : Colors.black87,
                   opacity: 1.0,
                 ),
                 actionsIconTheme: IconThemeData(
                   color: cs.brightness == Brightness.dark
-                      ? Colors.white.withOpacity(0.95)
+                      ? Colors.white.withValues(alpha: 0.95)
                       : Colors.black87,
                   opacity: 1.0,
                 ),
@@ -56,7 +56,7 @@ class CategoryConfigPage extends StatelessWidget {
                     Tab(text: 'Expense'),
                   ],
                   labelColor: cs.onPrimary,
-                  unselectedLabelColor: cs.onPrimary.withOpacity(0.7),
+                  unselectedLabelColor: cs.onPrimary.withValues(alpha: 0.7),
                   indicatorColor: cs.onPrimary,
                 ),
               ),
@@ -73,7 +73,7 @@ class CategoryConfigPage extends StatelessWidget {
                   return FloatingActionButton.small(
                     heroTag: currentIndex == 0 ? 'addIncomeCategoryFab' : 'addExpenseCategoryFab',
                     tooltip: currentIndex == 0 ? 'Add Income Category' : 'Add Expense Category',
-                    backgroundColor: cs.surface.withOpacity(0.85),
+                    backgroundColor: cs.surface.withValues(alpha: 0.85),
                     onPressed: () {
                       final isIncome = currentIndex == 0;
                       _showAddCategoryForm(context, isIncome);

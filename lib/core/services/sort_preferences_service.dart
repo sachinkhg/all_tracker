@@ -1,11 +1,12 @@
-import 'box_provider.dart';
-import 'constants.dart';
+import 'package:flutter/foundation.dart';
+import 'package:all_tracker/core/services/box_provider.dart';
+import 'package:all_tracker/core/services/view_entity_type.dart';
+import 'package:all_tracker/core/constants/app_constants.dart';
 
-/// ---------------------------------------------------------------------------
 /// SortPreferencesService
 ///
 /// File purpose:
-/// - Manages persistence of sort preferences for Goals, Milestones, and Tasks.
+/// - Manages persistence of sort preferences for Goals, Milestones, Tasks, and Habits.
 /// - Similar to FilterPreferencesService but for sort settings.
 /// - Stores sort preferences in Hive box for persistence across app sessions.
 ///
@@ -15,14 +16,13 @@ import 'constants.dart';
 /// - Clear preferences when user unchecks "Save Sort"
 ///
 /// Storage format:
-/// - Keys: 'goal_sort', 'milestone_sort', 'task_sort'
+/// - Keys: 'goal_sort', 'milestone_sort', 'task_sort', 'habit_sort'
 /// - Values: Map<String, dynamic> containing sort order and hide completed settings
-/// ---------------------------------------------------------------------------
-
 class SortPreferencesService {
   final BoxProvider boxes;
 
   SortPreferencesService({BoxProvider? boxes}) : boxes = boxes ?? HiveBoxProvider();
+  
   /// Save sort preferences for a specific entity type
   Future<void> saveSortPreferences(SortEntityType entityType, Map<String, dynamic> sortSettings) async {
     try {
@@ -31,7 +31,7 @@ class SortPreferencesService {
       await box.put(key, sortSettings);
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error saving sort preferences: $e');
+      debugPrint('Error saving sort preferences: $e');
     }
   }
 
@@ -44,7 +44,7 @@ class SortPreferencesService {
       return saved != null ? Map<String, dynamic>.from(saved) : null;
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error loading sort preferences: $e');
+      debugPrint('Error loading sort preferences: $e');
       return null;
     }
   }
@@ -57,7 +57,7 @@ class SortPreferencesService {
       await box.delete(key);
     } catch (e) {
       // Handle error silently or log as needed
-      print('Error clearing sort preferences: $e');
+      debugPrint('Error clearing sort preferences: $e');
     }
   }
 
@@ -76,4 +76,3 @@ class SortPreferencesService {
   }
 }
 
-enum SortEntityType { goal, milestone, task, habit }

@@ -152,7 +152,7 @@ class _ItineraryDayCardState extends State<ItineraryDayCard> {
           ),
           // Accordion content (only visible when expanded and has activities)
           if (_isExpanded && hasActivities)
-            Divider(height: 1, color: cs.outline.withOpacity(0.12)),
+            Divider(height: 1, color: cs.outline.withValues(alpha: 0.12)),
           if (_isExpanded && hasActivities)
             ...widget.items.map((item) {
               return ListTile(
