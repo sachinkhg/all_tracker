@@ -14,7 +14,24 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **3**  | HabitModel     | `habits_box`      | Active    | 2025-01-27 | Habit entity linked to Milestone and Goal  |
 | **4**  | HabitCompletionModel | `habit_completions_box` | Active | 2025-01-27 | Habit completion tracking entity |
 | **5**  | BackupMetadataModel | `backup_metadata_box` | Active | 2025-10-27 | Cloud backup metadata tracking |
+| **6**  | InvestmentComponentModel | `investment_components_box` | Active | 2025-01-27 | Investment component entity |
+| **7**  | IncomeCategoryModel | `income_categories_box` | Active | 2025-01-27 | Income category entity |
+| **8**  | ExpenseCategoryModel | `expense_categories_box` | Active | 2025-01-27 | Expense category entity |
+| **9**  | InvestmentPlanModel | `investment_plans_box` | Active | 2025-01-27 | Investment plan entity |
+| **10** | IncomeEntryModel | `income_categories_box` | Active | 2025-01-27 | Income entry entity |
+| **11** | ExpenseEntryModel | `expense_categories_box` | Active | 2025-01-27 | Expense entry entity |
+| **12** | ComponentAllocationModel | `investment_components_box` | Active | 2025-01-27 | Component allocation entity |
+| **13** | RetirementPlanModel | `retirement_plan_box` | Active | 2025-01-27 | Retirement plan entity |
 | **14** | TripModel | `trips_box` | Active | 2025-01-27 | Travel trip entity |
+| **15** | TripProfileModel | `trip_profiles_box` | Active | 2025-01-27 | Travel trip profile entity |
+| **16** | ItineraryDayModel | `itinerary_days_box` | Active | 2025-01-27 | Itinerary day entity |
+| **17** | ItineraryItemModel | `itinerary_items_box` | Active | 2025-01-27 | Itinerary item entity |
+| **18** | JournalEntryModel | `journal_entries_box` | Active | 2025-01-27 | Travel journal entry entity |
+| **19** | PhotoModel | `photos_box` | Active | 2025-01-27 | Travel photo entity |
+| **20** | ExpenseModel | `expenses_box` | Active | 2025-01-27 | Travel expense entity |
+| **21** | TravelerModel | `travelers_box` | Active | 2025-01-27 | Traveler entity |
+| **22** | PasswordModel | `passwords_box` | Active | 2025-01-27 | Password entity (encrypted) |
+| **23** | SecretQuestionModel | `secret_questions_box` | Active | 2025-01-27 | Secret question entity (encrypted) |
 
 ---
 
@@ -28,9 +45,28 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `habits_box`                | Habit entities                    | HabitModel | Active    | Habit storage linked to milestones         |
 | `habit_completions_box`     | Habit completion entities         | HabitCompletionModel | Active | Habit completion tracking storage |
 | `backup_metadata_box`       | Backup metadata tracking          | BackupMetadataModel  | Active | Cloud backup metadata storage             |
+| `investment_components_box` | Investment component entities     | InvestmentComponentModel | Active | Investment component storage |
+| `income_categories_box`     | Income category & entry entities  | IncomeCategoryModel, IncomeEntryModel | Active | Income category and entry storage |
+| `expense_categories_box`    | Expense category & entry entities | ExpenseCategoryModel, ExpenseEntryModel | Active | Expense category and entry storage |
+| `investment_plans_box`      | Investment plan entities         | InvestmentPlanModel | Active | Investment plan storage |
+| `retirement_plan_box`       | Retirement plan entities         | RetirementPlanModel | Active | Retirement plan storage |
+| `trips_box`                 | Travel trip entities              | TripModel | Active    | Travel trip storage |
+| `trip_profiles_box`         | Trip profile entities             | TripProfileModel | Active | Trip profile storage |
+| `travelers_box`             | Traveler entities                 | TravelerModel | Active | Traveler storage |
+| `itinerary_days_box`        | Itinerary day entities            | ItineraryDayModel | Active | Itinerary day storage |
+| `itinerary_items_box`       | Itinerary item entities          | ItineraryItemModel | Active | Itinerary item storage |
+| `journal_entries_box`       | Journal entry entities            | JournalEntryModel | Active | Travel journal entry storage |
+| `photos_box`                | Photo entities                    | PhotoModel | Active | Travel photo storage |
+| `expenses_box`              | Travel expense entities           | ExpenseModel | Active | Travel expense storage |
+| `passwords_box`             | Password entities (encrypted)     | PasswordModel | Active | Password storage with encryption |
+| `secret_questions_box`      | Secret question entities (encrypted) | SecretQuestionModel | Active | Secret question storage with encryption |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
+| `theme_preferences_box`     | Theme preferences                 | String    | Active    | Theme and font preferences                 |
+| `organization_preferences_box` | Organization preferences        | String    | Active    | Module enablement and default home page    |
+| `backup_preferences_box`    | Backup preferences                | String    | Active    | Backup configuration settings              |
+| `retirement_preferences_box` | Retirement planner preferences   | String    | Active    | Retirement planner configuration           |
 
 ---
 
@@ -170,6 +206,60 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 - Each completion increments the associated milestone's `actualValue` by the habit's `targetCompletions` (or 1 if null).
 - Deleting a completion decrements the milestone's `actualValue` by the same amount.
 - The milestone progress update is handled atomically in the `ToggleCompletionForDate` use case.
+
+**Migration History:**
+- v1.0 (2025-01-27): Initial schema with 4 fields.
+
+---
+
+## 📦 Model: PasswordModel (TypeId: 22)
+
+### Schema Version: 1.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name          | Type     | Nullable | Default | Notes                                           |
+|--------------|---------------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `id`                | String   | No       | -       | Unique identifier (GUID)                        |
+| 1            | `siteName`          | String   | No       | -       | Human-readable site name                        |
+| 2            | `url`               | String   | Yes      | null    | Optional URL for the site                      |
+| 3            | `username`          | String   | Yes      | null    | Optional username for the account               |
+| 4            | `encryptedPassword` | String   | Yes      | null    | Encrypted password (stored as encrypted string) |
+| 5            | `isGoogleSignIn`    | bool     | No       | false   | Whether this account uses Google Sign-In        |
+| 6            | `lastUpdated`       | DateTime | No       | -       | Timestamp of last update                        |
+| 7            | `is2FA`             | bool     | No       | false   | Whether this account has 2FA enabled             |
+| 8            | `categoryGroup`     | String   | Yes      | null    | Optional category/group for the password        |
+| 9            | `hasSecretQuestions` | bool   | No       | false   | Whether this password has associated secret questions |
+
+**Business Rules:**
+- Password field is encrypted before storage and decrypted when retrieved.
+- Encryption is handled by PasswordEncryptionService at the repository layer.
+- The model stores `encryptedPassword` as a string; actual password is never stored in plain text.
+- `hasSecretQuestions` flag indicates if associated SecretQuestion entities exist.
+
+**Migration History:**
+- v1.0 (2025-01-27): Initial schema with 10 fields.
+
+---
+
+## 📦 Model: SecretQuestionModel (TypeId: 23)
+
+### Schema Version: 1.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name        | Type     | Nullable | Default | Notes                                           |
+|--------------|-------------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `id`              | String   | No       | -       | Unique identifier (GUID)                        |
+| 1            | `passwordId`      | String   | No       | -       | Foreign key linking to parent Password          |
+| 2            | `question`        | String   | No       | -       | The secret question text                        |
+| 3            | `encryptedAnswer` | String   | No       | -       | Encrypted answer (stored as encrypted string)   |
+
+**Business Rules:**
+- Answer field is encrypted before storage and decrypted when retrieved.
+- Encryption is handled by PasswordEncryptionService at the repository layer.
+- The model stores `encryptedAnswer` as a string; actual answer is never stored in plain text.
+- Multiple SecretQuestion entities can be linked to a single Password via `passwordId`.
 
 **Migration History:**
 - v1.0 (2025-01-27): Initial schema with 4 fields.
@@ -337,8 +427,25 @@ try {
 - **3**: HabitModel
 - **4**: HabitCompletionModel
 - **5**: BackupMetadataModel
+- **6**: InvestmentComponentModel
+- **7**: IncomeCategoryModel
+- **8**: ExpenseCategoryModel
+- **9**: InvestmentPlanModel
+- **10**: IncomeEntryModel
+- **11**: ExpenseEntryModel
+- **12**: ComponentAllocationModel
+- **13**: RetirementPlanModel
 - **14**: TripModel
-- **Next Available**: 6 (Note: TypeIds 6-13 may be used by other modules)
+- **15**: TripProfileModel
+- **16**: ItineraryDayModel
+- **17**: ItineraryItemModel
+- **18**: JournalEntryModel
+- **19**: PhotoModel
+- **20**: ExpenseModel
+- **21**: TravelerModel
+- **22**: PasswordModel
+- **23**: SecretQuestionModel
+- **Next Available**: 24
 
 ### Current Box Names
 - `goals_box` - Goal entities
@@ -346,20 +453,41 @@ try {
 - `tasks_box` - Task entities
 - `habits_box` - Habit entities
 - `habit_completions_box` - Habit completion entities
+- `backup_metadata_box` - Backup metadata
+- `investment_components_box` - Investment component entities
+- `income_categories_box` - Income category and entry entities
+- `expense_categories_box` - Expense category and entry entities
+- `investment_plans_box` - Investment plan entities
+- `retirement_plan_box` - Retirement plan entities
+- `trips_box` - Travel trip entities
+- `trip_profiles_box` - Trip profile entities
+- `travelers_box` - Traveler entities
+- `itinerary_days_box` - Itinerary day entities
+- `itinerary_items_box` - Itinerary item entities
+- `journal_entries_box` - Journal entry entities
+- `photos_box` - Photo entities
+- `expenses_box` - Travel expense entities
+- `passwords_box` - Password entities (encrypted)
+- `secret_questions_box` - Secret question entities (encrypted)
 - `view_preferences_box` - UI preferences
 - `filter_preferences_box` - Filter preferences
 - `sort_preferences_box` - Sort preferences
+- `theme_preferences_box` - Theme preferences
+- `organization_preferences_box` - Organization preferences
+- `backup_preferences_box` - Backup preferences
+- `retirement_preferences_box` - Retirement planner preferences
 
 ### Key Files to Update
 1. `migration_notes.md` - This file (TypeId and schema documentation)
-2. `lib/goal_tracker/core/constants.dart` - Box name constants
-3. `lib/core/hive_initializer.dart` - Adapter registration and box opening
-4. `lib/goal_tracker/core/injection.dart` - Dependency injection wiring
+2. Module-specific `constants.dart` files - Box name constants (e.g., `lib/trackers/goal_tracker/core/constants.dart`, `lib/trackers/password_tracker/core/constants.dart`)
+3. `lib/core/hive_initializer.dart` - Central Hive initializer that discovers module initializers
+4. Module-specific `hive_initializer.dart` files - Adapter registration and box opening (e.g., `lib/trackers/password_tracker/core/hive_initializer.dart`)
+5. Module-specific `injection.dart` files - Dependency injection wiring
 
 ---
 
 **Last Updated:** 2025-01-27  
-**Version:** 2.1  
+**Version:** 3.0  
 **Maintained by:** Development Team  
 **Review Frequency:** On every schema change  
 **Next Review:** On next model addition

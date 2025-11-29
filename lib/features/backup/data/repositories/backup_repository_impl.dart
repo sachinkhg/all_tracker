@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import '../../../../trackers/goal_tracker/core/constants.dart' as goal_constants;
 import '../../../../trackers/travel_tracker/core/constants.dart' as travel_constants;
+import '../../../../trackers/password_tracker/core/constants.dart' as password_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../../core/encryption_service.dart';
@@ -33,6 +34,8 @@ import '../../../../trackers/travel_tracker/data/models/itinerary_item_model.dar
 import '../../../../trackers/travel_tracker/data/models/journal_entry_model.dart';
 import '../../../../trackers/travel_tracker/data/models/photo_model.dart';
 import '../../../../trackers/travel_tracker/data/models/expense_model.dart';
+import '../../../../trackers/password_tracker/data/models/password_model.dart';
+import '../../../../trackers/password_tracker/data/models/secret_question_model.dart';
 import '../../../../utilities/investment_planner/data/models/investment_component_model.dart';
 import '../../../../utilities/investment_planner/data/models/income_category_model.dart';
 import '../../../../utilities/investment_planner/data/models/expense_category_model.dart';
@@ -134,7 +137,7 @@ class BackupRepositoryImpl implements BackupRepository {
         'deviceId': deviceId,
         'createdAt': DateTime.now().toUtc().toIso8601String(),
         'isE2EE': (mode == BackupMode.e2ee).toString(),
-        'schemaVersion': '8',
+        'schemaVersion': '9',
         if (name != null && name.isNotEmpty) 'backupName': name,
       };
 
@@ -335,6 +338,10 @@ class BackupRepositoryImpl implements BackupRepository {
     // Retirement Planner boxes
     await Hive.box<RetirementPlanModel>(retirement_constants.retirementPlanBoxName).clear();
     await Hive.box(retirement_constants.retirementPreferencesBoxName).clear();
+    
+    // Password Tracker boxes
+    await Hive.box<PasswordModel>(password_constants.passwordBoxName).clear();
+    await Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName).clear();
     
     // App-wide preferences (will be restored if present in backup)
     await Hive.box(goal_constants.viewPreferencesBoxName).clear();
@@ -690,6 +697,45 @@ class BackupRepositoryImpl implements BackupRepository {
           updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
         );
         await investmentPlanBox.put(model.id, model);
+      }
+    }
+
+    // ========================================================================
+    // Password Tracker Data (optional - only restore if present in backup)
+    // ========================================================================
+    if (snapshot.containsKey('passwords')) {
+      final passwords = snapshot['passwords'] as List<dynamic>? ?? [];
+      final passwordBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
+      for (final p in passwords) {
+        final m = p as Map<String, dynamic>;
+        final model = PasswordModel(
+          id: m['id'] as String,
+          siteName: m['siteName'] as String,
+          url: m['url'] as String?,
+          username: m['username'] as String?,
+          encryptedPassword: m['encryptedPassword'] as String?, // Restore encrypted as-is
+          isGoogleSignIn: (m['isGoogleSignIn'] as bool?) ?? false,
+          lastUpdated: DateTime.tryParse(m['lastUpdated'] as String) ?? DateTime.now(),
+          is2FA: (m['is2FA'] as bool?) ?? false,
+          categoryGroup: m['categoryGroup'] as String?,
+          hasSecretQuestions: (m['hasSecretQuestions'] as bool?) ?? false,
+        );
+        await passwordBox.put(model.id, model);
+      }
+    }
+
+    if (snapshot.containsKey('secret_questions')) {
+      final secretQuestions = snapshot['secret_questions'] as List<dynamic>? ?? [];
+      final secretQuestionBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
+      for (final sq in secretQuestions) {
+        final m = sq as Map<String, dynamic>;
+        final model = SecretQuestionModel(
+          id: m['id'] as String,
+          passwordId: m['passwordId'] as String,
+          question: m['question'] as String,
+          encryptedAnswer: m['encryptedAnswer'] as String, // Restore encrypted as-is
+        );
+        await secretQuestionBox.put(model.id, model);
       }
     }
 

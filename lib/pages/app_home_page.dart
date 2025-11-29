@@ -8,6 +8,8 @@ import '../trackers/goal_tracker/core/app_icons.dart';
 import '../trackers/goal_tracker/presentation/pages/standalone_task_list_page.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
 import '../trackers/travel_tracker/core/app_icons.dart';
+import '../trackers/password_tracker/presentation/pages/password_list_page.dart';
+import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
 import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../widgets/app_drawer.dart';
@@ -72,6 +74,23 @@ class AppHomePage extends StatelessWidget {
           Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => const StandaloneTaskListPage(),
+            ),
+          );
+        },
+      ),
+    );
+    
+    // Password Tracker is always available
+    trackerItems.add(
+      _SectionItem(
+        title: 'Password Tracker',
+        subtitle: 'Securely store and manage your passwords',
+        icon: password_tracker.PasswordTrackerIcons.password,
+        gradient: AppGradients.primary(cs),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const PasswordListPage(),
             ),
           );
         },

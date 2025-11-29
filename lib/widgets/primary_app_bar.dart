@@ -53,16 +53,22 @@ class PrimaryAppBar extends StatelessWidget implements PreferredSizeWidget {
         ? Colors.white.withValues(alpha: 0.95)
         : Colors.black87;
 
+    // Text color should match icon color for consistency
+    final textColor = iconColor;
+
     // Use themed colors and gradient to maintain consistency across screens.
     return AppBar(
-      title: Text(title),
+      title: Text(
+        title,
+        style: TextStyle(color: textColor),
+      ),
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: AppGradients.appBar(cs),
           ),
         ),
       backgroundColor: Colors.transparent,
-      foregroundColor: cs.onPrimary,
+      foregroundColor: textColor,
       iconTheme: IconThemeData(
         color: iconColor,
         opacity: 1.0,

@@ -5,6 +5,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 
 import '../../../../trackers/goal_tracker/core/constants.dart' as goal_constants;
 import '../../../../trackers/travel_tracker/core/constants.dart' as travel_constants;
+import '../../../../trackers/password_tracker/core/constants.dart' as password_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../models/backup_manifest.dart';
@@ -21,6 +22,8 @@ import '../../../../trackers/travel_tracker/data/models/itinerary_item_model.dar
 import '../../../../trackers/travel_tracker/data/models/journal_entry_model.dart';
 import '../../../../trackers/travel_tracker/data/models/photo_model.dart';
 import '../../../../trackers/travel_tracker/data/models/expense_model.dart';
+import '../../../../trackers/password_tracker/data/models/password_model.dart';
+import '../../../../trackers/password_tracker/data/models/secret_question_model.dart';
 import '../../../../utilities/investment_planner/data/models/investment_component_model.dart';
 import '../../../../utilities/investment_planner/data/models/income_category_model.dart';
 import '../../../../utilities/investment_planner/data/models/expense_category_model.dart';
@@ -30,7 +33,7 @@ import '../../../../utilities/retirement_planner/data/models/retirement_plan_mod
 /// Service for building backup snapshots from Hive data.
 class BackupBuilderService {
   static const String _currentVersion = '1';
-  static const int _currentDbSchemaVersion = 8; // Updated to include all trackers
+  static const int _currentDbSchemaVersion = 9; // Updated to include password tracker
 
   /// Serializes a date-only field to ISO string preserving the date component.
   /// 
@@ -260,6 +263,31 @@ class BackupBuilderService {
               }).toList(),
           'createdAt': ip.createdAt.toUtc().toIso8601String(),
           'updatedAt': ip.updatedAt.toUtc().toIso8601String(),
+        }).toList();
+
+    // ========================================================================
+    // Password Tracker Data
+    // ========================================================================
+    final passwordsBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
+    snapshot['passwords'] = passwordsBox.values.map((p) => {
+          'id': p.id,
+          'siteName': p.siteName,
+          'url': p.url,
+          'username': p.username,
+          'encryptedPassword': p.encryptedPassword, // Store encrypted as-is
+          'isGoogleSignIn': p.isGoogleSignIn,
+          'lastUpdated': p.lastUpdated.toUtc().toIso8601String(),
+          'is2FA': p.is2FA,
+          'categoryGroup': p.categoryGroup,
+          'hasSecretQuestions': p.hasSecretQuestions,
+        }).toList();
+
+    final secretQuestionsBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
+    snapshot['secret_questions'] = secretQuestionsBox.values.map((sq) => {
+          'id': sq.id,
+          'passwordId': sq.passwordId,
+          'question': sq.question,
+          'encryptedAnswer': sq.encryptedAnswer, // Store encrypted as-is
         }).toList();
 
     // ========================================================================
