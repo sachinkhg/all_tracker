@@ -273,8 +273,8 @@ class _TaskCalendarViewState extends State<TaskCalendarView> {
                   title: task.name,
                   targetDate: task.targetDate,
                   status: task.status,
-                  milestoneName: widget.milestoneNameById[task.milestoneId],
-                  goalName: widget.goalNameById[task.goalId],
+                  milestoneName: task.milestoneId != null ? widget.milestoneNameById[task.milestoneId] : null,
+                  goalName: task.goalId != null ? widget.goalNameById[task.goalId] : null,
                   onEdit: () => widget.onEdit(context, task),
                   onSwipeComplete: widget.onSwipeComplete != null
                       ? () => widget.onSwipeComplete!(context, task)

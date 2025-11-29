@@ -117,8 +117,8 @@ Future<String?> exportTasksToXlsx(BuildContext context, List<Task> tasks) async 
   sheet.appendRow(header);
 
   for (final t in tasks) {
-    final mName = milestoneNameById[t.milestoneId] ?? '';
-    final gName = goalNameById[t.goalId] ?? '';
+    final mName = t.milestoneId != null ? (milestoneNameById[t.milestoneId] ?? '') : '';
+    final gName = t.goalId != null ? (goalNameById[t.goalId] ?? '') : '';
     final List<CellValue?> row = <CellValue?>[
       t.id.isEmpty ? null : TextCellValue(t.id),
       t.name.isEmpty ? null : TextCellValue(t.name),

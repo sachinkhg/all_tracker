@@ -72,6 +72,9 @@ class FilterGroupBottomSheet extends StatefulWidget {
   
   /// For itinerary: initial item type filter
   final String? initialItemType;
+  
+  /// Whether this is for standalone tasks (without milestone/goal). Only used for task entity.
+  final bool isStandalone;
 
   const FilterGroupBottomSheet({
     super.key,
@@ -89,6 +92,7 @@ class FilterGroupBottomSheet extends StatefulWidget {
     this.initialSortOrder,
     this.initialHideCompleted = true,
     this.initialItemType,
+    this.isStandalone = false,
   });
 
   @override
@@ -343,8 +347,10 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     },
                                   ),
                                 ] else if (widget.entity == FilterEntityType.task) ...[
-                                  // Task filters - Cascading dropdowns: Goal first, then Milestone
-                                  Text("Filter by Goal", style: textTheme.bodySmall),
+                                  // Task filters - Only show Goal/Milestone filters if not standalone
+                                  if (!widget.isStandalone) ...[
+                                    // Task filters - Cascading dropdowns: Goal first, then Milestone
+                                    Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
                                     value: _selectedGoalId,
@@ -462,6 +468,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     },
                                   ),
                                   const SizedBox(height: 16),
+                                  ],
                                   Text("Filter by Status", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   Wrap(

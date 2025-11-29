@@ -21,7 +21,14 @@ part 'task_model.g.dart'; // Generated via build_runner
 ///
 /// Nullable fields:
 /// - `targetDate` may be null.
+/// - `milestoneId` and `goalId` are nullable (changed from non-nullable to support standalone tasks).
+///   This change was made to support tasks that are not linked to milestones/goals.
 /// - Hive will persist `null` values safely.
+/// 
+/// Migration note:
+/// - When `milestoneId` and `goalId` were changed from non-nullable to nullable,
+///   existing data in Hive boxes remains compatible. The adapter automatically handles
+///   reading both old (non-null) and new (nullable) values.
 ///
 /// Developer Guidance:
 /// - Keep this model structural; do not add domain logic.
@@ -52,17 +59,19 @@ class TaskModel extends HiveObject {
 
   /// Reference to the parent Milestone this task belongs to.
   ///
-  /// Hive field number **3** — required; stores the Milestone's unique ID.
+  /// Hive field number **3** — nullable; stores the Milestone's unique ID.
+  /// Null for standalone tasks not linked to a milestone.
   @HiveField(3)
-  String milestoneId;
+  String? milestoneId;
 
   /// Reference to the parent Goal this task is associated with.
   ///
   /// This is derived from the milestone's goalId and should be auto-set
   /// during create/update operations. The UI should not allow direct editing.
-  /// Hive field number **4** — required; stores the Goal's unique ID.
+  /// Hive field number **4** — nullable; stores the Goal's unique ID.
+  /// Null for standalone tasks not linked to a goal/milestone.
   @HiveField(4)
-  String goalId;
+  String? goalId;
 
   /// Current status of the task.
   ///
@@ -75,8 +84,8 @@ class TaskModel extends HiveObject {
     required this.id,
     required this.name,
     this.targetDate,
-    required this.milestoneId,
-    required this.goalId,
+    this.milestoneId,
+    this.goalId,
     this.status = 'To Do',
   });
 
