@@ -1,48 +1,100 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 /// Data source for Google Sign-In authentication.
 /// 
 /// Handles OAuth flow with Google to obtain access tokens for Drive API access.
 class GoogleAuthDataSource {
   static const String _driveAppDataScope = 'https://www.googleapis.com/auth/drive.appdata';
+  static const String _signedInKey = 'google_sign_in_state';
+  static const String _userEmailKey = 'google_user_email';
+  
+  // Singleton instance to maintain state across app lifecycle
+  static GoogleAuthDataSource? _instance;
+  static GoogleAuthDataSource get instance {
+    _instance ??= GoogleAuthDataSource._internal();
+    return _instance!;
+  }
+  
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
   GoogleSignInAccount? _currentUser;
   bool _initialized = false;
   String? _cachedAccessToken; // Cache access token when we get it
-
-  GoogleAuthDataSource() {
+  StreamSubscription<GoogleSignInAuthenticationEvent>? _authEventSubscription;
+  
+  // Private constructor for singleton
+  GoogleAuthDataSource._internal() {
     _initialize();
   }
+  
+  // Public factory constructor - returns singleton instance
+  factory GoogleAuthDataSource() => instance;
 
   Future<void> _initialize() async {
     if (_initialized) return;
     
-    // Initialize GoogleSignIn instance
-    await GoogleSignIn.instance.initialize();
-    
-    // Listen to authentication events to track current user
-    // This will fire events when user signs in/out, including existing sessions
-    GoogleSignIn.instance.authenticationEvents.listen(
+    // Set up authentication event listener BEFORE initialization
+    // This ensures we catch events that fire during initialization
+    _authEventSubscription?.cancel();
+    _authEventSubscription = GoogleSignIn.instance.authenticationEvents.listen(
       (event) {
         _currentUser = switch (event) {
           GoogleSignInAuthenticationEventSignIn() => event.user,
           GoogleSignInAuthenticationEventSignOut() => null,
         };
-        // Clear cached token on sign out
-        if (_currentUser == null) {
+        // Update secure storage based on sign-in state
+        if (_currentUser != null) {
+          _secureStorage.write(key: _signedInKey, value: 'true');
+          _secureStorage.write(key: _userEmailKey, value: _currentUser!.email);
+          debugPrint('Authentication event: User signed in - ${_currentUser!.email}');
+        } else {
+          _secureStorage.delete(key: _signedInKey);
+          _secureStorage.delete(key: _userEmailKey);
           _cachedAccessToken = null;
+          debugPrint('Authentication event: User signed out');
         }
       },
     );
     
-    // Wait for authentication events to fire if user is already signed in
-    // In v7, authentication events automatically fire for existing sessions on initialization
-    // Give events time to populate _currentUser
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Initialize GoogleSignIn instance
+    // This may trigger authentication events for existing sessions
+    await GoogleSignIn.instance.initialize();
+    
+    // Check if user was previously signed in (from secure storage)
+    final wasSignedIn = await _secureStorage.read(key: _signedInKey) == 'true';
+    final storedEmail = await _secureStorage.read(key: _userEmailKey);
+    
+    if (wasSignedIn && storedEmail != null) {
+      debugPrint('User was previously signed in ($storedEmail), waiting for authentication events...');
+      
+      // Wait longer for authentication events to fire after initialization
+      // Events should fire automatically for existing sessions, but may take time
+      for (int i = 0; i < 10 && _currentUser == null; i++) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_currentUser != null) {
+          debugPrint('Session restored via authentication events: ${_currentUser!.email}');
+          break;
+        }
+      }
+      
+      // If still no user after waiting, the session may have expired
+      // But don't clear the state yet - let the user try to use the app
+      // The state will be cleared if they explicitly sign out or if authentication fails
+      if (_currentUser == null) {
+        debugPrint('No authentication events received for previously signed-in user ($storedEmail)');
+        debugPrint('Session may have expired. User will need to sign in again when accessing protected features.');
+      }
+    } else {
+      // Still wait a bit for events, but not as long
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
     
     _initialized = true;
   }
+
 
   /// Initiate the OAuth sign-in flow.
   /// 
@@ -57,15 +109,20 @@ class GoogleAuthDataSource {
           scopeHint: [_driveAppDataScope],
         );
         
-        // After authenticate(), check if we have a user
-        // The authentication events listener should have updated _currentUser,
-        // but if not, wait a moment and check again, or check directly
+        // After authenticate(), wait for authentication events to fire
+        // The authentication events listener should have updated _currentUser
         if (_currentUser == null) {
-          // Give the event listener a moment to process
-          await Future.delayed(const Duration(milliseconds: 100));
+          // Give the event listener time to process
+          await Future.delayed(const Duration(milliseconds: 500));
         }
         
         // If still null, user might have cancelled or sign-in failed
+        if (_currentUser != null) {
+          debugPrint('Sign-in successful: ${_currentUser!.email}');
+          // Store sign-in state in secure storage (already done by event listener, but ensure it's set)
+          await _secureStorage.write(key: _signedInKey, value: 'true');
+          await _secureStorage.write(key: _userEmailKey, value: _currentUser!.email);
+        }
         return _currentUser != null;
       } else {
         debugPrint('This platform requires platform-specific sign-in UI');
@@ -95,6 +152,9 @@ class GoogleAuthDataSource {
     await GoogleSignIn.instance.signOut();
     _currentUser = null;
     _cachedAccessToken = null; // Clear cached token
+    // Clear sign-in state from secure storage
+    await _secureStorage.delete(key: _signedInKey);
+    await _secureStorage.delete(key: _userEmailKey);
   }
 
   /// Get the current access token for Drive API calls.
@@ -198,30 +258,48 @@ class GoogleAuthDataSource {
   /// This will check for existing sessions and update _currentUser.
   /// 
   /// In Google Sign-In v7, we rely on authentication events to detect existing sessions.
-  /// Events should fire automatically when a user is already signed in during initialization.
   Future<bool> isSignedIn() async {
     await _initialize();
     
     // Check if we have a cached user from authentication events
-    // Authentication events should fire automatically for existing sessions
     if (_currentUser != null) {
-      debugPrint('User found from cached state');
+      debugPrint('User found from cached state: ${_currentUser!.email}');
       return true;
     }
     
-    // Wait for authentication events to fire (they should fire for existing sessions)
-    // In v7, events are the primary way to detect existing authentication
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Check if user was previously signed in (from secure storage)
+    final wasSignedIn = await _secureStorage.read(key: _signedInKey) == 'true';
+    final storedEmail = await _secureStorage.read(key: _userEmailKey);
     
-    // Check again after waiting for events
-    if (_currentUser != null) {
-      debugPrint('User found after waiting for authentication events');
-      return true;
+    if (wasSignedIn && storedEmail != null) {
+      debugPrint('User was previously signed in ($storedEmail), waiting for authentication events...');
+      
+      // Wait longer for authentication events to fire
+      for (int i = 0; i < 10 && _currentUser == null; i++) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_currentUser != null) {
+          debugPrint('User found after waiting: ${_currentUser!.email}');
+          return true;
+        }
+      }
+    } else {
+      // Wait a bit for authentication events to fire
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (_currentUser != null) {
+        debugPrint('User found after waiting: ${_currentUser!.email}');
+        return true;
+      }
     }
     
-    // No user found - user is not signed in or events haven't fired yet
-    // Authentication events should fire for existing sessions, so if we don't have
-    // a user after waiting, they're likely not signed in
+    // If we expected a user but didn't find one, clear the state
+    if (wasSignedIn && _currentUser == null) {
+      debugPrint('User was marked as signed in but no user found, clearing state');
+      await _secureStorage.delete(key: _signedInKey);
+      await _secureStorage.delete(key: _userEmailKey);
+    }
+    
+    // No user found - user is not signed in
     debugPrint('No user found - user not signed in');
     return false;
   }
@@ -238,10 +316,39 @@ class GoogleAuthDataSource {
       return _currentUser;
     }
     
-    // If no cached user, wait a bit for authentication events to fire
-    await Future.delayed(const Duration(milliseconds: 300));
+    // Check if user was previously signed in (from secure storage)
+    final wasSignedIn = await _secureStorage.read(key: _signedInKey) == 'true';
+    final storedEmail = await _secureStorage.read(key: _userEmailKey);
     
-    // Return the user if events have populated it
+    if (wasSignedIn && storedEmail != null) {
+      debugPrint('User was previously signed in ($storedEmail), waiting for authentication events...');
+      
+      // Wait longer for authentication events to fire
+      for (int i = 0; i < 10 && _currentUser == null; i++) {
+        await Future.delayed(const Duration(milliseconds: 200));
+        if (_currentUser != null) {
+          break;
+        }
+      }
+    } else {
+      // Wait a bit for authentication events to fire
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    
+    // If we expected a user but didn't find one, clear the state
+    if (wasSignedIn && _currentUser == null) {
+      debugPrint('User was marked as signed in but no user found, clearing state');
+      await _secureStorage.delete(key: _signedInKey);
+      await _secureStorage.delete(key: _userEmailKey);
+    }
+    
+    // Return the user if found
     return _currentUser;
   }
+  
+  /// Dispose resources
+  void dispose() {
+    _authEventSubscription?.cancel();
+  }
 }
+
