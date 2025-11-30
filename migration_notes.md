@@ -32,6 +32,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **21** | TravelerModel | `travelers_box` | Active | 2025-01-27 | Traveler entity |
 | **22** | PasswordModel | `passwords_box` | Active | 2025-01-27 | Password entity (encrypted) |
 | **23** | SecretQuestionModel | `secret_questions_box` | Active | 2025-01-27 | Secret question entity (encrypted) |
+| **24** | ExpenseModel | `expenses_tracker_box` | Active | 2025-01-27 | Expense entity for expense tracker |
 
 ---
 
@@ -60,6 +61,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `expenses_box`              | Travel expense entities           | ExpenseModel | Active | Travel expense storage |
 | `passwords_box`             | Password entities (encrypted)     | PasswordModel | Active | Password storage with encryption |
 | `secret_questions_box`      | Secret question entities (encrypted) | SecretQuestionModel | Active | Secret question storage with encryption |
+| `expenses_tracker_box`      | Expense entities                  | ExpenseModel | Active | Expense tracker storage |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
