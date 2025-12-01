@@ -19,7 +19,7 @@ import '../presentation/cubit/auth_cubit.dart';
 /// - Ensures proper initialization order and dependency resolution
 ///
 /// Notes:
-/// - Creates its own instance of GoogleAuthDataSource (stateless, safe to instantiate multiple times)
+/// - Uses singleton instance of GoogleAuthDataSource to maintain state across app lifecycle
 /// - Wires up the complete auth feature dependency graph:
 ///   Data source → Repository → Use cases → Cubit
 /// ---------------------------------------------------------------------------

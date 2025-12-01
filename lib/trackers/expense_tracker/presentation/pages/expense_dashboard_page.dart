@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -204,12 +205,17 @@ class _ExpenseDashboardContent extends StatefulWidget {
 }
 
 class _ExpenseDashboardContentState extends State<_ExpenseDashboardContent> {
+  double? _currentMonthNetBalance;
+  double? _lastMonthNetBalance;
+  double? _average3MonthsNetBalance;
+
   @override
   void initState() {
     super.initState();
     // Load insights when widget is first created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadInsights();
+      _loadNetBalances();
     });
   }
 
@@ -221,6 +227,7 @@ class _ExpenseDashboardContentState extends State<_ExpenseDashboardContent> {
         oldWidget.startDate != widget.startDate ||
         oldWidget.endDate != widget.endDate) {
       _loadInsights();
+      _loadNetBalances();
     }
   }
 
@@ -230,6 +237,66 @@ class _ExpenseDashboardContentState extends State<_ExpenseDashboardContent> {
           start: widget.startDate,
           end: widget.endDate,
         );
+  }
+
+  Future<void> _loadNetBalances() async {
+    try {
+      final cubit = context.read<ExpenseInsightsCubit>();
+      final now = DateTime.now();
+
+      // Current month
+      final currentMonthStart = DateTime(now.year, now.month, 1);
+      final currentMonthEnd = DateTime(now.year, now.month + 1, 0);
+      final currentMonthInsights = await cubit.getInsights.call(
+        widget.selectedGroup,
+        currentMonthStart,
+        currentMonthEnd,
+      );
+
+      // Last month
+      final lastMonthStart = DateTime(now.year, now.month - 1, 1);
+      final lastMonthEnd = DateTime(now.year, now.month, 0);
+      final lastMonthInsights = await cubit.getInsights.call(
+        widget.selectedGroup,
+        lastMonthStart,
+        lastMonthEnd,
+      );
+
+      // Calculate average of last 3 months (month -1, month -2, month -3)
+      double totalNetBalance = lastMonthInsights.netBalance;
+      
+      // Month -2
+      final month2Start = DateTime(now.year, now.month - 2, 1);
+      final month2End = DateTime(now.year, now.month - 1, 0);
+      final month2Insights = await cubit.getInsights.call(
+        widget.selectedGroup,
+        month2Start,
+        month2End,
+      );
+      totalNetBalance += month2Insights.netBalance;
+      
+      // Month -3
+      final month3Start = DateTime(now.year, now.month - 3, 1);
+      final month3End = DateTime(now.year, now.month - 2, 0);
+      final month3Insights = await cubit.getInsights.call(
+        widget.selectedGroup,
+        month3Start,
+        month3End,
+      );
+      totalNetBalance += month3Insights.netBalance;
+
+      if (mounted) {
+        setState(() {
+          _currentMonthNetBalance = currentMonthInsights.netBalance;
+          _lastMonthNetBalance = lastMonthInsights.netBalance;
+          // Average of last 3 months (month -1, -2, -3)
+          _average3MonthsNetBalance = totalNetBalance / 3;
+        });
+      }
+    } catch (e) {
+      // Handle error silently or show a message
+      debugPrint('Error loading net balances: $e');
+    }
   }
 
 
@@ -251,6 +318,7 @@ class _ExpenseDashboardContentState extends State<_ExpenseDashboardContent> {
       body: RefreshIndicator(
           onRefresh: () async {
             _loadInsights();
+            _loadNetBalances();
             context.read<ExpenseCubit>().loadExpenses();
           },
           child: SingleChildScrollView(
@@ -303,13 +371,47 @@ class _ExpenseDashboardContentState extends State<_ExpenseDashboardContent> {
                             ],
                           ),
                           const SizedBox(height: AppSpacing.s),
-                          ExpenseInsightsCard(
-                            title: 'Net Balance',
-                            value: insights.netBalance.abs(),
-                            icon: Icons.account_balance,
-                            color: insights.netBalance >= 0
-                                ? cs.tertiaryContainer
-                                : cs.errorContainer,
+                          // Net Balance sections
+                          Text(
+                            'Net Balance',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: AppSpacing.s),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ExpenseInsightsCard(
+                                  title: 'Current Month',
+                                  value: _currentMonthNetBalance?.abs() ?? 0.0,
+                                  icon: Icons.calendar_month,
+                                  color: (_currentMonthNetBalance ?? 0) >= 0
+                                      ? cs.tertiaryContainer
+                                      : cs.errorContainer,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.s),
+                              Expanded(
+                                child: ExpenseInsightsCard(
+                                  title: 'Last Month',
+                                  value: _lastMonthNetBalance?.abs() ?? 0.0,
+                                  icon: Icons.calendar_today,
+                                  color: (_lastMonthNetBalance ?? 0) >= 0
+                                      ? cs.tertiaryContainer
+                                      : cs.errorContainer,
+                                ),
+                              ),
+                              const SizedBox(width: AppSpacing.s),
+                              Expanded(
+                                child: ExpenseInsightsCard(
+                                  title: 'Avg 3 Months',
+                                  value: _average3MonthsNetBalance?.abs() ?? 0.0,
+                                  icon: Icons.trending_up,
+                                  color: (_average3MonthsNetBalance ?? 0) >= 0
+                                      ? cs.tertiaryContainer
+                                      : cs.errorContainer,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: AppSpacing.m),
                           // Group breakdown

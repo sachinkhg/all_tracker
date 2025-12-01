@@ -19,7 +19,7 @@ class ExpenseInsightsCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final amountFormat = NumberFormat('#,##0.00');
+    final amountFormat = NumberFormat('#,##0'); // No decimals
     final cardColor = color ?? cs.primaryContainer;
     final textColor = color != null 
         ? (color!.computeLuminance() > 0.5 ? Colors.black87 : Colors.white)
@@ -41,24 +41,35 @@ class ExpenseInsightsCard extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: textColor, size: 20),
+                Icon(icon, color: textColor, size: 16),
                 const SizedBox(width: AppSpacing.s),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: textColor,
-                      ),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: textColor,
+                          fontSize: 11,
+                        ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: AppSpacing.s),
-            Text(
-              amountFormat.format(value),
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: textColor,
-                    fontWeight: FontWeight.bold,
-                  ),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                amountFormat.format(value),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                maxLines: 1,
+              ),
             ),
           ],
         ),
