@@ -41,7 +41,22 @@ class InvestmentPlanLocalDataSourceImpl
 
   @override
   Future<List<InvestmentPlanModel>> getAllPlans() async {
-    return box.values.toList();
+    // Safely read all plans, filtering out any that can't be deserialized
+    // This handles migration from old format (with duration/period) to new format
+    final plans = <InvestmentPlanModel>[];
+    for (final key in box.keys) {
+      try {
+        final plan = box.get(key);
+        if (plan != null) {
+          plans.add(plan);
+        }
+      } catch (e) {
+        // Skip corrupted entries that can't be read
+        // This prevents the entire operation from failing
+        continue;
+      }
+    }
+    return plans;
   }
 
   @override

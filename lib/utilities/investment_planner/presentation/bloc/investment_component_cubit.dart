@@ -41,6 +41,7 @@ class InvestmentComponentCubit extends Cubit<InvestmentComponentState> {
     int priority, {
     double? minLimit,
     double? maxLimit,
+    double? multipleOf,
   }) async {
     try {
       final component = InvestmentComponent(
@@ -49,6 +50,7 @@ class InvestmentComponentCubit extends Cubit<InvestmentComponentState> {
         percentage: percentage,
         minLimit: minLimit,
         maxLimit: maxLimit,
+        multipleOf: multipleOf,
         priority: priority,
       );
       await create(component);

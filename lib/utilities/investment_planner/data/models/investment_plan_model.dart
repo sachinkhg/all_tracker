@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import '../../domain/entities/investment_plan.dart';
+import '../../domain/entities/plan_status.dart';
 import 'income_entry_model.dart';
 import 'expense_entry_model.dart';
 import 'component_allocation_model.dart';
@@ -27,6 +28,9 @@ class InvestmentPlanModel extends HiveObject {
   @HiveField(3)
   String period;
 
+  @HiveField(9)
+  String status;
+
   @HiveField(4)
   List<IncomeEntryModel> incomeEntries;
 
@@ -47,12 +51,13 @@ class InvestmentPlanModel extends HiveObject {
     required this.name,
     required this.duration,
     required this.period,
+    String? status,
     required this.incomeEntries,
     required this.expenseEntries,
     required this.allocations,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : status = status ?? PlanStatus.draft.toJson();
 
   factory InvestmentPlanModel.fromEntity(InvestmentPlan plan) =>
       InvestmentPlanModel(
@@ -60,6 +65,7 @@ class InvestmentPlanModel extends HiveObject {
         name: plan.name,
         duration: plan.duration,
         period: plan.period,
+        status: plan.status.toJson(),
         incomeEntries: plan.incomeEntries
             .map((e) => IncomeEntryModel.fromEntity(e))
             .toList(),
@@ -76,13 +82,20 @@ class InvestmentPlanModel extends HiveObject {
   InvestmentPlan toEntity() => InvestmentPlan(
         id: id,
         name: name,
-        duration: duration,
-        period: period,
+        duration: duration.isNotEmpty ? duration : 'Monthly',
+        period: period.isNotEmpty ? period : _formatPeriod(createdAt),
+        status: PlanStatus.fromJson(status),
         incomeEntries: incomeEntries.map((e) => e.toEntity()).toList(),
         expenseEntries: expenseEntries.map((e) => e.toEntity()).toList(),
         allocations: allocations.map((a) => a.toEntity()).toList(),
         createdAt: createdAt,
         updatedAt: updatedAt,
       );
+  
+  // Helper method to format period from date
+  String _formatPeriod(DateTime date) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[date.month - 1]} ${date.year}';
+  }
 }
 

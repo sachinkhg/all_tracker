@@ -51,6 +51,11 @@ class InvestmentComponent extends Equatable {
   /// If specified, caps the allocation at this amount.
   final double? maxLimit;
 
+  /// Optional multiple of value for rounding.
+  ///
+  /// If specified, the allocated amount will be rounded to the nearest multiple of this value.
+  final double? multipleOf;
+
   /// Priority order (lower number = higher priority).
   ///
   /// Components with lower priority numbers are allocated first.
@@ -63,6 +68,7 @@ class InvestmentComponent extends Equatable {
     required this.percentage,
     this.minLimit,
     this.maxLimit,
+    this.multipleOf,
     required this.priority,
   });
 
@@ -73,6 +79,7 @@ class InvestmentComponent extends Equatable {
     double? percentage,
     double? minLimit,
     double? maxLimit,
+    double? multipleOf,
     int? priority,
   }) {
     return InvestmentComponent(
@@ -81,11 +88,12 @@ class InvestmentComponent extends Equatable {
       percentage: percentage ?? this.percentage,
       minLimit: minLimit ?? this.minLimit,
       maxLimit: maxLimit ?? this.maxLimit,
+      multipleOf: multipleOf ?? this.multipleOf,
       priority: priority ?? this.priority,
     );
   }
 
   @override
-  List<Object?> get props => [id, name, percentage, minLimit, maxLimit, priority];
+  List<Object?> get props => [id, name, percentage, minLimit, maxLimit, multipleOf, priority];
 }
 

@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/design_tokens.dart';
 import '../../core/injection.dart';
-import '../../core/constants.dart';
 import '../bloc/investment_plan_cubit.dart';
 import '../bloc/income_category_cubit.dart';
 import '../bloc/income_category_state.dart';
@@ -52,8 +51,6 @@ class _PlanCreateEditPageView extends StatefulWidget {
 class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
   final _formKey = GlobalKey<FormState>();
   late String _name;
-  late String _duration;
-  late String _period;
   final List<IncomeEntry> _incomeEntries = [];
   final List<ExpenseEntry> _expenseEntries = [];
 
@@ -62,14 +59,10 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
     super.initState();
     if (widget.plan != null) {
       _name = widget.plan!.name;
-      _duration = widget.plan!.duration;
-      _period = widget.plan!.period;
       _incomeEntries.addAll(widget.plan!.incomeEntries);
       _expenseEntries.addAll(widget.plan!.expenseEntries);
     } else {
       _name = '';
-      _duration = durationOptions[0];
-      _period = DateFormat('MMM yyyy').format(DateTime.now());
     }
   }
 
@@ -114,23 +107,6 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
                       value?.isEmpty ?? true ? 'Please enter a name' : null,
                   onSaved: (value) => _name = value ?? '',
                 ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _duration,
-                  decoration: const InputDecoration(labelText: 'Duration'),
-                  items: durationOptions
-                      .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _duration = value!),
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  initialValue: _period,
-                  decoration: const InputDecoration(labelText: 'Period (e.g., Nov 2025)'),
-                  validator: (value) =>
-                      value?.isEmpty ?? true ? 'Please enter a period' : null,
-                  onSaved: (value) => _period = value ?? '',
-                ),
                 const SizedBox(height: 24),
                 const Text('Income Entries', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -166,8 +142,6 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
       _formKey.currentState!.save();
       final savedPlan = await context.read<InvestmentPlanCubit>().savePlan(
             name: _name,
-            duration: _duration,
-            period: _period,
             incomeEntries: _incomeEntries,
             expenseEntries: _expenseEntries,
             planId: widget.plan?.id,

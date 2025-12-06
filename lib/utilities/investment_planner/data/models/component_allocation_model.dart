@@ -18,20 +18,32 @@ class ComponentAllocationModel extends HiveObject {
   @HiveField(1)
   double allocatedAmount;
 
+  @HiveField(2)
+  double? actualAmount;
+
+  @HiveField(3)
+  bool isCompleted;
+
   ComponentAllocationModel({
     required this.componentId,
     required this.allocatedAmount,
+    this.actualAmount,
+    this.isCompleted = false,
   });
 
   factory ComponentAllocationModel.fromEntity(ComponentAllocation allocation) =>
       ComponentAllocationModel(
         componentId: allocation.componentId,
         allocatedAmount: allocation.allocatedAmount,
+        actualAmount: allocation.actualAmount,
+        isCompleted: allocation.isCompleted,
       );
 
   ComponentAllocation toEntity() => ComponentAllocation(
         componentId: componentId,
         allocatedAmount: allocatedAmount,
+        actualAmount: actualAmount,
+        isCompleted: isCompleted,
       );
 }
 

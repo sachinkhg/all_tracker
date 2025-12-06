@@ -300,6 +300,36 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 
 ---
 
+## 📦 Model: ComponentAllocationModel (TypeId: 12)
+
+### Schema Version: 2.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name        | Type     | Nullable | Default | Notes                                           |
+|--------------|-------------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `componentId`     | String   | No       | -       | Reference to the investment component ID        |
+| 1            | `allocatedAmount` | double   | No       | -       | Planned allocation amount for this component    |
+| 2            | `actualAmount`    | double   | Yes      | null    | Actual investment amount (nullable)             |
+| 3            | `isCompleted`     | bool     | No       | false   | Whether this allocation has been completed       |
+
+**Business Rules:**
+- `allocatedAmount` represents the planned investment amount calculated based on component priority, percentage, and limits.
+- `actualAmount` can only be set when the parent plan status is `approved` or `executed`.
+- `isCompleted` is a visual indicator and does not affect plan status.
+- Variance is calculated as `allocatedAmount - actualAmount` (positive = under-invested, negative = over-invested).
+
+**Migration History:**
+- v1.0 (2025-01-27): Initial schema with 2 fields (componentId, allocatedAmount).
+- v2.0 (2025-01-28): Added fields 2-3 (actualAmount, isCompleted) for actual investment tracking.
+
+**Notes:**
+- Fields 2-3 are nullable/defaulted to ensure backward compatibility with existing data.
+- Old allocations (without fields 2-3) will be read with `actualAmount = null` and `isCompleted = false`.
+- The generated Hive adapter automatically handles missing fields in existing data.
+
+---
+
 ## 🔄 Migration Procedures
 
 ### Adding a New Field to an Existing Model

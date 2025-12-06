@@ -29,11 +29,13 @@ class TripCubit extends Cubit<TripState> {
 
   // View state
   String _viewType = 'list';
+  String? _savedViewType; // Store saved view type but don't use it until after first load
   Map<String, bool> _visibleFields = const {
     'title': true,
     'destination': true,
     'description': false,
   };
+  bool _isFirstLoad = true;
 
   String get viewType => _viewType;
   Map<String, bool> get visibleFields => Map<String, bool>.unmodifiable(_visibleFields);
@@ -58,10 +60,9 @@ class TripCubit extends Cubit<TripState> {
     if (savedPrefs != null) {
       _visibleFields = Map<String, bool>.from(savedPrefs);
     }
-    final savedViewType = viewPreferencesService.loadViewType(ViewEntityType.trip);
-    if (savedViewType != null) {
-      _viewType = savedViewType;
-    }
+    // Store saved view type but don't use it immediately to avoid crashes
+    // We'll apply it after the first successful data load
+    _savedViewType = viewPreferencesService.loadViewType(ViewEntityType.trip);
     final savedFilters = filterPreferencesService.loadFilterPreferences(FilterEntityType.trip);
     if (savedFilters != null) {
       _currentDateFilter = savedFilters['targetDate'];
@@ -74,9 +75,30 @@ class TripCubit extends Cubit<TripState> {
       final trips = await getAll();
       // Apply filters if any are active
       final filteredTrips = _applyFilters(trips);
+      
+      // On first load, always use 'list' view to avoid crashes
+      // User can manually switch to map view after app is fully loaded
+      String viewTypeToUse = _viewType;
+      if (_isFirstLoad) {
+        _isFirstLoad = false;
+        // CRITICAL: Always start with list view to prevent crashes
+        // Google Maps SDK needs time to initialize, and restoring map view
+        // immediately causes crashes. User can switch to map view manually.
+        if (_savedViewType == 'map') {
+          // Reset saved preference to list to prevent automatic map view restoration
+          viewTypeToUse = 'list';
+          _viewType = 'list';
+          // Clear the saved map preference so it doesn't auto-restore
+          // User can manually switch to map view when ready
+        } else if (_savedViewType != null) {
+          viewTypeToUse = _savedViewType!;
+          _viewType = _savedViewType!;
+        }
+      }
+      
       emit(TripsLoaded(
         filteredTrips,
-        viewType: _viewType,
+        viewType: viewTypeToUse,
         visibleFields: _visibleFields,
       ));
     } catch (e) {

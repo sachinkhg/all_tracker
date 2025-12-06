@@ -382,7 +382,7 @@ class _BackupSettingsContent extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Restore Backup?'),
-        content: Text('This will replace all current data with the backup "${backupDisplayName}" from ${backup.createdAt.toString().split(' ').first}'),
+        content: Text('This will replace all current data with the backup "$backupDisplayName" from ${backup.createdAt.toString().split(' ').first}'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),

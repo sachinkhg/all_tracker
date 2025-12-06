@@ -21,6 +21,7 @@ class InvestmentPlanModelAdapter extends TypeAdapter<InvestmentPlanModel> {
       name: fields[1] as String,
       duration: fields[2] as String,
       period: fields[3] as String,
+      status: fields[9] as String?,
       incomeEntries: (fields[4] as List).cast<IncomeEntryModel>(),
       expenseEntries: (fields[5] as List).cast<ExpenseEntryModel>(),
       allocations: (fields[6] as List).cast<ComponentAllocationModel>(),
@@ -32,7 +33,7 @@ class InvestmentPlanModelAdapter extends TypeAdapter<InvestmentPlanModel> {
   @override
   void write(BinaryWriter writer, InvestmentPlanModel obj) {
     writer
-      ..writeByte(9)
+      ..writeByte(10)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -41,6 +42,8 @@ class InvestmentPlanModelAdapter extends TypeAdapter<InvestmentPlanModel> {
       ..write(obj.duration)
       ..writeByte(3)
       ..write(obj.period)
+      ..writeByte(9)
+      ..write(obj.status)
       ..writeByte(4)
       ..write(obj.incomeEntries)
       ..writeByte(5)

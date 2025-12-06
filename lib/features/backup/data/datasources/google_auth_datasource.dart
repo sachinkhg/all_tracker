@@ -20,6 +20,10 @@ class GoogleAuthDataSource {
   
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
+  // Use GoogleSignIn.instance - client ID should be read from Info.plist
+  // For iOS, GIDClientID must be set in Info.plist
+  GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
+  
   GoogleSignInAccount? _currentUser;
   bool _initialized = false;
   String? _cachedAccessToken; // Cache access token when we get it
@@ -39,7 +43,7 @@ class GoogleAuthDataSource {
     // Set up authentication event listener BEFORE initialization
     // This ensures we catch events that fire during initialization
     _authEventSubscription?.cancel();
-    _authEventSubscription = GoogleSignIn.instance.authenticationEvents.listen(
+    _authEventSubscription = _googleSignIn.authenticationEvents.listen(
       (event) {
         _currentUser = switch (event) {
           GoogleSignInAuthenticationEventSignIn() => event.user,
@@ -61,7 +65,7 @@ class GoogleAuthDataSource {
     
     // Initialize GoogleSignIn instance
     // This may trigger authentication events for existing sessions
-    await GoogleSignIn.instance.initialize();
+    await _googleSignIn.initialize();
     
     // Check if user was previously signed in (from secure storage)
     final wasSignedIn = await _secureStorage.read(key: _signedInKey) == 'true';
@@ -104,8 +108,8 @@ class GoogleAuthDataSource {
     try {
       await _initialize();
       
-      if (GoogleSignIn.instance.supportsAuthenticate()) {
-        await GoogleSignIn.instance.authenticate(
+      if (_googleSignIn.supportsAuthenticate()) {
+        await _googleSignIn.authenticate(
           scopeHint: [_driveAppDataScope],
         );
         
@@ -149,7 +153,7 @@ class GoogleAuthDataSource {
 
   /// Sign out from Google.
   Future<void> signOut() async {
-    await GoogleSignIn.instance.signOut();
+    await _googleSignIn.signOut();
     _currentUser = null;
     _cachedAccessToken = null; // Clear cached token
     // Clear sign-in state from secure storage
@@ -218,8 +222,8 @@ class GoogleAuthDataSource {
       // This might be needed if authorization wasn't granted during initial sign-in
       debugPrint('Attempting to re-authenticate with Drive scopes to get access token...');
       try {
-        if (GoogleSignIn.instance.supportsAuthenticate()) {
-          await GoogleSignIn.instance.authenticate(
+        if (_googleSignIn.supportsAuthenticate()) {
+          await _googleSignIn.authenticate(
             scopeHint: [_driveAppDataScope],
           );
           // After re-authenticating, try getting token again

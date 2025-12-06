@@ -32,6 +32,9 @@ class InvestmentComponentModel extends HiveObject {
   double? maxLimit;
 
   @HiveField(5)
+  double? multipleOf;
+
+  @HiveField(6)
   int priority;
 
   InvestmentComponentModel({
@@ -40,6 +43,7 @@ class InvestmentComponentModel extends HiveObject {
     required this.percentage,
     this.minLimit,
     this.maxLimit,
+    this.multipleOf,
     required this.priority,
   });
 
@@ -50,6 +54,7 @@ class InvestmentComponentModel extends HiveObject {
         percentage: component.percentage,
         minLimit: component.minLimit,
         maxLimit: component.maxLimit,
+        multipleOf: component.multipleOf,
         priority: component.priority,
       );
 
@@ -59,6 +64,7 @@ class InvestmentComponentModel extends HiveObject {
         percentage: percentage,
         minLimit: minLimit,
         maxLimit: maxLimit,
+        multipleOf: multipleOf,
         priority: priority,
       );
 }

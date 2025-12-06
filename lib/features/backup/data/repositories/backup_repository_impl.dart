@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import '../../../../trackers/goal_tracker/core/constants.dart' as goal_constants;
 import '../../../../trackers/travel_tracker/core/constants.dart' as travel_constants;
 import '../../../../trackers/password_tracker/core/constants.dart' as password_constants;
+import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tracker_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../../core/encryption_service.dart';
@@ -33,7 +34,8 @@ import '../../../../trackers/travel_tracker/data/models/itinerary_day_model.dart
 import '../../../../trackers/travel_tracker/data/models/itinerary_item_model.dart';
 import '../../../../trackers/travel_tracker/data/models/journal_entry_model.dart';
 import '../../../../trackers/travel_tracker/data/models/photo_model.dart';
-import '../../../../trackers/travel_tracker/data/models/expense_model.dart';
+import '../../../../trackers/travel_tracker/data/models/expense_model.dart' as travel_expense;
+import '../../../../trackers/expense_tracker/data/models/expense_model.dart' as expense_tracker_expense;
 import '../../../../trackers/password_tracker/data/models/password_model.dart';
 import '../../../../trackers/password_tracker/data/models/secret_question_model.dart';
 import '../../../../utilities/investment_planner/data/models/investment_component_model.dart';
@@ -203,14 +205,14 @@ class BackupRepositoryImpl implements BackupRepository {
 
   BackupMetadataModel _createMetadataFromDriveFile(Map<String, dynamic> file) {
     return BackupMetadataModel(
-      id: file['id'] as String,
-      fileName: file['name'] as String? ?? 'unknown',
-      createdAt: _parseDriveDate(file['createdTime'] as String?),
-      deviceId: file['appProperties']?['deviceId'] as String? ?? 'unknown',
-      sizeBytes: int.tryParse(file['size'] as String? ?? '0') ?? 0,
-      isE2EE: file['appProperties']?['isE2EE'] == 'true',
+      id: _safeString(file, 'id', ''),
+      fileName: _safeStringNullable(file, 'name') ?? 'unknown',
+      createdAt: _parseDriveDate(_safeStringNullable(file, 'createdTime')),
+      deviceId: (file['appProperties'] as Map<String, dynamic>?)?['deviceId'] as String? ?? 'unknown',
+      sizeBytes: int.tryParse(_safeStringNullable(file, 'size') ?? '0') ?? 0,
+      isE2EE: (file['appProperties'] as Map<String, dynamic>?)?['isE2EE'] == 'true',
       deviceDescription: null,
-      name: file['appProperties']?['backupName'] as String?,
+      name: (file['appProperties'] as Map<String, dynamic>?)?['backupName'] as String?,
     );
   }
 
@@ -247,10 +249,22 @@ class BackupRepositoryImpl implements BackupRepository {
           ? await _derivePassphraseKey(backupJson, passphrase)
           : await _encryptionService.generateDeviceKey();
 
+      final manifestMap = backupJson['manifest'] as Map<String, dynamic>?;
+      final encryptionMap = manifestMap?['encryption'] as Map<String, dynamic>?;
+      
+      // Validate required encryption fields
+      final iv = encryptionMap != null ? _safeStringNullable(encryptionMap, 'iv') : null;
+      final ciphertext = _safeStringNullable(backupJson, 'ciphertext');
+      final mac = _safeStringNullable(backupJson, 'mac');
+      
+      if (iv == null || iv.isEmpty || ciphertext == null || ciphertext.isEmpty || mac == null || mac.isEmpty) {
+        throw Exception('Invalid backup format: missing encryption data');
+      }
+      
       final encryptionResult = {
-        'iv': backupJson['manifest']['encryption']['iv'] as String,
-        'ciphertext': backupJson['ciphertext'] as String,
-        'mac': backupJson['mac'] as String,
+        'iv': iv,
+        'ciphertext': ciphertext,
+        'mac': mac,
       };
 
       final decryptedData = await _encryptionService.decryptData(encryptionResult, key);
@@ -259,6 +273,28 @@ class BackupRepositoryImpl implements BackupRepository {
 
       // Parse snapshot - if this fails, don't clear boxes
       final snapshot = jsonDecode(utf8.decode(decryptedData)) as Map<String, dynamic>;
+      
+      print('[RESTORE] Snapshot parsed successfully');
+      print('[RESTORE] Snapshot version: ${snapshot['version']}');
+      print('[RESTORE] Snapshot dbSchemaVersion: ${snapshot['dbSchemaVersion']}');
+      print('[RESTORE] Snapshot createdAt: ${snapshot['createdAt']}');
+      print('[RESTORE] Snapshot contains keys: ${snapshot.keys.toList()}');
+      print('[RESTORE] Snapshot has passwords: ${snapshot.containsKey('passwords')}');
+      print('[RESTORE] Snapshot has secret_questions: ${snapshot.containsKey('secret_questions')}');
+      print('[RESTORE] Snapshot has expense_tracker_expenses: ${snapshot.containsKey('expense_tracker_expenses')}');
+      
+      if (snapshot.containsKey('passwords')) {
+        final passwords = snapshot['passwords'] as List<dynamic>?;
+        print('[RESTORE] Passwords array length in snapshot: ${passwords?.length ?? 0}');
+        if (passwords != null && passwords.isNotEmpty) {
+          print('[RESTORE] First password sample: ${passwords.first}');
+        }
+      }
+      
+      if (snapshot.containsKey('secret_questions')) {
+        final secretQuestions = snapshot['secret_questions'] as List<dynamic>?;
+        print('[RESTORE] Secret questions array length in snapshot: ${secretQuestions?.length ?? 0}');
+      }
 
       // Validate snapshot structure before clearing boxes
       // At minimum, should have goals (for backward compatibility with old backups)
@@ -327,7 +363,10 @@ class BackupRepositoryImpl implements BackupRepository {
     await Hive.box<ItineraryItemModel>(travel_constants.itineraryItemBoxName).clear();
     await Hive.box<JournalEntryModel>(travel_constants.journalEntryBoxName).clear();
     await Hive.box<PhotoModel>(travel_constants.photoBoxName).clear();
-    await Hive.box<ExpenseModel>(travel_constants.expenseBoxName).clear();
+    await Hive.box<travel_expense.ExpenseModel>(travel_constants.expenseBoxName).clear();
+    
+    // Expense Tracker boxes
+    await Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName).clear();
     
     // Investment Planner boxes
     await Hive.box<InvestmentComponentModel>(investment_constants.investmentComponentBoxName).clear();
@@ -340,8 +379,15 @@ class BackupRepositoryImpl implements BackupRepository {
     await Hive.box(retirement_constants.retirementPreferencesBoxName).clear();
     
     // Password Tracker boxes
-    await Hive.box<PasswordModel>(password_constants.passwordBoxName).clear();
-    await Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName).clear();
+    print('[RESTORE] Clearing Password Tracker boxes...');
+    final passwordBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
+    final secretQuestionBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
+    print('[RESTORE] Password box length before clear: ${passwordBox.length}');
+    print('[RESTORE] Secret question box length before clear: ${secretQuestionBox.length}');
+    await passwordBox.clear();
+    await secretQuestionBox.clear();
+    print('[RESTORE] Password box length after clear: ${passwordBox.length}');
+    print('[RESTORE] Secret question box length after clear: ${secretQuestionBox.length}');
     
     // App-wide preferences (will be restored if present in backup)
     await Hive.box(goal_constants.viewPreferencesBoxName).clear();
@@ -377,6 +423,23 @@ class BackupRepositoryImpl implements BackupRepository {
     }
   }
 
+  /// Safely extracts a String from a map, providing a default if null.
+  /// Use this for required String fields that might be null in older backups.
+  static String _safeString(Map<String, dynamic> map, String key, String defaultValue) {
+    final value = map[key];
+    if (value == null) return defaultValue;
+    if (value is String) return value;
+    return value.toString();
+  }
+
+  /// Safely extracts a nullable String from a map.
+  static String? _safeStringNullable(Map<String, dynamic> map, String key) {
+    final value = map[key];
+    if (value == null) return null;
+    if (value is String) return value;
+    return value.toString();
+  }
+
   Future<void> _importData(Map<String, dynamic> snapshot) async {
     // ========================================================================
     // Goal Tracker Data
@@ -386,13 +449,14 @@ class BackupRepositoryImpl implements BackupRepository {
     for (final g in goals) {
       final m = g as Map<String, dynamic>;
       final model = GoalModel(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        description: m['description'] as String?,
-        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
-        context: m['context'] as String?,
+        id: _safeString(m, 'id', ''),
+        name: _safeString(m, 'name', 'Unnamed Goal'),
+        description: _safeStringNullable(m, 'description'),
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(_safeString(m, 'targetDate', '')) : null,
+        context: _safeStringNullable(m, 'context'),
         isCompleted: (m['isCompleted'] as bool?) ?? false,
       );
+      if (model.id.isEmpty) continue; // Skip invalid entries
       await goalBox.put(model.id, model);
     }
 
@@ -401,14 +465,15 @@ class BackupRepositoryImpl implements BackupRepository {
     for (final ms in milestones) {
       final m = ms as Map<String, dynamic>;
       final model = MilestoneModel(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        description: m['description'] as String?,
+        id: _safeString(m, 'id', ''),
+        name: _safeString(m, 'name', 'Unnamed Milestone'),
+        description: _safeStringNullable(m, 'description'),
         plannedValue: (m['plannedValue'] as num?)?.toDouble(),
         actualValue: (m['actualValue'] as num?)?.toDouble(),
-        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
-        goalId: m['goalId'] as String,
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(_safeString(m, 'targetDate', '')) : null,
+        goalId: _safeString(m, 'goalId', ''),
       );
+      if (model.id.isEmpty) continue; // Skip invalid entries
       await milestoneBox.put(model.id, model);
     }
 
@@ -417,13 +482,14 @@ class BackupRepositoryImpl implements BackupRepository {
     for (final t in tasks) {
       final m = t as Map<String, dynamic>;
       final model = TaskModel(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(m['targetDate'] as String) : null,
-        milestoneId: m['milestoneId'] as String,
-        goalId: m['goalId'] as String,
-        status: (m['status'] as String?) ?? 'To Do',
+        id: _safeString(m, 'id', ''),
+        name: _safeString(m, 'name', 'Unnamed Task'),
+        targetDate: (m['targetDate'] != null) ? DateTime.tryParse(_safeString(m, 'targetDate', '')) : null,
+        milestoneId: _safeString(m, 'milestoneId', ''),
+        goalId: _safeString(m, 'goalId', ''),
+        status: _safeString(m, 'status', 'To Do'),
       );
+      if (model.id.isEmpty) continue; // Skip invalid entries
       await taskBox.put(model.id, model);
     }
 
@@ -432,15 +498,16 @@ class BackupRepositoryImpl implements BackupRepository {
     for (final h in habits) {
       final m = h as Map<String, dynamic>;
       final model = HabitModel(
-        id: m['id'] as String,
-        name: m['name'] as String,
-        description: m['description'] as String?,
-        milestoneId: m['milestoneId'] as String,
-        goalId: m['goalId'] as String,
-        rrule: m['rrule'] as String,
+        id: _safeString(m, 'id', ''),
+        name: _safeString(m, 'name', 'Unnamed Habit'),
+        description: _safeStringNullable(m, 'description'),
+        milestoneId: _safeString(m, 'milestoneId', ''),
+        goalId: _safeString(m, 'goalId', ''),
+        rrule: _safeString(m, 'rrule', 'FREQ=DAILY'), // Default to daily if missing
         targetCompletions: (m['targetCompletions'] as num?)?.toInt(),
         isActive: (m['isActive'] as bool?) ?? true,
       );
+      if (model.id.isEmpty) continue; // Skip invalid entries
       await habitBox.put(model.id, model);
     }
 
@@ -449,11 +516,12 @@ class BackupRepositoryImpl implements BackupRepository {
     for (final c in completions) {
       final m = c as Map<String, dynamic>;
       final model = HabitCompletionModel(
-        id: m['id'] as String,
-        habitId: m['habitId'] as String,
-        completionDate: DateTime.tryParse(m['completionDate'] as String) ?? DateTime.now(),
-        note: m['note'] as String?,
+        id: _safeString(m, 'id', ''),
+        habitId: _safeString(m, 'habitId', ''),
+        completionDate: DateTime.tryParse(_safeString(m, 'completionDate', '')) ?? DateTime.now(),
+        note: _safeStringNullable(m, 'note'),
       );
+      if (model.id.isEmpty) continue; // Skip invalid entries
       await completionBox.put(model.id, model);
     }
 
@@ -466,15 +534,20 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final t in trips) {
         final m = t as Map<String, dynamic>;
         final model = TripModel(
-          id: m['id'] as String,
-          title: m['title'] as String,
-          destination: m['destination'] as String?,
-          startDate: _deserializeDateOnly(m['startDate'] as String?),
-          endDate: _deserializeDateOnly(m['endDate'] as String?),
-          description: m['description'] as String?,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          id: _safeString(m, 'id', ''),
+          title: _safeString(m, 'title', 'Unnamed Trip'),
+          destination: _safeStringNullable(m, 'destination'),
+          startDate: _deserializeDateOnly(_safeStringNullable(m, 'startDate')),
+          endDate: _deserializeDateOnly(_safeStringNullable(m, 'endDate')),
+          description: _safeStringNullable(m, 'description'),
+          tripTypeIndex: (m['tripTypeIndex'] as num?)?.toInt(),
+          destinationLatitude: (m['destinationLatitude'] as num?)?.toDouble(),
+          destinationLongitude: (m['destinationLongitude'] as num?)?.toDouble(),
+          destinationMapLink: _safeStringNullable(m, 'destinationMapLink'),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await tripBox.put(model.id, model);
       }
     }
@@ -485,14 +558,15 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final tp in tripProfiles) {
         final m = tp as Map<String, dynamic>;
         final model = TripProfileModel(
-          id: m['id'] as String,
-          tripId: m['tripId'] as String,
-          travelerName: m['travelerName'] as String?,
-          email: m['email'] as String?,
-          notes: m['notes'] as String?,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          id: _safeString(m, 'id', ''),
+          tripId: _safeString(m, 'tripId', ''),
+          travelerName: _safeStringNullable(m, 'travelerName'),
+          email: _safeStringNullable(m, 'email'),
+          notes: _safeStringNullable(m, 'notes'),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await tripProfileBox.put(model.id, model);
       }
     }
@@ -503,17 +577,18 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final t in travelers) {
         final m = t as Map<String, dynamic>;
         final model = TravelerModel(
-          id: m['id'] as String,
-          tripId: m['tripId'] as String,
-          name: m['name'] as String,
-          relationship: m['relationship'] as String?,
-          email: m['email'] as String?,
-          phone: m['phone'] as String?,
-          notes: m['notes'] as String?,
+          id: _safeString(m, 'id', ''),
+          tripId: _safeString(m, 'tripId', ''),
+          name: _safeString(m, 'name', 'Unnamed Traveler'),
+          relationship: _safeStringNullable(m, 'relationship'),
+          email: _safeStringNullable(m, 'email'),
+          phone: _safeStringNullable(m, 'phone'),
+          notes: _safeStringNullable(m, 'notes'),
           isMainTraveler: (m['isMainTraveler'] as bool?) ?? false,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await travelerBox.put(model.id, model);
       }
     }
@@ -524,12 +599,13 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final id in itineraryDays) {
         final m = id as Map<String, dynamic>;
         final model = ItineraryDayModel(
-          id: m['id'] as String,
-          tripId: m['tripId'] as String,
-          date: _deserializeDateOnlyRequired(m['date'] as String),
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          id: _safeString(m, 'id', ''),
+          tripId: _safeString(m, 'tripId', ''),
+          date: _deserializeDateOnlyRequired(_safeString(m, 'date', DateTime.now().toIso8601String())),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await itineraryDayBox.put(model.id, model);
       }
     }
@@ -540,17 +616,18 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final ii in itineraryItems) {
         final m = ii as Map<String, dynamic>;
         final model = ItineraryItemModel(
-          id: m['id'] as String,
-          dayId: m['dayId'] as String,
+          id: _safeString(m, 'id', ''),
+          dayId: _safeString(m, 'dayId', ''),
           typeIndex: (m['typeIndex'] as num?)?.toInt() ?? 0,
-          title: m['title'] as String,
-          time: (m['time'] != null) ? DateTime.tryParse(m['time'] as String) : null,
-          location: m['location'] as String?,
-          notes: m['notes'] as String?,
-          mapLink: m['mapLink'] as String?,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          title: _safeString(m, 'title', 'Untitled Item'),
+          time: (m['time'] != null) ? DateTime.tryParse(_safeString(m, 'time', '')) : null,
+          location: _safeStringNullable(m, 'location'),
+          notes: _safeStringNullable(m, 'notes'),
+          mapLink: _safeStringNullable(m, 'mapLink'),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await itineraryItemBox.put(model.id, model);
       }
     }
@@ -561,13 +638,14 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final je in journalEntries) {
         final m = je as Map<String, dynamic>;
         final model = JournalEntryModel(
-          id: m['id'] as String,
-          tripId: m['tripId'] as String,
-          date: DateTime.tryParse(m['date'] as String) ?? DateTime.now(),
-          content: m['content'] as String,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          id: _safeString(m, 'id', ''),
+          tripId: _safeString(m, 'tripId', ''),
+          date: DateTime.tryParse(_safeString(m, 'date', '')) ?? DateTime.now(),
+          content: _safeString(m, 'content', ''), // Empty string default for content
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await journalEntryBox.put(model.id, model);
       }
     }
@@ -578,35 +656,38 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final p in photos) {
         final m = p as Map<String, dynamic>;
         final model = PhotoModel(
-          id: m['id'] as String,
-          journalEntryId: m['journalEntryId'] as String,
-          filePath: m['filePath'] as String,
-          caption: m['caption'] as String?,
-          dateTaken: (m['dateTaken'] != null) ? DateTime.tryParse(m['dateTaken'] as String) : null,
-          taggedDay: (m['taggedDay'] != null) ? DateTime.tryParse(m['taggedDay'] as String) : null,
-          taggedLocation: m['taggedLocation'] as String?,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
+          id: _safeString(m, 'id', ''),
+          journalEntryId: _safeString(m, 'journalEntryId', ''),
+          filePath: _safeString(m, 'filePath', ''), // Empty string default for filePath
+          caption: _safeStringNullable(m, 'caption'),
+          dateTaken: (m['dateTaken'] != null) ? DateTime.tryParse(_safeString(m, 'dateTaken', '')) : null,
+          taggedDay: (m['taggedDay'] != null) ? DateTime.tryParse(_safeString(m, 'taggedDay', '')) : null,
+          taggedLocation: _safeStringNullable(m, 'taggedLocation'),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await photoBox.put(model.id, model);
       }
     }
 
     if (snapshot.containsKey('expenses')) {
       final expenses = snapshot['expenses'] as List<dynamic>? ?? [];
-      final expenseBox = Hive.box<ExpenseModel>(travel_constants.expenseBoxName);
+      final expenseBox = Hive.box<travel_expense.ExpenseModel>(travel_constants.expenseBoxName);
       for (final e in expenses) {
         final m = e as Map<String, dynamic>;
-        final model = ExpenseModel(
-          id: m['id'] as String,
-          tripId: m['tripId'] as String,
-          date: _deserializeDateOnlyRequired(m['date'] as String),
+        final model = travel_expense.ExpenseModel(
+          id: _safeString(m, 'id', ''),
+          tripId: _safeString(m, 'tripId', ''),
+          date: _deserializeDateOnlyRequired(_safeString(m, 'date', DateTime.now().toIso8601String())),
           categoryIndex: (m['categoryIndex'] as num?)?.toInt() ?? 0,
-          amount: (m['amount'] as num).toDouble(),
-          currency: m['currency'] as String,
-          description: m['description'] as String?,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          amount: (m['amount'] as num?)?.toDouble() ?? 0.0,
+          currency: _safeString(m, 'currency', 'USD'), // Default to USD if missing
+          description: _safeStringNullable(m, 'description'),
+          paidBy: _safeStringNullable(m, 'paidBy'),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await expenseBox.put(model.id, model);
       }
     }
@@ -620,13 +701,14 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final ic in components) {
         final m = ic as Map<String, dynamic>;
         final model = InvestmentComponentModel(
-          id: m['id'] as String,
-          name: m['name'] as String,
-          percentage: (m['percentage'] as num).toDouble(),
+          id: _safeString(m, 'id', ''),
+          name: _safeString(m, 'name', 'Unnamed Component'),
+          percentage: (m['percentage'] as num?)?.toDouble() ?? 0.0,
           minLimit: (m['minLimit'] as num?)?.toDouble(),
           maxLimit: (m['maxLimit'] as num?)?.toDouble(),
           priority: (m['priority'] as num?)?.toInt() ?? 0,
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await componentBox.put(model.id, model);
       }
     }
@@ -637,9 +719,10 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final ic in incomeCategories) {
         final m = ic as Map<String, dynamic>;
         final model = IncomeCategoryModel(
-          id: m['id'] as String,
-          name: m['name'] as String,
+          id: _safeString(m, 'id', ''),
+          name: _safeString(m, 'name', 'Unnamed Category'),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await incomeCategoryBox.put(model.id, model);
       }
     }
@@ -650,9 +733,10 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final ec in expenseCategories) {
         final m = ec as Map<String, dynamic>;
         final model = ExpenseCategoryModel(
-          id: m['id'] as String,
-          name: m['name'] as String,
+          id: _safeString(m, 'id', ''),
+          name: _safeString(m, 'name', 'Unnamed Category'),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await expenseCategoryBox.put(model.id, model);
       }
     }
@@ -665,36 +749,36 @@ class BackupRepositoryImpl implements BackupRepository {
         final incomeEntries = (m['incomeEntries'] as List<dynamic>? ?? []).map((ie) {
           final im = ie as Map<String, dynamic>;
           return IncomeEntryModel(
-            id: im['id'] as String,
-            categoryId: im['categoryId'] as String,
-            amount: (im['amount'] as num).toDouble(),
+            id: _safeString(im, 'id', ''),
+            categoryId: _safeString(im, 'categoryId', ''),
+            amount: (im['amount'] as num?)?.toDouble() ?? 0.0,
           );
         }).toList();
         final expenseEntries = (m['expenseEntries'] as List<dynamic>? ?? []).map((ee) {
           final em = ee as Map<String, dynamic>;
           return ExpenseEntryModel(
-            id: em['id'] as String,
-            categoryId: em['categoryId'] as String,
-            amount: (em['amount'] as num).toDouble(),
+            id: _safeString(em, 'id', ''),
+            categoryId: _safeString(em, 'categoryId', ''),
+            amount: (em['amount'] as num?)?.toDouble() ?? 0.0,
           );
         }).toList();
         final allocations = (m['allocations'] as List<dynamic>? ?? []).map((a) {
           final am = a as Map<String, dynamic>;
           return ComponentAllocationModel(
-            componentId: am['componentId'] as String,
-            allocatedAmount: (am['allocatedAmount'] as num).toDouble(),
+            componentId: _safeString(am, 'componentId', ''),
+            allocatedAmount: (am['allocatedAmount'] as num?)?.toDouble() ?? 0.0,
           );
         }).toList();
         final model = InvestmentPlanModel(
-          id: m['id'] as String,
-          name: m['name'] as String,
-          duration: m['duration'] as String,
-          period: m['period'] as String,
+          id: _safeString(m, 'id', ''),
+          name: _safeString(m, 'name', 'Unnamed Plan'),
+          duration: _safeString(m, 'duration', 'Monthly'),
+          period: _safeString(m, 'period', DateTime.now().toString()),
           incomeEntries: incomeEntries,
           expenseEntries: expenseEntries,
           allocations: allocations,
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
         await investmentPlanBox.put(model.id, model);
       }
@@ -703,41 +787,166 @@ class BackupRepositoryImpl implements BackupRepository {
     // ========================================================================
     // Password Tracker Data (optional - only restore if present in backup)
     // ========================================================================
+    print('[RESTORE] Checking for Password Tracker data in snapshot...');
+    print('[RESTORE] Snapshot keys: ${snapshot.keys.toList()}');
+    print('[RESTORE] Has passwords key: ${snapshot.containsKey('passwords')}');
+    print('[RESTORE] Has secret_questions key: ${snapshot.containsKey('secret_questions')}');
+    
     if (snapshot.containsKey('passwords')) {
       final passwords = snapshot['passwords'] as List<dynamic>? ?? [];
+      print('[RESTORE] Found ${passwords.length} passwords in snapshot');
       final passwordBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
+      print('[RESTORE] Password box length before restore: ${passwordBox.length}');
+      
+      int restoredCount = 0;
+      int skippedCount = 0;
+      
       for (final p in passwords) {
-        final m = p as Map<String, dynamic>;
-        final model = PasswordModel(
-          id: m['id'] as String,
-          siteName: m['siteName'] as String,
-          url: m['url'] as String?,
-          username: m['username'] as String?,
-          encryptedPassword: m['encryptedPassword'] as String?, // Restore encrypted as-is
-          isGoogleSignIn: (m['isGoogleSignIn'] as bool?) ?? false,
-          lastUpdated: DateTime.tryParse(m['lastUpdated'] as String) ?? DateTime.now(),
-          is2FA: (m['is2FA'] as bool?) ?? false,
-          categoryGroup: m['categoryGroup'] as String?,
-          hasSecretQuestions: (m['hasSecretQuestions'] as bool?) ?? false,
-        );
-        await passwordBox.put(model.id, model);
+        try {
+          final m = p as Map<String, dynamic>;
+          print('[RESTORE] Processing password: id=${m['id']}, siteName=${m['siteName']}');
+          
+          final model = PasswordModel(
+            id: _safeString(m, 'id', ''),
+            siteName: _safeString(m, 'siteName', 'Unnamed Site'),
+            url: _safeStringNullable(m, 'url'),
+            username: _safeStringNullable(m, 'username'),
+            encryptedPassword: _safeStringNullable(m, 'encryptedPassword'), // Restore encrypted as-is
+            isGoogleSignIn: (m['isGoogleSignIn'] as bool?) ?? false,
+            lastUpdated: DateTime.tryParse(_safeString(m, 'lastUpdated', '')) ?? DateTime.now(),
+            is2FA: (m['is2FA'] as bool?) ?? false,
+            categoryGroup: _safeStringNullable(m, 'categoryGroup'),
+            hasSecretQuestions: (m['hasSecretQuestions'] as bool?) ?? false,
+          );
+          
+          if (model.id.isEmpty) {
+            print('[RESTORE] Skipping password with empty ID');
+            skippedCount++;
+            continue; // Skip invalid entries
+          }
+          
+          await passwordBox.put(model.id, model);
+          restoredCount++;
+          print('[RESTORE] Restored password: id=${model.id}, siteName=${model.siteName}');
+        } catch (e, stackTrace) {
+          print('[RESTORE] Error restoring password: $e');
+          print('[RESTORE] Stack trace: $stackTrace');
+          skippedCount++;
+        }
       }
+      
+      print('[RESTORE] Password restore completed: restored=$restoredCount, skipped=$skippedCount');
+      print('[RESTORE] Password box length after restore: ${passwordBox.length}');
+    } else {
+      print('[RESTORE] WARNING: No passwords key found in snapshot!');
     }
 
     if (snapshot.containsKey('secret_questions')) {
       final secretQuestions = snapshot['secret_questions'] as List<dynamic>? ?? [];
+      print('[RESTORE] Found ${secretQuestions.length} secret questions in snapshot');
       final secretQuestionBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
+      print('[RESTORE] Secret question box length before restore: ${secretQuestionBox.length}');
+      
+      int restoredCount = 0;
+      int skippedCount = 0;
+      
       for (final sq in secretQuestions) {
-        final m = sq as Map<String, dynamic>;
-        final model = SecretQuestionModel(
-          id: m['id'] as String,
-          passwordId: m['passwordId'] as String,
-          question: m['question'] as String,
-          encryptedAnswer: m['encryptedAnswer'] as String, // Restore encrypted as-is
-        );
-        await secretQuestionBox.put(model.id, model);
+        try {
+          final m = sq as Map<String, dynamic>;
+          print('[RESTORE] Processing secret question: id=${m['id']}, passwordId=${m['passwordId']}');
+          
+          final model = SecretQuestionModel(
+            id: _safeString(m, 'id', ''),
+            passwordId: _safeString(m, 'passwordId', ''),
+            question: _safeString(m, 'question', ''), // Empty string default for question
+            encryptedAnswer: _safeString(m, 'encryptedAnswer', ''), // Empty string default for encryptedAnswer
+          );
+          
+          if (model.id.isEmpty) {
+            print('[RESTORE] Skipping secret question with empty ID');
+            skippedCount++;
+            continue; // Skip invalid entries
+          }
+          
+          await secretQuestionBox.put(model.id, model);
+          restoredCount++;
+          print('[RESTORE] Restored secret question: id=${model.id}, passwordId=${model.passwordId}');
+        } catch (e, stackTrace) {
+          print('[RESTORE] Error restoring secret question: $e');
+          print('[RESTORE] Stack trace: $stackTrace');
+          skippedCount++;
+        }
       }
+      
+      print('[RESTORE] Secret question restore completed: restored=$restoredCount, skipped=$skippedCount');
+      print('[RESTORE] Secret question box length after restore: ${secretQuestionBox.length}');
+    } else {
+      print('[RESTORE] WARNING: No secret_questions key found in snapshot!');
     }
+    
+    print('[RESTORE] Password Tracker restore process completed');
+
+    // ========================================================================
+    // Expense Tracker Data (optional - only restore if present in backup)
+    // ========================================================================
+    print('[RESTORE] Checking for Expense Tracker data in snapshot...');
+    print('[RESTORE] Has expense_tracker_expenses key: ${snapshot.containsKey('expense_tracker_expenses')}');
+    
+    if (snapshot.containsKey('expense_tracker_expenses')) {
+      final expenses = snapshot['expense_tracker_expenses'] as List<dynamic>? ?? [];
+      print('[RESTORE] Found ${expenses.length} expense tracker expenses in snapshot');
+      final expenseBox = Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName);
+      print('[RESTORE] Expense tracker box length before restore: ${expenseBox.length}');
+      
+      int restoredCount = 0;
+      int skippedCount = 0;
+      
+      for (final e in expenses) {
+        try {
+          final m = e as Map<String, dynamic>;
+          print('[RESTORE] Processing expense: id=${m['id']}, description=${m['description']}');
+          
+          // Parse date using date-only deserialization to preserve the date correctly
+          final dateStr = _safeStringNullable(m, 'date');
+          final expenseDate = dateStr != null 
+              ? _deserializeDateOnlyRequired(dateStr)
+              : DateTime.now();
+          
+          print('[RESTORE] Parsed expense date: original=$dateStr, parsed=$expenseDate');
+          
+          final model = expense_tracker_expense.ExpenseModel(
+            id: _safeString(m, 'id', ''),
+            date: expenseDate,
+            description: _safeString(m, 'description', 'Unnamed Expense'),
+            amount: (m['amount'] as num?)?.toDouble() ?? 0.0,
+            group: _safeString(m, 'group', 'food'), // Default to 'food' if missing
+            createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+            updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
+          );
+          
+          if (model.id.isEmpty) {
+            print('[RESTORE] Skipping expense with empty ID');
+            skippedCount++;
+            continue; // Skip invalid entries
+          }
+          
+          await expenseBox.put(model.id, model);
+          restoredCount++;
+          print('[RESTORE] Restored expense: id=${model.id}, description=${model.description}');
+        } catch (e, stackTrace) {
+          print('[RESTORE] Error restoring expense: $e');
+          print('[RESTORE] Stack trace: $stackTrace');
+          skippedCount++;
+        }
+      }
+      
+      print('[RESTORE] Expense tracker restore completed: restored=$restoredCount, skipped=$skippedCount');
+      print('[RESTORE] Expense tracker box length after restore: ${expenseBox.length}');
+    } else {
+      print('[RESTORE] WARNING: No expense_tracker_expenses key found in snapshot!');
+    }
+    
+    print('[RESTORE] Expense Tracker restore process completed');
 
     // ========================================================================
     // Retirement Planner Data (optional - only restore if present in backup)
@@ -748,18 +957,18 @@ class BackupRepositoryImpl implements BackupRepository {
       for (final rp in retirementPlans) {
         final m = rp as Map<String, dynamic>;
         final model = RetirementPlanModel(
-          id: m['id'] as String,
-          name: m['name'] as String,
-          dob: DateTime.tryParse(m['dob'] as String) ?? DateTime.now(),
-          retirementAge: m['retirementAge'] as int,
-          lifeExpectancy: m['lifeExpectancy'] as int,
-          inflationRate: (m['inflationRate'] as num).toDouble(),
-          postRetirementReturnRate: (m['postRetirementReturnRate'] as num).toDouble(),
-          preRetirementReturnRate: (m['preRetirementReturnRate'] as num).toDouble(),
-          preRetirementReturnRatioVariation: (m['preRetirementReturnRatioVariation'] as num).toDouble(),
-          monthlyExpensesVariation: (m['monthlyExpensesVariation'] as num).toDouble(),
-          currentMonthlyExpenses: (m['currentMonthlyExpenses'] as num).toDouble(),
-          currentSavings: (m['currentSavings'] as num).toDouble(),
+          id: _safeString(m, 'id', ''),
+          name: _safeString(m, 'name', 'Unnamed Plan'),
+          dob: DateTime.tryParse(_safeString(m, 'dob', '')) ?? DateTime.now(),
+          retirementAge: (m['retirementAge'] as num?)?.toInt() ?? 65,
+          lifeExpectancy: (m['lifeExpectancy'] as num?)?.toInt() ?? 85,
+          inflationRate: (m['inflationRate'] as num?)?.toDouble() ?? 0.0,
+          postRetirementReturnRate: (m['postRetirementReturnRate'] as num?)?.toDouble() ?? 0.0,
+          preRetirementReturnRate: (m['preRetirementReturnRate'] as num?)?.toDouble() ?? 0.0,
+          preRetirementReturnRatioVariation: (m['preRetirementReturnRatioVariation'] as num?)?.toDouble() ?? 0.0,
+          monthlyExpensesVariation: (m['monthlyExpensesVariation'] as num?)?.toDouble() ?? 0.0,
+          currentMonthlyExpenses: (m['currentMonthlyExpenses'] as num?)?.toDouble() ?? 0.0,
+          currentSavings: (m['currentSavings'] as num?)?.toDouble() ?? 0.0,
           periodForIncome: (m['periodForIncome'] as num?)?.toDouble(),
           preRetirementReturnRateCalculated: (m['preRetirementReturnRateCalculated'] as num?)?.toDouble(),
           monthlyExpensesAtRetirement: (m['monthlyExpensesAtRetirement'] as num?)?.toDouble(),
@@ -768,9 +977,10 @@ class BackupRepositoryImpl implements BackupRepository {
           corpusRequiredToBuild: (m['corpusRequiredToBuild'] as num?)?.toDouble(),
           monthlyInvestment: (m['monthlyInvestment'] as num?)?.toDouble(),
           yearlyInvestment: (m['yearlyInvestment'] as num?)?.toDouble(),
-          createdAt: DateTime.tryParse(m['createdAt'] as String) ?? DateTime.now(),
-          updatedAt: DateTime.tryParse(m['updatedAt'] as String) ?? DateTime.now(),
+          createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+          updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
         );
+        if (model.id.isEmpty) continue; // Skip invalid entries
         await retirementPlanBox.put(model.id, model);
       }
     }

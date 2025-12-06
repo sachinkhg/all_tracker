@@ -12,7 +12,7 @@ import '../trackers/password_tracker/presentation/pages/password_list_page.dart'
 import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
 import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
 import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
-import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
+import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../widgets/app_drawer.dart';
 
@@ -129,7 +129,7 @@ class AppHomePage extends StatelessWidget {
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => const InvestmentPlannerHomePage(),
+                builder: (_) => const PlanListPage(),
               ),
             );
           },
@@ -376,8 +376,8 @@ class _SectionCard extends StatelessWidget {
                 fontSize: 12,
               ),
           textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.clip,
         ),
         const SizedBox(height: 2),
         Text(

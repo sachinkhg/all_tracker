@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/investment_plan.dart';
+import '../../domain/entities/plan_status.dart';
 import '../../domain/entities/income_entry.dart';
 import '../../domain/entities/expense_entry.dart';
 import '../../domain/entities/component_allocation.dart';
@@ -52,8 +53,6 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
 
   Future<InvestmentPlan?> savePlan({
     required String name,
-    required String duration,
-    required String period,
     required List<IncomeEntry> incomeEntries,
     required List<ExpenseEntry> expenseEntries,
     String? planId,
@@ -65,15 +64,31 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
         expenseEntries,
       );
 
+      // Preserve existing status, duration, and period when updating, default to draft for new plans
+      PlanStatus status = PlanStatus.draft;
+      String duration = 'Monthly'; // Default value
+      String period = ''; // Default empty value
+      DateTime? originalCreatedAt;
+      if (planId != null) {
+        final existingPlan = await getPlanById(planId);
+        if (existingPlan != null) {
+          status = existingPlan.status;
+          duration = existingPlan.duration;
+          period = existingPlan.period;
+          originalCreatedAt = existingPlan.createdAt;
+        }
+      }
+
       final plan = InvestmentPlan(
         id: planId ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: name,
         duration: duration,
         period: period,
+        status: status,
         incomeEntries: incomeEntries,
         expenseEntries: expenseEntries,
         allocations: allocationsResult['allocations'] as List<ComponentAllocation>,
-        createdAt: planId != null ? now : now, // Keep original if updating
+        createdAt: originalCreatedAt ?? now,
         updatedAt: now,
       );
 
@@ -87,6 +102,49 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
     } catch (e) {
       emit(PlansError(e.toString()));
       return null;
+    }
+  }
+
+  /// Updates the status of a plan with strict workflow validation
+  /// Only allows transitions: Draft → Approved → Executed
+  Future<bool> updatePlanStatus(String planId, PlanStatus newStatus) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Validate status transition (strict workflow)
+      final currentStatus = plan.status;
+      bool isValidTransition = false;
+      
+      if (currentStatus == PlanStatus.draft && newStatus == PlanStatus.approved) {
+        isValidTransition = true;
+      } else if (currentStatus == PlanStatus.approved && newStatus == PlanStatus.executed) {
+        isValidTransition = true;
+      } else if (currentStatus == newStatus) {
+        // Same status is allowed (idempotent)
+        isValidTransition = true;
+      }
+
+      if (!isValidTransition) {
+        emit(PlansError('Invalid status transition: ${currentStatus.displayName} → ${newStatus.displayName}'));
+        return false;
+      }
+
+      // Update plan with new status
+      final updatedPlan = plan.copyWith(
+        status: newStatus,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
     }
   }
 
@@ -119,6 +177,92 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
     final totalExpense = expenseEntries.fold(0.0, (sum, e) => sum + e.amount);
     final availableAmount = totalIncome - totalExpense;
     return await calculateAllocations(availableAmount);
+  }
+
+  /// Updates the actual investment amount for a specific allocation.
+  /// Only works when plan status is approved or executed.
+  Future<bool> updateAllocationActualAmount(
+    String planId,
+    String componentId,
+    double? actualAmount,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Actual amounts can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the allocation
+      final updatedAllocations = plan.allocations.map((allocation) {
+        if (allocation.componentId == componentId) {
+          return allocation.copyWith(actualAmount: actualAmount);
+        }
+        return allocation;
+      }).toList();
+
+      // Update plan with new allocations
+      final updatedPlan = plan.copyWith(
+        allocations: updatedAllocations,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
+  }
+
+  /// Toggles the completion status for a specific allocation.
+  /// Only works when plan status is approved or executed.
+  Future<bool> toggleAllocationCompletion(
+    String planId,
+    String componentId,
+    bool isCompleted,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Completion status can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the allocation
+      final updatedAllocations = plan.allocations.map((allocation) {
+        if (allocation.componentId == componentId) {
+          return allocation.copyWith(isCompleted: isCompleted);
+        }
+        return allocation;
+      }).toList();
+
+      // Update plan with new allocations
+      final updatedPlan = plan.copyWith(
+        allocations: updatedAllocations,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
   }
 }
 

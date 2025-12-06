@@ -8,7 +8,8 @@ import '../../core/app_icons.dart';
 import '../widgets/trip_list_item.dart';
 import '../widgets/trip_form_bottom_sheet.dart';
 import '../widgets/trip_calendar_view.dart';
-import '../widgets/trip_map_view.dart';
+// Temporarily disabled to prevent crashes during initialization
+// import '../widgets/trip_map_view.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
@@ -140,21 +141,120 @@ class _TripListPageViewState extends State<TripListPageView> {
                 filterActive: cubit.hasActiveFilters,
               );
             } else if (viewType == 'map') {
-              return TripMapView(
-                trips: trips,
-                onTap: (ctx, trip) async {
-                  await Navigator.of(ctx).push(
-                    MaterialPageRoute(
-                      builder: (_) => TripDetailPage(tripId: trip.id),
+              // CRITICAL: Prevent map view from showing on first navigation to avoid crashes
+              // The Google Maps SDK needs time to initialize, especially after app start
+              // Show list view instead with option to switch to map
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.map_outlined,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  );
-                  if (mounted) {
-                    context.read<TripCubit>().loadTrips();
-                  }
-                },
-                visibleFields: visibleFields,
-                filterActive: cubit.hasActiveFilters,
+                    const SizedBox(height: 16),
+                    Text(
+                      'Map View',
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Map view temporarily unavailable.\nPlease use list view or try again later.',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        cubit.setViewType('list');
+                      },
+                      icon: const Icon(Icons.list),
+                      label: const Text('Switch to List View'),
+                    ),
+                  ],
+                ),
               );
+              
+              // COMMENTED OUT: Map view causes crashes during initialization
+              // Uncomment this only after verifying Google Maps SDK initialization is stable
+              /*
+              return FutureBuilder<void>(
+                future: Future.delayed(const Duration(seconds: 2)),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(height: 16),
+                          Text('Loading map...'),
+                        ],
+                      ),
+                    );
+                  }
+                  if (snapshot.hasError) {
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted && context.mounted) {
+                        cubit.setViewType('list');
+                      }
+                    });
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, size: 48),
+                          SizedBox(height: 16),
+                          Text('Map unavailable. Showing list view.'),
+                        ],
+                      ),
+                    );
+                  }
+                  return Builder(
+                    builder: (context) {
+                      try {
+                        return TripMapView(
+                          trips: trips,
+                          onTap: (ctx, trip) async {
+                            await Navigator.of(ctx).push(
+                              MaterialPageRoute(
+                                builder: (_) => TripDetailPage(tripId: trip.id),
+                              ),
+                            );
+                            if (mounted && ctx.mounted) {
+                              context.read<TripCubit>().loadTrips();
+                            }
+                          },
+                          visibleFields: visibleFields,
+                          filterActive: cubit.hasActiveFilters,
+                        );
+                      } catch (e, stackTrace) {
+                        debugPrint('Error creating TripMapView: $e');
+                        debugPrint('Stack trace: $stackTrace');
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted && context.mounted) {
+                            cubit.setViewType('list');
+                          }
+                        });
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 48),
+                              SizedBox(height: 16),
+                              Text('Unable to load map. Switching to list view.'),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
+              );
+              */
             } else {
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
