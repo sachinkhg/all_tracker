@@ -53,8 +53,6 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
 
   Future<InvestmentPlan?> savePlan({
     required String name,
-    required String duration,
-    required String period,
     required List<IncomeEntry> incomeEntries,
     required List<ExpenseEntry> expenseEntries,
     String? planId,
@@ -66,13 +64,17 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
         expenseEntries,
       );
 
-      // Preserve existing status when updating, default to draft for new plans
+      // Preserve existing status, duration, and period when updating, default to draft for new plans
       PlanStatus status = PlanStatus.draft;
+      String duration = 'Monthly'; // Default value
+      String period = ''; // Default empty value
       DateTime? originalCreatedAt;
       if (planId != null) {
         final existingPlan = await getPlanById(planId);
         if (existingPlan != null) {
           status = existingPlan.status;
+          duration = existingPlan.duration;
+          period = existingPlan.period;
           originalCreatedAt = existingPlan.createdAt;
         }
       }
