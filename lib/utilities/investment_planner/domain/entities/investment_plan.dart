@@ -26,6 +26,7 @@ import 'package:equatable/equatable.dart';
 import 'income_entry.dart';
 import 'expense_entry.dart';
 import 'component_allocation.dart';
+import 'plan_status.dart';
 
 /// Domain model for an Investment Plan.
 ///
@@ -38,11 +39,14 @@ class InvestmentPlan extends Equatable {
   /// Plan name (e.g., "Investment for Nov 2025").
   final String name;
 
-  /// Duration type: "Monthly" or "Yearly".
+  /// Duration of the plan (e.g., "Monthly" or "Yearly").
   final String duration;
 
   /// Period identifier (e.g., "Nov 2025").
   final String period;
+
+  /// Status of the plan (Draft, Approved, Executed).
+  final PlanStatus status;
 
   /// List of income entries in this plan.
   final List<IncomeEntry> incomeEntries;
@@ -65,6 +69,7 @@ class InvestmentPlan extends Equatable {
     required this.name,
     required this.duration,
     required this.period,
+    this.status = PlanStatus.draft,
     required this.incomeEntries,
     required this.expenseEntries,
     required this.allocations,
@@ -78,6 +83,7 @@ class InvestmentPlan extends Equatable {
     String? name,
     String? duration,
     String? period,
+    PlanStatus? status,
     List<IncomeEntry>? incomeEntries,
     List<ExpenseEntry>? expenseEntries,
     List<ComponentAllocation>? allocations,
@@ -89,6 +95,7 @@ class InvestmentPlan extends Equatable {
       name: name ?? this.name,
       duration: duration ?? this.duration,
       period: period ?? this.period,
+      status: status ?? this.status,
       incomeEntries: incomeEntries ?? this.incomeEntries,
       expenseEntries: expenseEntries ?? this.expenseEntries,
       allocations: allocations ?? this.allocations,
@@ -122,12 +129,16 @@ class InvestmentPlan extends Equatable {
     return availableAmount - totalAllocated;
   }
 
+  /// Returns true if the plan is editable (only Draft plans are editable).
+  bool get isEditable => status == PlanStatus.draft;
+
   @override
   List<Object?> get props => [
         id,
         name,
         duration,
         period,
+        status,
         incomeEntries,
         expenseEntries,
         allocations,

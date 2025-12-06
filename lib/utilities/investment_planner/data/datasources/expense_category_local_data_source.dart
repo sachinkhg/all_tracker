@@ -41,7 +41,21 @@ class ExpenseCategoryLocalDataSourceImpl
 
   @override
   Future<List<ExpenseCategoryModel>> getAllCategories() async {
-    return box.values.toList();
+    // Safely read all categories, filtering out any that can't be deserialized
+    final categories = <ExpenseCategoryModel>[];
+    for (final key in box.keys) {
+      try {
+        final category = box.get(key);
+        if (category != null) {
+          categories.add(category);
+        }
+      } catch (e) {
+        // Skip corrupted entries that can't be read
+        // This prevents the entire operation from failing
+        continue;
+      }
+    }
+    return categories;
   }
 
   @override

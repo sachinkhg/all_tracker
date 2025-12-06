@@ -79,9 +79,17 @@ class HiveInitializer {
       await initializer.registerAdapters();
     }
 
-    // Open all boxes from all modules
+    // Open all boxes from all modules with error handling
     for (final initializer in _moduleInitializers) {
+      try {
       await initializer.openBoxes();
+      } catch (e, stackTrace) {
+        // Log error but don't crash the app
+        // Individual initializers should handle their own migration/recovery
+        print('Error opening boxes for ${initializer.runtimeType}: $e');
+        print('StackTrace: $stackTrace');
+        // Continue with other initializers even if one fails
+      }
     }
 
     // Return goal tracker boxes for backward compatibility

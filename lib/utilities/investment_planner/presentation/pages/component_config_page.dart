@@ -143,13 +143,14 @@ class ComponentConfigPageView extends StatelessWidget {
   void _showAddComponentForm(BuildContext context) {
     ComponentFormBottomSheet.show(
       context,
-      onSubmit: (name, percentage, priority, minLimit, maxLimit) async {
+      onSubmit: (name, percentage, priority, minLimit, maxLimit, multipleOf) async {
         await context.read<InvestmentComponentCubit>().addComponent(
               name,
               percentage,
               priority,
               minLimit: minLimit,
               maxLimit: maxLimit,
+              multipleOf: multipleOf,
             );
       },
     );
@@ -160,13 +161,14 @@ class ComponentConfigPageView extends StatelessWidget {
     ComponentFormBottomSheet.show(
       context,
       component: component,
-      onSubmit: (name, percentage, priority, minLimit, maxLimit) async {
+      onSubmit: (name, percentage, priority, minLimit, maxLimit, multipleOf) async {
         final updated = component.copyWith(
           name: name,
           percentage: percentage,
           priority: priority,
           minLimit: minLimit,
           maxLimit: maxLimit,
+          multipleOf: multipleOf,
         );
         await cubit.updateComponent(updated);
       },

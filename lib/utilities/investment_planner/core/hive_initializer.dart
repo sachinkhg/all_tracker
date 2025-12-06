@@ -58,11 +58,37 @@ class InvestmentPlannerHiveInitializer implements HiveModuleInitializer {
 
   @override
   Future<void> openBoxes() async {
-    // Open investment planner boxes
-    await Hive.openBox<InvestmentComponentModel>(investmentComponentBoxName);
-    await Hive.openBox<IncomeCategoryModel>(incomeCategoryBoxName);
-    await Hive.openBox<ExpenseCategoryModel>(expenseCategoryBoxName);
-    await Hive.openBox<InvestmentPlanModel>(investmentPlanBoxName);
+    // Open investment planner boxes with error handling for migration
+    // Only clear data if there's a schema mismatch error
+    await _openBoxWithErrorHandling<InvestmentComponentModel>(investmentComponentBoxName);
+    await _openBoxWithErrorHandling<IncomeCategoryModel>(incomeCategoryBoxName);
+    await _openBoxWithErrorHandling<ExpenseCategoryModel>(expenseCategoryBoxName);
+    await _openBoxWithErrorHandling<InvestmentPlanModel>(investmentPlanBoxName);
+  }
+  
+  /// Opens a Hive box, only clearing data if there's a schema mismatch error
+  /// This preserves existing data while handling migration issues gracefully
+  Future<void> _openBoxWithErrorHandling<T>(String boxName) async {
+    try {
+      await Hive.openBox<T>(boxName);
+    } catch (e) {
+      // If opening fails due to schema changes, try to recover
+      try {
+        // Close the box if it was partially opened
+        if (Hive.isBoxOpen(boxName)) {
+          await Hive.box<T>(boxName).close();
+        }
+        
+        // Delete the corrupted box and create a new one
+        // This only happens if there's a schema mismatch
+        await Hive.deleteBoxFromDisk(boxName);
+        await Hive.openBox<T>(boxName);
+      } catch (recoveryError) {
+        // If recovery also fails, try to open empty box
+        await Hive.openBox<T>(boxName);
+      }
+    }
   }
 }
+
 

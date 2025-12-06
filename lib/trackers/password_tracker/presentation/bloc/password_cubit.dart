@@ -80,11 +80,19 @@ class PasswordCubit extends Cubit<PasswordState> {
 
   /// Loads all passwords from the repository.
   Future<void> loadPasswords() async {
+    print('[PASSWORD_CUBIT] loadPasswords called');
     emit(PasswordsLoading());
     try {
       _allPasswords = await getAll();
+      print('[PASSWORD_CUBIT] Loaded ${_allPasswords.length} passwords');
+      for (final p in _allPasswords) {
+        print('[PASSWORD_CUBIT]   - id=${p.id}, siteName=${p.siteName}');
+      }
       emit(PasswordsLoaded(_allPasswords, visibleFields));
-    } catch (e) {
+      print('[PASSWORD_CUBIT] Emitted PasswordsLoaded state with ${_allPasswords.length} passwords');
+    } catch (e, stackTrace) {
+      print('[PASSWORD_CUBIT] ERROR loading passwords: $e');
+      print('[PASSWORD_CUBIT] Stack trace: $stackTrace');
       emit(PasswordsError('Failed to load passwords: $e'));
     }
   }

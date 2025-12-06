@@ -41,7 +41,22 @@ class InvestmentComponentLocalDataSourceImpl
 
   @override
   Future<List<InvestmentComponentModel>> getAllComponents() async {
-    return box.values.toList();
+    // Safely read all components, filtering out any that can't be deserialized
+    // This handles migration from old format (without multipleOf) to new format
+    final components = <InvestmentComponentModel>[];
+    for (final key in box.keys) {
+      try {
+        final component = box.get(key);
+        if (component != null) {
+          components.add(component);
+        }
+      } catch (e) {
+        // Skip corrupted entries that can't be read
+        // This prevents the entire operation from failing
+        continue;
+      }
+    }
+    return components;
   }
 
   @override

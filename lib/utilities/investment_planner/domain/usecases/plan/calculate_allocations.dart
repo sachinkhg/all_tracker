@@ -58,7 +58,16 @@ class CalculateAllocations {
       }
 
       // Allocate what's available (cannot exceed remaining funds)
-      final allocatedAmount = target > remaining ? remaining : target;
+      double allocatedAmount = target > remaining ? remaining : target;
+      
+      // Round to nearest multiple if specified
+      if (component.multipleOf != null && component.multipleOf! > 0) {
+        allocatedAmount = (allocatedAmount / component.multipleOf!).round() * component.multipleOf!;
+        // Ensure rounded amount doesn't exceed remaining funds
+        if (allocatedAmount > remaining) {
+          allocatedAmount = (remaining / component.multipleOf!).floor() * component.multipleOf!;
+        }
+      }
       
       if (allocatedAmount > 0) {
         allocations.add(ComponentAllocation(

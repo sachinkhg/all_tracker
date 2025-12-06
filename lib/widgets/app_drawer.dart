@@ -6,7 +6,7 @@ import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart'
 import '../trackers/goal_tracker/core/app_icons.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
 import '../trackers/travel_tracker/core/app_icons.dart';
-import '../utilities/investment_planner/presentation/pages/investment_planner_home_page.dart';
+import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../pages/settings_page.dart';
 
@@ -130,7 +130,7 @@ class AppDrawer extends StatelessWidget {
                         if (currentPage != AppPage.investmentPlanner) {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => const InvestmentPlannerHomePage(),
+                              builder: (_) => const PlanListPage(),
                             ),
                           );
                         }

@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../../../trackers/goal_tracker/core/constants.dart' as goal_constants;
 import '../../../../trackers/travel_tracker/core/constants.dart' as travel_constants;
 import '../../../../trackers/password_tracker/core/constants.dart' as password_constants;
+import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tracker_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../models/backup_manifest.dart';
@@ -21,7 +22,8 @@ import '../../../../trackers/travel_tracker/data/models/itinerary_day_model.dart
 import '../../../../trackers/travel_tracker/data/models/itinerary_item_model.dart';
 import '../../../../trackers/travel_tracker/data/models/journal_entry_model.dart';
 import '../../../../trackers/travel_tracker/data/models/photo_model.dart';
-import '../../../../trackers/travel_tracker/data/models/expense_model.dart';
+import '../../../../trackers/travel_tracker/data/models/expense_model.dart' as travel_expense;
+import '../../../../trackers/expense_tracker/data/models/expense_model.dart' as expense_tracker_expense;
 import '../../../../trackers/password_tracker/data/models/password_model.dart';
 import '../../../../trackers/password_tracker/data/models/secret_question_model.dart';
 import '../../../../utilities/investment_planner/data/models/investment_component_model.dart';
@@ -58,6 +60,9 @@ class BackupBuilderService {
 
   /// Create a JSON snapshot of all Hive boxes.
   Future<Map<String, dynamic>> createBackupSnapshot() async {
+    print('[BACKUP] Starting backup snapshot creation...');
+    print('[BACKUP] Version: $_currentVersion, Schema Version: $_currentDbSchemaVersion');
+    
     final snapshot = <String, dynamic>{
       'version': _currentVersion,
       'dbSchemaVersion': _currentDbSchemaVersion,
@@ -129,6 +134,10 @@ class BackupBuilderService {
           'startDate': _serializeDateOnly(t.startDate),
           'endDate': _serializeDateOnly(t.endDate),
           'description': t.description,
+          'tripTypeIndex': t.tripTypeIndex,
+          'destinationLatitude': t.destinationLatitude,
+          'destinationLongitude': t.destinationLongitude,
+          'destinationMapLink': t.destinationMapLink,
           'createdAt': t.createdAt.toUtc().toIso8601String(),
           'updatedAt': t.updatedAt.toUtc().toIso8601String(),
         }).toList();
@@ -203,7 +212,7 @@ class BackupBuilderService {
           'createdAt': p.createdAt.toUtc().toIso8601String(),
         }).toList();
 
-    final expensesBox = Hive.box<ExpenseModel>(travel_constants.expenseBoxName);
+    final expensesBox = Hive.box<travel_expense.ExpenseModel>(travel_constants.expenseBoxName);
     snapshot['expenses'] = expensesBox.values.map((e) => {
           'id': e.id,
           'tripId': e.tripId,
@@ -212,6 +221,7 @@ class BackupBuilderService {
           'amount': e.amount,
           'currency': e.currency,
           'description': e.description,
+          'paidBy': e.paidBy,
           'createdAt': e.createdAt.toUtc().toIso8601String(),
           'updatedAt': e.updatedAt.toUtc().toIso8601String(),
         }).toList();
@@ -245,8 +255,6 @@ class BackupBuilderService {
     snapshot['investment_plans'] = investmentPlansBox.values.map((ip) => {
           'id': ip.id,
           'name': ip.name,
-          'duration': ip.duration,
-          'period': ip.period,
           'incomeEntries': ip.incomeEntries.map((ie) => {
                 'id': ie.id,
                 'categoryId': ie.categoryId,
@@ -268,27 +276,71 @@ class BackupBuilderService {
     // ========================================================================
     // Password Tracker Data
     // ========================================================================
+    print('[BACKUP] Starting Password Tracker export...');
     final passwordsBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
-    snapshot['passwords'] = passwordsBox.values.map((p) => {
-          'id': p.id,
-          'siteName': p.siteName,
-          'url': p.url,
-          'username': p.username,
-          'encryptedPassword': p.encryptedPassword, // Store encrypted as-is
-          'isGoogleSignIn': p.isGoogleSignIn,
-          'lastUpdated': p.lastUpdated.toUtc().toIso8601String(),
-          'is2FA': p.is2FA,
-          'categoryGroup': p.categoryGroup,
-          'hasSecretQuestions': p.hasSecretQuestions,
-        }).toList();
+    final passwordCount = passwordsBox.length;
+    print('[BACKUP] Found $passwordCount passwords in box');
+    
+    snapshot['passwords'] = passwordsBox.values.map((p) {
+      print('[BACKUP] Exporting password: id=${p.id}, siteName=${p.siteName}, hasEncryptedPassword=${p.encryptedPassword != null}');
+      return {
+        'id': p.id,
+        'siteName': p.siteName,
+        'url': p.url,
+        'username': p.username,
+        'encryptedPassword': p.encryptedPassword, // Store encrypted as-is
+        'isGoogleSignIn': p.isGoogleSignIn,
+        'lastUpdated': p.lastUpdated.toUtc().toIso8601String(),
+        'is2FA': p.is2FA,
+        'categoryGroup': p.categoryGroup,
+        'hasSecretQuestions': p.hasSecretQuestions,
+      };
+    }).toList();
+    
+    print('[BACKUP] Exported ${snapshot['passwords'].length} passwords to snapshot');
 
     final secretQuestionsBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
-    snapshot['secret_questions'] = secretQuestionsBox.values.map((sq) => {
-          'id': sq.id,
-          'passwordId': sq.passwordId,
-          'question': sq.question,
-          'encryptedAnswer': sq.encryptedAnswer, // Store encrypted as-is
-        }).toList();
+    final secretQuestionCount = secretQuestionsBox.length;
+    print('[BACKUP] Found $secretQuestionCount secret questions in box');
+    
+    snapshot['secret_questions'] = secretQuestionsBox.values.map((sq) {
+      print('[BACKUP] Exporting secret question: id=${sq.id}, passwordId=${sq.passwordId}');
+      return {
+        'id': sq.id,
+        'passwordId': sq.passwordId,
+        'question': sq.question,
+        'encryptedAnswer': sq.encryptedAnswer, // Store encrypted as-is
+      };
+    }).toList();
+    
+    print('[BACKUP] Exported ${snapshot['secret_questions'].length} secret questions to snapshot');
+    print('[BACKUP] Password Tracker export completed');
+
+    // ========================================================================
+    // Expense Tracker Data
+    // ========================================================================
+    print('[BACKUP] Starting Expense Tracker export...');
+    final expenseTrackerBox = Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName);
+    final expenseTrackerCount = expenseTrackerBox.length;
+    print('[BACKUP] Found $expenseTrackerCount expenses in expense tracker box');
+    
+    snapshot['expense_tracker_expenses'] = expenseTrackerBox.values.map((e) {
+      print('[BACKUP] Exporting expense: id=${e.id}, description=${e.description}, amount=${e.amount}, date=${e.date}');
+      // Extract date components and create UTC date at midnight to preserve the date correctly
+      final dateOnly = _serializeDateOnlyRequired(e.date);
+      return {
+        'id': e.id,
+        'date': dateOnly,
+        'description': e.description,
+        'amount': e.amount,
+        'group': e.group,
+        'createdAt': e.createdAt.toUtc().toIso8601String(),
+        'updatedAt': e.updatedAt.toUtc().toIso8601String(),
+      };
+    }).toList();
+    
+    print('[BACKUP] Exported ${snapshot['expense_tracker_expenses'].length} expenses to snapshot');
+    print('[BACKUP] Expense Tracker export completed');
 
     // ========================================================================
     // Retirement Planner Data
@@ -340,6 +392,20 @@ class BackupBuilderService {
       'font_key': themeBox.get('font_key'),
       'is_dark': themeBox.get('is_dark'),
     };
+
+    // Log summary of what was included in the backup
+    print('[BACKUP] Backup snapshot creation completed');
+    print('[BACKUP] Summary:');
+    print('[BACKUP]   - Goals: ${(snapshot['goals'] as List).length}');
+    print('[BACKUP]   - Milestones: ${(snapshot['milestones'] as List).length}');
+    print('[BACKUP]   - Tasks: ${(snapshot['tasks'] as List).length}');
+    print('[BACKUP]   - Habits: ${(snapshot['habits'] as List).length}');
+    print('[BACKUP]   - Trips: ${(snapshot['trips'] as List).length}');
+    print('[BACKUP]   - Passwords: ${(snapshot['passwords'] as List).length}');
+    print('[BACKUP]   - Secret Questions: ${(snapshot['secret_questions'] as List).length}');
+    print('[BACKUP]   - Expense Tracker Expenses: ${(snapshot['expense_tracker_expenses'] as List).length}');
+    print('[BACKUP]   - Investment Plans: ${(snapshot['investment_plans'] as List).length}');
+    print('[BACKUP]   - Retirement Plans: ${(snapshot['retirement_plans'] as List).length}');
 
     return snapshot;
   }

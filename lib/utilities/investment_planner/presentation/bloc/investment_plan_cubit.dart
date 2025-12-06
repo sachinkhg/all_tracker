@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/entities/investment_plan.dart';
+import '../../domain/entities/plan_status.dart';
 import '../../domain/entities/income_entry.dart';
 import '../../domain/entities/expense_entry.dart';
 import '../../domain/entities/component_allocation.dart';
@@ -65,15 +66,27 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
         expenseEntries,
       );
 
+      // Preserve existing status when updating, default to draft for new plans
+      PlanStatus status = PlanStatus.draft;
+      DateTime? originalCreatedAt;
+      if (planId != null) {
+        final existingPlan = await getPlanById(planId);
+        if (existingPlan != null) {
+          status = existingPlan.status;
+          originalCreatedAt = existingPlan.createdAt;
+        }
+      }
+
       final plan = InvestmentPlan(
         id: planId ?? DateTime.now().millisecondsSinceEpoch.toString(),
         name: name,
         duration: duration,
         period: period,
+        status: status,
         incomeEntries: incomeEntries,
         expenseEntries: expenseEntries,
         allocations: allocationsResult['allocations'] as List<ComponentAllocation>,
-        createdAt: planId != null ? now : now, // Keep original if updating
+        createdAt: originalCreatedAt ?? now,
         updatedAt: now,
       );
 
@@ -87,6 +100,49 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
     } catch (e) {
       emit(PlansError(e.toString()));
       return null;
+    }
+  }
+
+  /// Updates the status of a plan with strict workflow validation
+  /// Only allows transitions: Draft → Approved → Executed
+  Future<bool> updatePlanStatus(String planId, PlanStatus newStatus) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Validate status transition (strict workflow)
+      final currentStatus = plan.status;
+      bool isValidTransition = false;
+      
+      if (currentStatus == PlanStatus.draft && newStatus == PlanStatus.approved) {
+        isValidTransition = true;
+      } else if (currentStatus == PlanStatus.approved && newStatus == PlanStatus.executed) {
+        isValidTransition = true;
+      } else if (currentStatus == newStatus) {
+        // Same status is allowed (idempotent)
+        isValidTransition = true;
+      }
+
+      if (!isValidTransition) {
+        emit(PlansError('Invalid status transition: ${currentStatus.displayName} → ${newStatus.displayName}'));
+        return false;
+      }
+
+      // Update plan with new status
+      final updatedPlan = plan.copyWith(
+        status: newStatus,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
     }
   }
 

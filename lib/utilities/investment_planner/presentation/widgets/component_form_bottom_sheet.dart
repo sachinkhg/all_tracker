@@ -12,6 +12,7 @@ class ComponentFormBottomSheet {
       int priority,
       double? minLimit,
       double? maxLimit,
+      double? multipleOf,
     ) onSubmit,
     Future<void> Function()? onDelete,
     String title = 'Add Component',
@@ -21,6 +22,7 @@ class ComponentFormBottomSheet {
     final priorityController = TextEditingController(text: component?.priority.toString() ?? '');
     final minLimitController = TextEditingController(text: component?.minLimit?.toString() ?? '');
     final maxLimitController = TextEditingController(text: component?.maxLimit?.toString() ?? '');
+    final multipleOfController = TextEditingController(text: component?.multipleOf?.toString() ?? '');
 
     final cs = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -153,6 +155,20 @@ class ComponentFormBottomSheet {
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
+                    const SizedBox(height: 12),
+
+                    // --- Multiple Of Field ---
+                    TextField(
+                      controller: multipleOfController,
+                      style: TextStyle(color: cs.primary),
+                      decoration: InputDecoration(
+                        labelText: 'Multiple of (optional)',
+                        labelStyle: TextStyle(color: cs.onSurfaceVariant),
+                        border: const OutlineInputBorder(),
+                        helperText: 'Round amount to nearest multiple',
+                      ),
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
                     const SizedBox(height: 20),
 
                     // --- Action Button ---
@@ -165,6 +181,7 @@ class ComponentFormBottomSheet {
                           final priorityText = priorityController.text.trim();
                           final minLimitText = minLimitController.text.trim();
                           final maxLimitText = maxLimitController.text.trim();
+                          final multipleOfText = multipleOfController.text.trim();
 
                           // Validation: name required
                           if (name.isEmpty) return;
@@ -177,8 +194,11 @@ class ComponentFormBottomSheet {
                           final maxLimit = maxLimitText.isNotEmpty
                               ? double.tryParse(maxLimitText)
                               : null;
+                          final multipleOf = multipleOfText.isNotEmpty
+                              ? double.tryParse(multipleOfText)
+                              : null;
 
-                          await onSubmit(name, percentage, priority, minLimit, maxLimit);
+                          await onSubmit(name, percentage, priority, minLimit, maxLimit, multipleOf);
 
                           // In edit mode, close the form after saving
                           if (component != null) {
@@ -193,6 +213,7 @@ class ComponentFormBottomSheet {
                           priorityController.clear();
                           minLimitController.clear();
                           maxLimitController.clear();
+                          multipleOfController.clear();
                         },
                         child: Text(component == null ? 'Save and Add More' : 'Save'),
                       ),
