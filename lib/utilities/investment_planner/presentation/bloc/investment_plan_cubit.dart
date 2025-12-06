@@ -178,5 +178,91 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
     final availableAmount = totalIncome - totalExpense;
     return await calculateAllocations(availableAmount);
   }
+
+  /// Updates the actual investment amount for a specific allocation.
+  /// Only works when plan status is approved or executed.
+  Future<bool> updateAllocationActualAmount(
+    String planId,
+    String componentId,
+    double? actualAmount,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Actual amounts can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the allocation
+      final updatedAllocations = plan.allocations.map((allocation) {
+        if (allocation.componentId == componentId) {
+          return allocation.copyWith(actualAmount: actualAmount);
+        }
+        return allocation;
+      }).toList();
+
+      // Update plan with new allocations
+      final updatedPlan = plan.copyWith(
+        allocations: updatedAllocations,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
+  }
+
+  /// Toggles the completion status for a specific allocation.
+  /// Only works when plan status is approved or executed.
+  Future<bool> toggleAllocationCompletion(
+    String planId,
+    String componentId,
+    bool isCompleted,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Completion status can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the allocation
+      final updatedAllocations = plan.allocations.map((allocation) {
+        if (allocation.componentId == componentId) {
+          return allocation.copyWith(isCompleted: isCompleted);
+        }
+        return allocation;
+      }).toList();
+
+      // Update plan with new allocations
+      final updatedPlan = plan.copyWith(
+        allocations: updatedAllocations,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
+  }
 }
 

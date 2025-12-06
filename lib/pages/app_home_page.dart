@@ -376,8 +376,8 @@ class _SectionCard extends StatelessWidget {
                 fontSize: 12,
               ),
           textAlign: TextAlign.center,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+          overflow: TextOverflow.clip,
         ),
         const SizedBox(height: 2),
         Text(
