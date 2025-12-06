@@ -1,51 +1,50 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'investment_component_model.dart';
+part of 'cloud_file_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class InvestmentComponentModelAdapter
-    extends TypeAdapter<InvestmentComponentModel> {
+class CloudFileModelAdapter extends TypeAdapter<CloudFileModel> {
   @override
-  final int typeId = 6;
+  final int typeId = 31;
 
   @override
-  InvestmentComponentModel read(BinaryReader reader) {
+  CloudFileModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return InvestmentComponentModel(
-      id: fields[0] as String,
+    return CloudFileModel(
+      url: fields[0] as String,
       name: fields[1] as String,
-      percentage: fields[2] as double,
-      minLimit: fields[3] as double?,
-      maxLimit: fields[4] as double?,
-      multipleOf: fields[5] as double?,
-      priority: fields[6] as int,
+      type: fields[2] as String,
+      size: fields[3] as int?,
+      modifiedDateMs: fields[4] as int?,
+      folder: fields[5] as String,
+      mimeType: fields[6] as String?,
     );
   }
 
   @override
-  void write(BinaryWriter writer, InvestmentComponentModel obj) {
+  void write(BinaryWriter writer, CloudFileModel obj) {
     writer
       ..writeByte(7)
       ..writeByte(0)
-      ..write(obj.id)
+      ..write(obj.url)
       ..writeByte(1)
       ..write(obj.name)
       ..writeByte(2)
-      ..write(obj.percentage)
+      ..write(obj.type)
       ..writeByte(3)
-      ..write(obj.minLimit)
+      ..write(obj.size)
       ..writeByte(4)
-      ..write(obj.maxLimit)
+      ..write(obj.modifiedDateMs)
       ..writeByte(5)
-      ..write(obj.multipleOf)
+      ..write(obj.folder)
       ..writeByte(6)
-      ..write(obj.priority);
+      ..write(obj.mimeType);
   }
 
   @override
@@ -54,7 +53,7 @@ class InvestmentComponentModelAdapter
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is InvestmentComponentModelAdapter &&
+      other is CloudFileModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

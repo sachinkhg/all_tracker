@@ -1,42 +1,38 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'component_allocation_model.dart';
+part of 'file_server_config_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class ComponentAllocationModelAdapter
-    extends TypeAdapter<ComponentAllocationModel> {
+class FileServerConfigModelAdapter extends TypeAdapter<FileServerConfigModel> {
   @override
-  final int typeId = 12;
+  final int typeId = 30;
 
   @override
-  ComponentAllocationModel read(BinaryReader reader) {
+  FileServerConfigModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return ComponentAllocationModel(
-      componentId: fields[0] as String,
-      allocatedAmount: fields[1] as double,
-      actualAmount: fields[2] as double?,
-      isCompleted: fields[3] as bool,
+    return FileServerConfigModel(
+      baseUrl: fields[0] as String,
+      username: fields[1] as String,
+      password: fields[2] as String,
     );
   }
 
   @override
-  void write(BinaryWriter writer, ComponentAllocationModel obj) {
+  void write(BinaryWriter writer, FileServerConfigModel obj) {
     writer
-      ..writeByte(4)
-      ..writeByte(0)
-      ..write(obj.componentId)
-      ..writeByte(1)
-      ..write(obj.allocatedAmount)
-      ..writeByte(2)
-      ..write(obj.actualAmount)
       ..writeByte(3)
-      ..write(obj.isCompleted);
+      ..writeByte(0)
+      ..write(obj.baseUrl)
+      ..writeByte(1)
+      ..write(obj.username)
+      ..writeByte(2)
+      ..write(obj.password);
   }
 
   @override
@@ -45,7 +41,7 @@ class ComponentAllocationModelAdapter
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is ComponentAllocationModelAdapter &&
+      other is FileServerConfigModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

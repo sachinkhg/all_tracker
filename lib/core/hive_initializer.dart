@@ -5,6 +5,7 @@ import 'package:all_tracker/trackers/goal_tracker/core/hive_initializer.dart' as
 import 'package:all_tracker/trackers/travel_tracker/core/hive_initializer.dart' as travel_tracker;
 import 'package:all_tracker/trackers/password_tracker/core/hive_initializer.dart' as password_tracker;
 import 'package:all_tracker/trackers/expense_tracker/core/hive_initializer.dart' as expense_tracker;
+import 'package:all_tracker/trackers/file_tracker/core/hive_initializer.dart' as file_tracker;
 import 'package:all_tracker/utilities/investment_planner/core/hive_initializer.dart' as investment_planner;
 import 'package:all_tracker/utilities/retirement_planner/core/hive_initializer.dart' as retirement_planner;
 import 'package:all_tracker/features/backup/core/hive_initializer.dart' as backup;
@@ -57,6 +58,7 @@ class HiveInitializer {
     travel_tracker.TravelTrackerHiveInitializer(),
     password_tracker.PasswordTrackerHiveInitializer(),
     expense_tracker.ExpenseTrackerHiveInitializer(),
+    file_tracker.FileTrackerHiveInitializer(),
     investment_planner.InvestmentPlannerHiveInitializer(),
     retirement_planner.RetirementPlannerHiveInitializer(),
     backup.BackupHiveInitializer(),
