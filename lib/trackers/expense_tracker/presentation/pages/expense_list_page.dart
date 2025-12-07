@@ -12,6 +12,10 @@ import '../widgets/expense_list_item.dart';
 import '../widgets/expense_form_bottom_sheet.dart';
 import '../../features/expense_import_export.dart';
 import 'expense_dashboard_page.dart';
+import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/organization_notifier.dart';
 
 class ExpenseListPage extends StatelessWidget {
   const ExpenseListPage({super.key});
@@ -37,6 +41,7 @@ class ExpenseListPageView extends StatelessWidget {
     final cubit = context.read<ExpenseCubit>();
 
     return Scaffold(
+      drawer: const AppDrawer(currentPage: AppPage.expenseTracker),
       appBar: PrimaryAppBar(
         title: 'Expense Tracker',
         actions: [
@@ -51,11 +56,22 @@ class ExpenseListPageView extends StatelessWidget {
               );
             },
           ),
-          IconButton(
-            tooltip: 'Home Page',
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  tooltip: 'Home Page',
+                  icon: const Icon(Icons.home),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],

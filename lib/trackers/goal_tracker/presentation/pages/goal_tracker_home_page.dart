@@ -31,8 +31,6 @@ import '../../domain/entities/goal.dart';
 import '../../domain/entities/milestone.dart';
 import '../../core/constants.dart';
 import '../../core/injection.dart';
-import '../../../../features/backup/core/backup_scheduler_service.dart';
-import '../../../../features/backup/core/injection.dart';
 import '../bloc/goal_cubit.dart';
 import '../bloc/goal_state.dart';
 import '../bloc/milestone_cubit.dart';
@@ -60,12 +58,11 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
+class _HomePageState extends State<HomePage> {
   late final GoalCubit _goalCubit;
   late final MilestoneCubit _milestoneCubit;
   late final TaskCubit _taskCubit;
   late final HabitCubit _habitCubit;
-  late final BackupSchedulerService _backupScheduler;
   
   // Filter state for home page
   String? _targetDateFilter;
@@ -73,45 +70,25 @@ class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
     
     _goalCubit = createGoalCubit();
     _milestoneCubit = createMilestoneCubit();
     _taskCubit = createTaskCubit();
     _habitCubit = createHabitCubit();
-    _backupScheduler = createBackupSchedulerService();
     
     // Load initial data
     _goalCubit.loadGoals();
     _milestoneCubit.loadMilestones();
     _taskCubit.loadTasks();
-    
-    // Check for automatic backup on app startup
-    _checkAutomaticBackup();
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _goalCubit.close();
     _milestoneCubit.close();
     _taskCubit.close();
     _habitCubit.close();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    // Check for automatic backup when app comes to foreground
-    if (state == AppLifecycleState.resumed) {
-      _checkAutomaticBackup();
-    }
-  }
-
-  Future<void> _checkAutomaticBackup() async {
-    // Run in background without blocking UI
-    _backupScheduler.checkAndRunBackup();
   }
 
   @override

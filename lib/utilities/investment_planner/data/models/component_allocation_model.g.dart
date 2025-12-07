@@ -17,17 +17,11 @@ class ComponentAllocationModelAdapter
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    
-    // Migration: Handle old data format that didn't have actualAmount (field 2) and isCompleted (field 3)
-    // Old format: componentId(0), allocatedAmount(1)
-    // New format: componentId(0), allocatedAmount(1), actualAmount(2), isCompleted(3)
-    // Fields 2-3 are nullable/defaulted, so old data without them will work fine
-    
     return ComponentAllocationModel(
       componentId: fields[0] as String,
       allocatedAmount: fields[1] as double,
-      actualAmount: fields[2] as double?, // Nullable, so old data without this field is fine
-      isCompleted: (fields[3] as bool?) ?? false, // Default to false for old data
+      actualAmount: fields[2] as double?,
+      isCompleted: fields[3] as bool,
     );
   }
 

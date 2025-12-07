@@ -276,13 +276,9 @@ class BackupBuilderService {
     // ========================================================================
     // Password Tracker Data
     // ========================================================================
-    print('[BACKUP] Starting Password Tracker export...');
     final passwordsBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
-    final passwordCount = passwordsBox.length;
-    print('[BACKUP] Found $passwordCount passwords in box');
     
     snapshot['passwords'] = passwordsBox.values.map((p) {
-      print('[BACKUP] Exporting password: id=${p.id}, siteName=${p.siteName}, hasEncryptedPassword=${p.encryptedPassword != null}');
       return {
         'id': p.id,
         'siteName': p.siteName,
@@ -296,15 +292,10 @@ class BackupBuilderService {
         'hasSecretQuestions': p.hasSecretQuestions,
       };
     }).toList();
-    
-    print('[BACKUP] Exported ${snapshot['passwords'].length} passwords to snapshot');
 
     final secretQuestionsBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
-    final secretQuestionCount = secretQuestionsBox.length;
-    print('[BACKUP] Found $secretQuestionCount secret questions in box');
     
     snapshot['secret_questions'] = secretQuestionsBox.values.map((sq) {
-      print('[BACKUP] Exporting secret question: id=${sq.id}, passwordId=${sq.passwordId}');
       return {
         'id': sq.id,
         'passwordId': sq.passwordId,
@@ -312,20 +303,13 @@ class BackupBuilderService {
         'encryptedAnswer': sq.encryptedAnswer, // Store encrypted as-is
       };
     }).toList();
-    
-    print('[BACKUP] Exported ${snapshot['secret_questions'].length} secret questions to snapshot');
-    print('[BACKUP] Password Tracker export completed');
 
     // ========================================================================
     // Expense Tracker Data
     // ========================================================================
-    print('[BACKUP] Starting Expense Tracker export...');
     final expenseTrackerBox = Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName);
-    final expenseTrackerCount = expenseTrackerBox.length;
-    print('[BACKUP] Found $expenseTrackerCount expenses in expense tracker box');
     
     snapshot['expense_tracker_expenses'] = expenseTrackerBox.values.map((e) {
-      print('[BACKUP] Exporting expense: id=${e.id}, description=${e.description}, amount=${e.amount}, date=${e.date}');
       // Extract date components and create UTC date at midnight to preserve the date correctly
       final dateOnly = _serializeDateOnlyRequired(e.date);
       return {
@@ -338,9 +322,6 @@ class BackupBuilderService {
         'updatedAt': e.updatedAt.toUtc().toIso8601String(),
       };
     }).toList();
-    
-    print('[BACKUP] Exported ${snapshot['expense_tracker_expenses'].length} expenses to snapshot');
-    print('[BACKUP] Expense Tracker export completed');
 
     // ========================================================================
     // Retirement Planner Data

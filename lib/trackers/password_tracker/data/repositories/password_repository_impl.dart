@@ -87,45 +87,28 @@ class PasswordRepositoryImpl implements PasswordRepository {
   @override
   Future<List<Password>> getAllPasswords() async {
     // Fetch DTOs/models and map each to the domain entity
-    print('[PASSWORD_REPO] getAllPasswords called');
     final models = await local.getAllPasswords();
-    print('[PASSWORD_REPO] Found ${models.length} password models in box');
     final passwords = <Password>[];
 
     for (final model in models) {
-      print('[PASSWORD_REPO] Processing password model: id=${model.id}, siteName=${model.siteName}, hasEncryptedPassword=${model.encryptedPassword != null && model.encryptedPassword!.isNotEmpty}');
-      
       // Decrypt password if encrypted
       String? decryptedPassword;
       if (model.encryptedPassword != null && model.encryptedPassword!.isNotEmpty) {
         try {
-          print('[PASSWORD_REPO] Attempting to decrypt password for id=${model.id}');
           decryptedPassword = await encryptionService.decrypt(model.encryptedPassword!);
-          print('[PASSWORD_REPO] Successfully decrypted password for id=${model.id}');
         } catch (e) {
           // If decryption fails (e.g., different device/encryption key), 
           // still return the password but with null password field
           // This allows the user to see the entry and re-enter the password if needed
-          print('[PASSWORD_REPO] WARNING: Failed to decrypt password for id=${model.id}, siteName=${model.siteName}');
-          print('[PASSWORD_REPO] Error: $e');
-          print('[PASSWORD_REPO] This is expected when restoring to a different device. Password will be null.');
           // Set decryptedPassword to null - the password entry will still be shown
           decryptedPassword = null;
         }
-      } else {
-        print('[PASSWORD_REPO] No encrypted password for id=${model.id}, using null');
       }
 
       final password = model.toEntity(decryptedPassword: decryptedPassword);
       passwords.add(password);
-      print('[PASSWORD_REPO] Added password to list: id=${password.id}, siteName=${password.siteName}, hasPassword=${password.password != null}');
     }
 
-    print('[PASSWORD_REPO] Returning ${passwords.length} passwords');
-    final passwordsWithNullPassword = passwords.where((p) => p.password == null).length;
-    if (passwordsWithNullPassword > 0) {
-      print('[PASSWORD_REPO] Note: $passwordsWithNullPassword passwords have null password field (decryption failed - likely different device)');
-    }
     return passwords;
   }
 
@@ -143,9 +126,6 @@ class PasswordRepositoryImpl implements PasswordRepository {
       } catch (e) {
         // If decryption fails (e.g., different device/encryption key),
         // still return the password but with null password field
-        print('[PASSWORD_REPO] WARNING: Failed to decrypt password for id=$id');
-        print('[PASSWORD_REPO] Error: $e');
-        print('[PASSWORD_REPO] This is expected when restoring to a different device. Password will be null.');
         decryptedPassword = null;
       }
     }

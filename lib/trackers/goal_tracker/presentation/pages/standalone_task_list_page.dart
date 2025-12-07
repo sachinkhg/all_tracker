@@ -25,6 +25,10 @@ import '../widgets/filter_group_bottom_sheet.dart';
 import '../../../../widgets/bottom_sheet_helpers.dart';
 import 'package:all_tracker/core/services/view_entity_type.dart';
 import '../../../../core/design_tokens.dart';
+import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/organization_notifier.dart';
 
 class StandaloneTaskListPage extends StatelessWidget {
   const StandaloneTaskListPage({super.key});
@@ -56,14 +60,26 @@ class StandaloneTaskListPageView extends StatelessWidget {
         state is TasksLoaded ? state.visibleFields ?? <String, bool>{} : <String, bool>{};
 
     return Scaffold(
+      drawer: const AppDrawer(currentPage: AppPage.taskTracker),
       appBar: PrimaryAppBar(
         title: 'Task Tracker',
         actions: [
-          IconButton(
-            tooltip: 'Home Page',
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  tooltip: 'Home Page',
+                  icon: const Icon(Icons.home),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],

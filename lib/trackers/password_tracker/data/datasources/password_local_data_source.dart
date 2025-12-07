@@ -104,12 +104,7 @@ class PasswordLocalDataSourceImpl implements PasswordLocalDataSource {
     // Convert box values iterable to a list. Ordering is the insertion order from Hive.
     // If deterministic sorting is required (e.g., by lastUpdated), do it at the
     // repository/presentation layer rather than here.
-    print('[PASSWORD_DS] getAllPasswords called, box length: ${box.length}');
     final passwords = box.values.toList();
-    print('[PASSWORD_DS] Returning ${passwords.length} passwords from box');
-    for (final p in passwords) {
-      print('[PASSWORD_DS]   - id=${p.id}, siteName=${p.siteName}, hasEncryptedPassword=${p.encryptedPassword != null && p.encryptedPassword!.isNotEmpty}');
-    }
     return passwords;
   }
 

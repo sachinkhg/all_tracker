@@ -8,6 +8,7 @@ import '../../domain/usecases/delete_backup.dart';
 import '../../core/backup_preferences_service.dart';
 import '../../data/datasources/google_auth_datasource.dart';
 import '../../domain/entities/backup_mode.dart';
+import '../../domain/entities/backup_metadata.dart';
 import '../../domain/entities/backup_result.dart' as domain;
 import '../../domain/entities/restore_result.dart' as domain;
 import 'backup_state.dart';
@@ -50,14 +51,19 @@ class BackupCubit extends Cubit<BackupState> {
       // User is already signed in, load backups immediately
       final account = await _googleAuth.getCurrentAccount();
       if (account != null) {
-        debugPrint('User already signed in: ${account.email}');
+        debugPrint('[BACKUP_CUBIT] User already signed in: ${account.email}');
         await loadBackups();
+        
+        // Also refresh after a delay to catch any newly created backups
+        Future.delayed(const Duration(seconds: 3), () {
+          loadBackups();
+        });
         return;
       }
     }
 
     // If not signed in, automatically initiate sign-in flow
-    debugPrint('No existing session found, initiating sign-in...');
+    debugPrint('[BACKUP_CUBIT] No existing session found, initiating sign-in...');
     await signIn();
   }
 
@@ -104,12 +110,15 @@ class BackupCubit extends Cubit<BackupState> {
     }
 
     try {
+      debugPrint('[BACKUP_CUBIT] Loading backups...');
       final backups = await _listBackups.call();
+      debugPrint('[BACKUP_CUBIT] Loaded ${backups.length} backups');
       emit(BackupSignedIn(
         accountEmail: account.email,
         backups: backups,
       ));
     } catch (e) {
+      debugPrint('[BACKUP_CUBIT] Failed to load backups: $e');
       // Even if loading backups fails, preserve signed-in state
       emit(BackupSignedIn(
         accountEmail: account.email,
@@ -158,6 +167,8 @@ class BackupCubit extends Cubit<BackupState> {
       );
 
       if (result is domain.RestoreSuccess) {
+        // Update last restore time
+        await _preferencesService.setLastRestoreTime(DateTime.now());
         // Show success state briefly, then restore signed-in state
         emit(RestoreOperationSuccess());
         // Reload backups to restore signed-in state
@@ -234,12 +245,46 @@ class BackupCubit extends Cubit<BackupState> {
 
   /// Update automatic backup preference.
   Future<void> setAutoBackupEnabled(bool enabled) async {
+    // Prevent duplicate calls if already set to the same value
+    if (_preferencesService.autoBackupEnabled == enabled) {
+      return;
+    }
+    
     await _preferencesService.setAutoBackupEnabled(enabled);
+    
+    // Emit a new state to trigger UI rebuild
+    // Preserve the current signed-in state if we're signed in
+    // Create a new list instance to ensure state is different (forces rebuild)
+    if (state is BackupSignedIn) {
+      final currentState = state as BackupSignedIn;
+      emit(BackupSignedIn(
+        accountEmail: currentState.accountEmail,
+        backups: List<BackupMetadata>.from(currentState.backups),
+        errorMessage: currentState.errorMessage,
+      ));
+    }
   }
 
   /// Update backup encryption mode.
   Future<void> setBackupMode(BackupMode mode) async {
+    // Prevent duplicate calls if already set to the same value
+    if (_preferencesService.backupMode == mode) {
+      return;
+    }
+    
     await _preferencesService.setBackupMode(mode);
+    
+    // Emit a new state to trigger UI rebuild
+    // Preserve the current signed-in state if we're signed in
+    // Create a new list instance to ensure state is different (forces rebuild)
+    if (state is BackupSignedIn) {
+      final currentState = state as BackupSignedIn;
+      emit(BackupSignedIn(
+        accountEmail: currentState.accountEmail,
+        backups: List<BackupMetadata>.from(currentState.backups),
+        errorMessage: currentState.errorMessage,
+      ));
+    }
   }
 
   /// Update retention count.

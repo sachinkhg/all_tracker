@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/design_tokens.dart';
+import '../../../../core/organization_notifier.dart';
+import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
 import '../../core/injection.dart';
 import '../../domain/entities/plan_status.dart';
 import '../bloc/investment_plan_cubit.dart';
@@ -30,8 +34,29 @@ class PlanListPageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      drawer: const AppDrawer(currentPage: AppPage.investmentPlanner),
       appBar: AppBar(
         title: const Text('Investment Plans'),
+        actions: [
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  icon: const Icon(Icons.home),
+                  tooltip: 'Home',
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: AppGradients.appBar(cs),
