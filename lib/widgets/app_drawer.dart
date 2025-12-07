@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/design_tokens.dart';
 import '../core/organization_notifier.dart';
+import '../pages/app_home_page.dart';
 import '../trackers/goal_tracker/presentation/pages/goal_tracker_home_page.dart';
 import '../trackers/goal_tracker/core/app_icons.dart';
+import '../trackers/goal_tracker/presentation/pages/standalone_task_list_page.dart';
 import '../trackers/travel_tracker/presentation/pages/travel_tracker_home_page.dart';
 import '../trackers/travel_tracker/core/app_icons.dart';
+import '../trackers/password_tracker/presentation/pages/password_list_page.dart';
+import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
+import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
+import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
+import '../trackers/file_tracker/presentation/pages/file_tracker_home_page.dart';
+import '../trackers/file_tracker/core/app_icons.dart' as file_tracker;
 import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../pages/settings_page.dart';
@@ -15,6 +23,10 @@ enum AppPage {
   appHome,
   goalTracker,
   travelTracker,
+  taskTracker,
+  passwordTracker,
+  expenseTracker,
+  fileTracker,
   investmentPlanner,
   retirementPlanner,
   settings,
@@ -77,6 +89,24 @@ class AppDrawer extends StatelessWidget {
                 final trackerItems = <Widget>[];
                 final utilityItems = <Widget>[];
                 
+                // Always add App Home at the top
+                final homeItem = _DrawerTile(
+                  icon: Icons.home,
+                  title: 'Home',
+                  isSelected: currentPage == AppPage.appHome,
+                  onTap: () {
+                    Navigator.of(context).pop(); // Close drawer
+                    if (currentPage != AppPage.appHome) {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(
+                          builder: (_) => const AppHomePage(),
+                        ),
+                        (route) => false,
+                      );
+                    }
+                  },
+                );
+                
                 // Build tracker items based on toggle states
                 if (orgNotifier.goalTrackerEnabled) {
                   trackerItems.add(
@@ -117,6 +147,82 @@ class AppDrawer extends StatelessWidget {
                     ),
                   );
                 }
+                
+                // Task Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: AppIcons.task,
+                    title: 'Task Tracker',
+                    isSelected: currentPage == AppPage.taskTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.taskTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const StandaloneTaskListPage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+                
+                // Password Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: password_tracker.PasswordTrackerIcons.password,
+                    title: 'Password Tracker',
+                    isSelected: currentPage == AppPage.passwordTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.passwordTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const PasswordListPage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+                
+                // Expense Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: expense_tracker.ExpenseTrackerIcons.expense,
+                    title: 'Expense Tracker',
+                    isSelected: currentPage == AppPage.expenseTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.expenseTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const ExpenseListPage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+                
+                // File Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: file_tracker.FileTrackerIcons.file,
+                    title: 'File Tracker',
+                    isSelected: currentPage == AppPage.fileTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.fileTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const FileTrackerHomePage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
                 
                 // Build utility items based on toggle states
                 if (orgNotifier.investmentPlannerEnabled) {
@@ -162,6 +268,10 @@ class AppDrawer extends StatelessWidget {
                 return ListView(
                   padding: EdgeInsets.zero,
                   children: [
+                    // Home item at the top
+                    homeItem,
+                    const Divider(height: 1),
+                    
                     // Tracker Section (only show if there are enabled trackers)
                     if (trackerItems.isNotEmpty) ...[
                       Padding(

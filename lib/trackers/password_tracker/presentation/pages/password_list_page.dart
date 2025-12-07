@@ -10,6 +10,10 @@ import '../../../../widgets/error_view.dart';
 import '../widgets/password_list_item.dart';
 import '../widgets/password_form_bottom_sheet.dart';
 import 'password_detail_page.dart';
+import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/organization_notifier.dart';
 
 class PasswordListPage extends StatelessWidget {
   const PasswordListPage({super.key});
@@ -35,14 +39,26 @@ class PasswordListPageView extends StatelessWidget {
     final cubit = context.read<PasswordCubit>();
 
     return Scaffold(
+      drawer: const AppDrawer(currentPage: AppPage.passwordTracker),
       appBar: PrimaryAppBar(
         title: 'Password Tracker',
         actions: [
-          IconButton(
-            tooltip: 'Home Page',
-            icon: const Icon(Icons.home),
-            onPressed: () {
-              Navigator.of(context).popUntil((route) => route.isFirst);
+          Consumer<OrganizationNotifier>(
+            builder: (context, orgNotifier, _) {
+              // Only show home icon if default home page is app_home
+              if (orgNotifier.defaultHomePage == 'app_home') {
+                return IconButton(
+                  tooltip: 'Home Page',
+                  icon: const Icon(Icons.home),
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (_) => const AppHomePage()),
+                      (route) => false,
+                    );
+                  },
+                );
+              }
+              return const SizedBox.shrink();
             },
           ),
         ],

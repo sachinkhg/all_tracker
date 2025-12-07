@@ -16,6 +16,10 @@ import '../widgets/file_list_item.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
+import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/organization_notifier.dart';
 
 /// Main page for the File Tracker feature.
 ///
@@ -40,6 +44,7 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
         return cubit;
       },
       child: Scaffold(
+        drawer: const AppDrawer(currentPage: AppPage.fileTracker),
         appBar: PrimaryAppBar(
           title: 'File Tracker',
           actions: [
@@ -67,6 +72,24 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
                   builderContext.read<FileCubit>().refreshFiles();
                 },
               ),
+            ),
+            Consumer<OrganizationNotifier>(
+              builder: (context, orgNotifier, _) {
+                // Only show home icon if default home page is app_home
+                if (orgNotifier.defaultHomePage == 'app_home') {
+                  return IconButton(
+                    tooltip: 'Home Page',
+                    icon: const Icon(Icons.home),
+                    onPressed: () {
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const AppHomePage()),
+                        (route) => false,
+                      );
+                    },
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
           ],
         ),

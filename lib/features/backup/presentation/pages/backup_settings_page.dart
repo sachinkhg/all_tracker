@@ -11,15 +11,61 @@ import '../widgets/backup_name_dialog.dart';
 import '../../domain/entities/backup_mode.dart';
 import '../../domain/entities/backup_metadata.dart';
 
-class BackupSettingsPage extends StatelessWidget {
+class BackupSettingsPage extends StatefulWidget {
   const BackupSettingsPage({super.key});
+
+  @override
+  State<BackupSettingsPage> createState() => _BackupSettingsPageState();
+}
+
+class _BackupSettingsPageState extends State<BackupSettingsPage> with WidgetsBindingObserver {
+  BackupCubit? _cubit;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
+    // Refresh backup list after a delay when page is first opened
+    // This ensures any backups created when app went to background are visible
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && _cubit != null) {
+        _cubit!.loadBackups();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh backup list when app comes back to foreground
+    if (state == AppLifecycleState.resumed && _cubit != null) {
+      // Refresh the backup list after a delay to ensure backup has completed and is indexed
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted && _cubit != null) {
+          _cubit!.loadBackups();
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     
     return BlocProvider(
-      create: (_) => createBackupCubit()..checkAuthStatus(),
+      create: (_) {
+        final cubit = createBackupCubit();
+        _cubit = cubit;
+        cubit.checkAuthStatus();
+        return cubit;
+      },
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Cloud Backup'),
@@ -43,6 +89,16 @@ class BackupSettingsPage extends StatelessWidget {
             opacity: 1.0,
           ),
           elevation: 0,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh),
+              onPressed: () {
+                final cubit = context.read<BackupCubit>();
+                cubit.loadBackups();
+              },
+              tooltip: 'Refresh backup list',
+            ),
+          ],
         ),
         body: const _BackupSettingsContent(),
       ),
@@ -228,14 +284,22 @@ class _BackupSettingsContent extends StatelessWidget {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
-        BlocBuilder<BackupCubit, BackupState>(
-          buildWhen: (prev, curr) => curr is BackupSignedIn,
+        BlocConsumer<BackupCubit, BackupState>(
+          listener: (context, state) {
+            // Listen to state changes to ensure UI updates
+          },
           builder: (context, state) {
+            // Only show toggle if signed in
+            if (state is! BackupSignedIn) {
+              return const SizedBox.shrink();
+            }
             return SwitchListTile(
               title: const Text('Automatic Backups'),
-              subtitle: const Text('Back up your data every 24 hours'),
+              subtitle: const Text('Back up your data when app closes or goes to background'),
               value: cubit.autoBackupEnabled,
-              onChanged: cubit.setAutoBackupEnabled,
+              onChanged: (value) {
+                cubit.setAutoBackupEnabled(value);
+              },
             );
           },
         ),
@@ -343,9 +407,20 @@ class _BackupSettingsContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Restore from Backup',
-          style: Theme.of(context).textTheme.titleMedium,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Restore from Backup',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            if (state is BackupSignedIn)
+              TextButton.icon(
+                onPressed: () => cubit.loadBackups(),
+                icon: const Icon(Icons.refresh, size: 18),
+                label: const Text('Refresh'),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         if (state is BackupSignedIn && state.backups.isNotEmpty)

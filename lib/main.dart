@@ -15,6 +15,9 @@ import 'features/auth/core/injection.dart';
 import 'features/auth/presentation/pages/login_page.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 import 'features/auth/presentation/states/auth_state.dart';
+import 'features/backup/core/injection.dart';
+import 'features/backup/core/backup_scheduler_service.dart';
+import 'features/backup/core/backup_sync_service.dart';
 
 /// ============================================================================
 /// APPLICATION ENTRY POINT
@@ -89,8 +92,55 @@ Future<void> main() async {
 /// Handles:
 ///   - Theming (light/dark + typography merge)
 ///   - Route entry point (`HomePage`)
-class MyApp extends StatelessWidget {
+///   - App lifecycle observation for automatic backups
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  late final BackupSchedulerService _backupScheduler;
+  late final BackupSyncService _backupSyncService;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _backupScheduler = createBackupSchedulerService();
+    _backupSyncService = createBackupSyncService();
+    
+    // Check for restore on app startup (after a short delay to ensure everything is initialized)
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        _backupSyncService.checkAndRestoreIfNeeded();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      // Trigger automatic backup when app goes to background
+      _backupScheduler.runAutomaticBackup();
+    } else if (state == AppLifecycleState.resumed) {
+      // Check for restore when app comes to foreground
+      // Wait a bit to ensure any backup created when going to background is indexed
+      Future.delayed(const Duration(seconds: 3), () {
+        if (mounted) {
+          _backupSyncService.checkAndRestoreIfNeeded();
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

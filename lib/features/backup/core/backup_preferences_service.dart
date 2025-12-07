@@ -50,19 +50,23 @@ class BackupPreferencesService {
     await _box.put('lastBackupTime', time.toUtc().toIso8601String());
   }
 
+  /// Get the last restore time (when we last restored from a backup).
+  DateTime? get lastRestoreTime {
+    final timestamp = _box.get('lastRestoreTime');
+    return timestamp != null ? DateTime.parse(timestamp as String) : null;
+  }
+
+  /// Set the last restore time.
+  Future<void> setLastRestoreTime(DateTime time) async {
+    await _box.put('lastRestoreTime', time.toUtc().toIso8601String());
+  }
+
   /// Check if automatic backup should run now.
   /// 
   /// Returns true if:
   /// - Auto backup is enabled
-  /// - Last backup was more than 24 hours ago (or no last backup exists)
+  /// No longer checks for 24-hour interval - backups are triggered by app lifecycle events
   bool shouldRunAutomaticBackup() {
-    if (!autoBackupEnabled) return false;
-
-    final lastBackup = lastBackupTime;
-    if (lastBackup == null) return true;
-
-    final now = DateTime.now();
-    final hoursSinceLastBackup = now.difference(lastBackup).inHours;
-    return hoursSinceLastBackup >= 24;
+    return autoBackupEnabled;
   }
 }

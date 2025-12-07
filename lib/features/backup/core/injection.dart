@@ -8,6 +8,7 @@ import '../core/encryption_service.dart';
 import '../core/device_info_service.dart';
 import '../core/backup_preferences_service.dart';
 import '../core/backup_scheduler_service.dart';
+import '../core/backup_sync_service.dart';
 import '../data/datasources/google_auth_datasource.dart';
 import '../data/datasources/drive_api_client.dart';
 import '../data/datasources/backup_metadata_local_datasource.dart';
@@ -137,12 +138,12 @@ BackupCubit createBackupCubit() {
 
 /// Create a BackupSchedulerService instance for automatic backups.
 ///
-/// This service checks if automatic backups should run and executes them
-/// when enabled and the 24-hour interval has passed.
+/// This service runs automatic backups when app goes to background or closes,
+/// and manages cleanup of old automatic backups.
 BackupSchedulerService createBackupSchedulerService() {
   final backupPrefsService = BackupPreferencesService();
   
-  // Create repository and use case for backup creation
+  // Create repository and use cases
   final encryptionService = EncryptionService();
   final deviceInfoService = DeviceInfoService();
   final googleAuth = GoogleAuthDataSource();
@@ -161,10 +162,50 @@ BackupSchedulerService createBackupSchedulerService() {
   );
   
   final createBackup = CreateBackup(repository);
+  final listBackups = ListBackups(repository);
+  final deleteBackup = DeleteBackup(repository);
   
   return BackupSchedulerService(
     preferencesService: backupPrefsService,
     createBackupUseCase: createBackup,
+    listBackupsUseCase: listBackups,
+    deleteBackupUseCase: deleteBackup,
+    googleAuth: googleAuth,
+  );
+}
+
+/// Create a BackupSyncService instance for automatic restore.
+///
+/// This service checks for newer backups and automatically restores them
+/// when the app starts or comes from background.
+BackupSyncService createBackupSyncService() {
+  final backupPrefsService = BackupPreferencesService();
+  
+  // Create repository and use cases
+  final encryptionService = EncryptionService();
+  final deviceInfoService = DeviceInfoService();
+  final googleAuth = GoogleAuthDataSource();
+  final driveApi = DriveApiClient(googleAuth);
+  final backupBox = Hive.box<BackupMetadataModel>(backupMetadataBoxName);
+  final metadataDataSource = BackupMetadataLocalDataSourceImpl(backupBox);
+  final backupBuilder = BackupBuilderService();
+  
+  final repository = BackupRepositoryImpl(
+    googleAuth: googleAuth,
+    driveApi: driveApi,
+    encryptionService: encryptionService,
+    backupBuilder: backupBuilder,
+    metadataDataSource: metadataDataSource,
+    deviceInfoService: deviceInfoService,
+  );
+  
+  final listBackups = ListBackups(repository);
+  final restoreBackup = RestoreBackup(repository);
+  
+  return BackupSyncService(
+    preferencesService: backupPrefsService,
+    listBackupsUseCase: listBackups,
+    restoreBackupUseCase: restoreBackup,
     googleAuth: googleAuth,
   );
 }

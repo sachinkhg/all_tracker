@@ -190,7 +190,7 @@ class SettingsPage extends StatelessWidget {
             title: const Text('Local Backup'),
             subtitle: const Text('Export to .zip file'),
             leading: const Icon(Icons.folder_outlined),
-            initiallyExpanded: true,
+            initiallyExpanded: false,
             children: [
               ListTile(
                 leading: const Icon(Icons.backup_outlined),
