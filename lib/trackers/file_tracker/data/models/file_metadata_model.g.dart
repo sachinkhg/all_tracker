@@ -1,41 +1,41 @@
 // GENERATED CODE - DO NOT MODIFY BY HAND
 
-part of 'file_server_config_model.dart';
+part of 'file_metadata_model.dart';
 
 // **************************************************************************
 // TypeAdapterGenerator
 // **************************************************************************
 
-class FileServerConfigModelAdapter extends TypeAdapter<FileServerConfigModel> {
+class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
   @override
-  final int typeId = 30;
+  final int typeId = 31;
 
   @override
-  FileServerConfigModel read(BinaryReader reader) {
+  FileMetadataModel read(BinaryReader reader) {
     final numOfFields = reader.readByte();
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return FileServerConfigModel(
-      baseUrl: fields[0] as String,
-      username: fields[1] as String,
-      password: fields[2] as String,
-      serverName: fields[3] as String?,
+    return FileMetadataModel(
+      stableIdentifier: fields[0] as String,
+      tags: (fields[1] as List).cast<String>(),
+      notes: fields[2] as String?,
+      lastUpdated: fields[3] as DateTime,
     );
   }
 
   @override
-  void write(BinaryWriter writer, FileServerConfigModel obj) {
+  void write(BinaryWriter writer, FileMetadataModel obj) {
     writer
       ..writeByte(4)
       ..writeByte(0)
-      ..write(obj.baseUrl)
+      ..write(obj.stableIdentifier)
       ..writeByte(1)
-      ..write(obj.username)
+      ..write(obj.tags)
       ..writeByte(2)
-      ..write(obj.password)
+      ..write(obj.notes)
       ..writeByte(3)
-      ..write(obj.serverName);
+      ..write(obj.lastUpdated);
   }
 
   @override
@@ -44,7 +44,7 @@ class FileServerConfigModelAdapter extends TypeAdapter<FileServerConfigModel> {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is FileServerConfigModelAdapter &&
+      other is FileMetadataModelAdapter &&
           runtimeType == other.runtimeType &&
           typeId == other.typeId;
 }

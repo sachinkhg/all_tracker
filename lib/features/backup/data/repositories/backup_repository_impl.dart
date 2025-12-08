@@ -8,6 +8,7 @@ import '../../../../trackers/password_tracker/core/constants.dart' as password_c
 import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tracker_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
+import '../../../../trackers/file_tracker/core/constants.dart' as file_tracker_constants;
 import '../../core/encryption_service.dart';
 import '../../core/device_info_service.dart';
 import '../datasources/google_auth_datasource.dart';
@@ -46,6 +47,8 @@ import '../../../../utilities/investment_planner/data/models/income_entry_model.
 import '../../../../utilities/investment_planner/data/models/expense_entry_model.dart';
 import '../../../../utilities/investment_planner/data/models/component_allocation_model.dart';
 import '../../../../utilities/retirement_planner/data/models/retirement_plan_model.dart';
+import '../../../../trackers/file_tracker/data/models/file_server_config_model.dart';
+import '../../../../trackers/file_tracker/data/models/file_metadata_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Implementation of BackupRepository.
@@ -388,6 +391,11 @@ class BackupRepositoryImpl implements BackupRepository {
     await secretQuestionBox.clear();
     print('[RESTORE] Password box length after clear: ${passwordBox.length}');
     print('[RESTORE] Secret question box length after clear: ${secretQuestionBox.length}');
+    
+    // File Tracker boxes
+    await Hive.box<FileServerConfigModel>(file_tracker_constants.fileTrackerConfigBoxName).clear();
+    await Hive.box<String>('${file_tracker_constants.fileTrackerConfigBoxName}_active').clear();
+    await Hive.box<FileMetadataModel>(file_tracker_constants.fileTrackerMetadataBoxName).clear();
     
     // App-wide preferences (will be restored if present in backup)
     await Hive.box(goal_constants.viewPreferencesBoxName).clear();
@@ -991,6 +999,75 @@ class BackupRepositoryImpl implements BackupRepository {
       await retirementPrefsBox.clear();
       for (final entry in retirementPrefs.entries) {
         await retirementPrefsBox.put(entry.key, entry.value);
+      }
+    }
+
+    // ========================================================================
+    // File Tracker Data
+    // ========================================================================
+    if (snapshot.containsKey('file_server_configs')) {
+      final configsList = snapshot['file_server_configs'] as List<dynamic>? ?? [];
+      final configBox = Hive.box<FileServerConfigModel>(file_tracker_constants.fileTrackerConfigBoxName);
+      for (final configData in configsList) {
+        if (configData is! Map<String, dynamic>) continue;
+        try {
+          final model = FileServerConfigModel(
+            serverName: _safeString(configData, 'serverName', ''),
+            baseUrl: _safeString(configData, 'baseUrl', ''),
+            username: _safeString(configData, 'username', ''),
+            password: _safeString(configData, 'password', ''),
+          );
+          final serverName = model.serverName ?? '';
+          if (serverName.isNotEmpty) {
+            await configBox.put(serverName, model);
+          }
+        } catch (e) {
+          print('[RESTORE] Error restoring file server config: $e');
+        }
+      }
+    }
+
+    // Restore active server name
+    if (snapshot.containsKey('file_tracker_active_server')) {
+      final activeServerName = snapshot['file_tracker_active_server'] as String?;
+      if (activeServerName != null && activeServerName.isNotEmpty) {
+        final activeServerBox = Hive.box<String>('${file_tracker_constants.fileTrackerConfigBoxName}_active');
+        await activeServerBox.put('active_server_name', activeServerName);
+      }
+    }
+
+    if (snapshot.containsKey('file_metadata')) {
+      final metadataList = snapshot['file_metadata'] as List<dynamic>? ?? [];
+      final metadataBox = Hive.box<FileMetadataModel>(file_tracker_constants.fileTrackerMetadataBoxName);
+      for (final metadataData in metadataList) {
+        if (metadataData is! Map<String, dynamic>) continue;
+        try {
+          final stableIdentifier = _safeString(metadataData, 'stableIdentifier', '');
+          if (stableIdentifier.isEmpty) continue;
+
+          final tagsList = metadataData['tags'] as List<dynamic>? ?? [];
+          final tags = tagsList.map((t) => t.toString()).toList();
+          
+          final notes = _safeStringNullable(metadataData, 'notes');
+          
+          final lastUpdatedStr = _safeString(metadataData, 'lastUpdated', '');
+          DateTime lastUpdated;
+          try {
+            lastUpdated = DateTime.parse(lastUpdatedStr).toLocal();
+          } catch (_) {
+            lastUpdated = DateTime.now();
+          }
+
+          final model = FileMetadataModel(
+            stableIdentifier: stableIdentifier,
+            tags: tags,
+            notes: notes,
+            lastUpdated: lastUpdated,
+          );
+          await metadataBox.put(stableIdentifier, model);
+        } catch (e) {
+          print('[RESTORE] Error restoring file metadata: $e');
+        }
       }
     }
 

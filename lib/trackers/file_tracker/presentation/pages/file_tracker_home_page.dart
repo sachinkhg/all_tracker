@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive_flutter/hive_flutter.dart';
 import '../../core/injection.dart';
 import '../../core/app_icons.dart';
-import '../../core/constants.dart';
-import '../../data/models/file_server_config_model.dart';
+import '../../data/services/file_server_config_service.dart';
 import '../../domain/entities/file_server_config.dart';
 import '../../domain/entities/cloud_file.dart';
+import '../../domain/entities/file_metadata.dart';
 import 'file_viewer_page.dart';
 import '../bloc/file_cubit.dart';
 import '../bloc/file_state.dart';
 import '../widgets/file_server_config_dialog.dart';
 import '../widgets/file_gallery_grid.dart';
 import '../widgets/file_list_item.dart';
+import '../widgets/file_tag_editor_dialog.dart';
+import '../widgets/bulk_tag_editor_dialog.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
 import '../../../../widgets/app_drawer.dart';
+import '../../../../widgets/bottom_sheet_helpers.dart';
 import '../../../../pages/app_home_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/organization_notifier.dart';
@@ -34,45 +36,36 @@ class FileTrackerHomePage extends StatefulWidget {
 
 class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
   bool _isGridView = true;
+  final _configService = FileServerConfigService();
+  String? _currentServerName;
+  bool _isLoadingConfig = true;
+  bool _isMultiSelectMode = false;
+  final Set<String> _selectedFileIds = {}; // Store stable identifiers of selected files
+  final Set<String> _selectedFilterTags = {}; // Tags selected for filtering
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) {
         final cubit = createFileCubit();
-        _loadSavedConfig(cubit);
+        // Load saved config after first frame when cubit is available
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadSavedConfig(cubit);
+        });
         return cubit;
       },
       child: Scaffold(
         drawer: const AppDrawer(currentPage: AppPage.fileTracker),
         appBar: PrimaryAppBar(
-          title: 'File Tracker',
+          title: _currentServerName != null 
+              ? 'File Tracker - $_currentServerName'
+              : 'File Tracker',
           actions: [
-            IconButton(
-              icon: Icon(_isGridView ? Icons.list : Icons.grid_view),
-              tooltip: _isGridView ? 'Switch to list view' : 'Switch to grid view',
-              onPressed: () {
-                setState(() {
-                  _isGridView = !_isGridView;
-                });
-              },
-            ),
-            Builder(
-              builder: (builderContext) => IconButton(
-                icon: const Icon(FileTrackerIcons.settings),
-                tooltip: 'Configure server',
-                onPressed: () => _showConfigDialog(builderContext),
-              ),
-            ),
-            Builder(
-              builder: (builderContext) => IconButton(
-                icon: const Icon(FileTrackerIcons.refresh),
-                tooltip: 'Refresh',
-                onPressed: () {
-                  builderContext.read<FileCubit>().refreshFiles();
-                },
-              ),
-            ),
             Consumer<OrganizationNotifier>(
               builder: (context, orgNotifier, _) {
                 // Only show home icon if default home page is app_home
@@ -96,6 +89,12 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
         body: BlocBuilder<FileCubit, FileState>(
           builder: (context, state) {
             if (state is FilesInitial) {
+              // Show loading while checking for saved config
+              if (_isLoadingConfig) {
+                return const LoadingView(message: 'Loading server configuration...');
+              }
+              
+              // Show "No server configured" only if config loading is complete and no config found
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -125,9 +124,27 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
             if (state is FilesError) {
               return ErrorView(
                 message: state.message,
-                onRetry: () {
+                onRetry: () async {
                   final cubit = context.read<FileCubit>();
-                  final config = cubit.currentConfig;
+                  var config = cubit.currentConfig;
+                  
+                  // If no config in cubit, try to load from config service
+                  if (config == null) {
+                    try {
+                      final activeConfig = await _configService.getActiveConfig();
+                      if (activeConfig != null) {
+                        config = activeConfig;
+                        if (mounted) {
+                          setState(() {
+                            _currentServerName = activeConfig.serverName;
+                          });
+                        }
+                      }
+                    } catch (e) {
+                      // Failed to load config
+                    }
+                  }
+                  
                   if (config != null) {
                     cubit.loadFiles(config);
                   } else {
@@ -138,8 +155,29 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
             }
 
             if (state is FilesLoaded) {
-              final files = state.files;
+              var files = state.files;
               final cubit = context.read<FileCubit>();
+              
+              // Get metadata for all files
+              final metadataMap = <String, FileMetadata>{};
+              for (final file in files) {
+                final metadata = cubit.getMetadataForFile(file);
+                if (metadata != null) {
+                  metadataMap[file.stableIdentifier] = metadata;
+                }
+              }
+
+              // Filter files by selected tags
+              if (_selectedFilterTags.isNotEmpty) {
+                files = files.where((file) {
+                  final metadata = metadataMap[file.stableIdentifier];
+                  if (metadata == null || metadata.tags.isEmpty) {
+                    return false; // Files without tags don't match
+                  }
+                  // File must have at least one of the selected tags
+                  return metadata.tags.any((tag) => _selectedFilterTags.contains(tag));
+                }).toList();
+              }
 
               // Show message if no files found (might be folders only or empty)
               if (files.isEmpty) {
@@ -201,37 +239,108 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
 
               return Column(
                 children: [
-                  // Current path and file count
+                  // Current path and file count / Multi-select toolbar
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Row(
-                      children: [
-                        // Breadcrumb navigation
-                        if (state.currentPath != '/' && cubit.canNavigateBack())
-                          IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () => cubit.navigateBack(),
-                            tooltip: 'Go back',
-                          ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                    child: _isMultiSelectMode
+                        ? Row(
                             children: [
-                              Text(
-                                'Path: ${state.currentPath}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              IconButton(
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  setState(() {
+                                    _isMultiSelectMode = false;
+                                    _selectedFileIds.clear();
+                                  });
+                                },
+                                tooltip: 'Cancel selection',
                               ),
-                              Text(
-                                '${files.length} item${files.length != 1 ? 's' : ''}',
-                                style: Theme.of(context).textTheme.bodyMedium,
+                              Expanded(
+                                child: Text(
+                                  '${_selectedFileIds.length} file${_selectedFileIds.length != 1 ? 's' : ''} selected',
+                                  style: Theme.of(context).textTheme.titleMedium,
+                                ),
+                              ),
+                              if (_selectedFileIds.isNotEmpty)
+                                IconButton(
+                                  icon: const Icon(Icons.label),
+                                  onPressed: () => _showBulkTagEditor(context, cubit),
+                                  tooltip: 'Add tags to selected files',
+                                ),
+                            ],
+                          )
+                        : Row(
+                            children: [
+                              // Breadcrumb navigation
+                              if (state.currentPath != '/' && cubit.canNavigateBack())
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back),
+                                  onPressed: () => cubit.navigateBack(),
+                                  tooltip: 'Go back',
+                                ),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Path: ${state.currentPath}',
+                                      style: Theme.of(context).textTheme.bodySmall,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '${files.length} item${files.length != 1 ? 's' : ''}',
+                                          style: Theme.of(context).textTheme.bodyMedium,
+                                        ),
+                                        if (_selectedFilterTags.isNotEmpty) ...[
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '(filtered)',
+                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                              color: Theme.of(context).colorScheme.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    // Show active filter tags
+                                    if (_selectedFilterTags.isNotEmpty) ...[
+                                      const SizedBox(height: 4),
+                                      Wrap(
+                                        spacing: 4,
+                                        runSpacing: 4,
+                                        children: _selectedFilterTags.map((tag) {
+                                          return Chip(
+                                            label: Text(tag),
+                                            onDeleted: () {
+                                              setState(() {
+                                                _selectedFilterTags.remove(tag);
+                                              });
+                                            },
+                                            deleteIcon: const Icon(Icons.close, size: 18),
+                                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                            visualDensity: VisualDensity.compact,
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.checklist),
+                                onPressed: () {
+                                  setState(() {
+                                    _isMultiSelectMode = true;
+                                    _selectedFileIds.clear();
+                                  });
+                                },
+                                tooltip: 'Select files',
                               ),
                             ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
 
                   // Files list or grid
@@ -241,30 +350,91 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
                             ? FileGalleryGrid(
                                 files: files,
                                 config: state.config!,
+                                fileMetadata: metadataMap,
+                                isMultiSelectMode: _isMultiSelectMode,
+                                selectedFileIds: _selectedFileIds,
                                 onFileTap: (file) {
-                                  if (file.isFolder) {
-                                    // Navigate into folder
-                                    cubit.navigateToFolder(file);
+                                  if (_isMultiSelectMode) {
+                                    if (!file.isFolder) {
+                                      setState(() {
+                                        if (_selectedFileIds.contains(file.stableIdentifier)) {
+                                          _selectedFileIds.remove(file.stableIdentifier);
+                                        } else {
+                                          _selectedFileIds.add(file.stableIdentifier);
+                                        }
+                                      });
+                                    }
                                   } else {
-                                    // Open full-screen viewer
-                                    _openFileViewer(context, file, files, state.config!);
+                                    if (file.isFolder) {
+                                      // Navigate into folder
+                                      cubit.navigateToFolder(file);
+                                    } else {
+                                      // Open full-screen viewer
+                                      _openFileViewer(context, file, files, state.config!);
+                                    }
+                                  }
+                                },
+                                onFileLongPress: (file) {
+                                  if (!file.isFolder) {
+                                    if (_isMultiSelectMode) {
+                                      setState(() {
+                                        if (_selectedFileIds.contains(file.stableIdentifier)) {
+                                          _selectedFileIds.remove(file.stableIdentifier);
+                                        } else {
+                                          _selectedFileIds.add(file.stableIdentifier);
+                                        }
+                                      });
+                                    } else {
+                                      _showTagEditor(context, file, cubit);
+                                    }
                                   }
                                 },
                               )
                             : ListView.builder(
                                 itemCount: files.length,
                                 itemBuilder: (context, index) {
+                                  final file = files[index];
+                                  final isSelected = _selectedFileIds.contains(file.stableIdentifier);
                                   return FileListItem(
-                                    file: files[index],
+                                    file: file,
                                     config: state.config!,
+                                    metadata: metadataMap[file.stableIdentifier],
+                                    isMultiSelectMode: _isMultiSelectMode,
+                                    isSelected: isSelected,
                                     onTap: () {
-                                      final file = files[index];
-                                      if (file.isFolder) {
-                                        // Navigate into folder
-                                        cubit.navigateToFolder(file);
+                                      if (_isMultiSelectMode) {
+                                        if (!file.isFolder) {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedFileIds.remove(file.stableIdentifier);
+                                            } else {
+                                              _selectedFileIds.add(file.stableIdentifier);
+                                            }
+                                          });
+                                        }
                                       } else {
-                                        // Open full-screen viewer
-                                        _openFileViewer(context, file, files, state.config!);
+                                        if (file.isFolder) {
+                                          // Navigate into folder
+                                          cubit.navigateToFolder(file);
+                                        } else {
+                                          // Open full-screen viewer
+                                          _openFileViewer(context, file, files, state.config!);
+                                        }
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      if (!file.isFolder) {
+                                        if (_isMultiSelectMode) {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedFileIds.remove(file.stableIdentifier);
+                                            } else {
+                                              _selectedFileIds.add(file.stableIdentifier);
+                                            }
+                                          });
+                                        } else {
+                                          _showTagEditor(context, file, cubit);
+                                        }
                                       }
                                     },
                                   );
@@ -281,6 +451,55 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
             return const Center(child: Text('Unknown state'));
           },
         ),
+        floatingActionButton: Builder(
+          builder: (builderContext) => Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // File configuration and refresh options button (top right)
+              FloatingActionButton.small(
+                heroTag: 'fileOptionsFab',
+                tooltip: 'File Options',
+                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+                onPressed: () => _showFileOptionsBottomSheet(builderContext),
+                child: const Icon(Icons.tune),
+              ),
+              const SizedBox(height: 10),
+                // Filter button
+                Builder(
+                  builder: (filterContext) {
+                    final filterCubit = filterContext.read<FileCubit>();
+                    return FloatingActionButton.small(
+                      heroTag: 'filterFab',
+                      tooltip: 'Filter by tags',
+                      backgroundColor: _selectedFilterTags.isNotEmpty
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(context).colorScheme.surface.withValues(alpha: 0.85),
+                      onPressed: () => _showFilterBottomSheet(filterContext, filterCubit),
+                      child: Icon(
+                        Icons.filter_list,
+                        color: _selectedFilterTags.isNotEmpty
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : null,
+                      ),
+                    );
+                  },
+                ),
+              const SizedBox(height: 10),
+              // View toggle button
+              _ActionsFab(
+                isGridView: _isGridView,
+                onToggleView: () {
+                  setState(() {
+                    _isGridView = !_isGridView;
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       ),
     );
   }
@@ -290,30 +509,192 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
     final cubit = BlocProvider.of<FileCubit>(context);
     final currentConfig = cubit.currentConfig;
 
-    final config = await showDialog<FileServerConfig>(
-      context: context,
-      builder: (dialogContext) => FileServerConfigDialog(
-        initialConfig: currentConfig,
-      ),
+    final config = await FileServerConfigDialog.show(
+      context,
+      currentConfig,
     );
 
     if (config != null && mounted) {
-      // Save config to Hive
-      await _saveConfig(config);
+      // Save config using the service
+      await _configService.saveConfig(config);
+      // Set as active server
+      await _configService.setActiveServerName(config.serverName);
+      setState(() {
+        _currentServerName = config.serverName;
+      });
       // Load files with new config
       cubit.loadFiles(config);
     }
   }
 
-  Future<void> _saveConfig(FileServerConfig config) async {
-    try {
-      if (Hive.isBoxOpen(fileTrackerConfigBoxName)) {
-        final box = Hive.box<FileServerConfigModel>(fileTrackerConfigBoxName);
-        final model = FileServerConfigModel.fromEntity(config);
-        await box.put('config', model);
+  Future<void> _showServerSelectionDialog(BuildContext context) async {
+    final cubit = BlocProvider.of<FileCubit>(context);
+    final allConfigs = await _configService.getAllConfigs();
+    
+    if (allConfigs.isEmpty) {
+      // No servers configured, show config bottom sheet instead
+      _showConfigDialog(context);
+      return;
+    }
+
+    final selectedConfig = await showAppBottomSheet<FileServerConfig>(
+      context,
+      _ServerSelectionBottomSheet(
+        allConfigs: allConfigs,
+        currentServerName: _currentServerName,
+        onAddNew: () {
+          Navigator.of(context).pop();
+          _showAddServerDialog(context);
+        },
+        onEdit: (config) {
+          Navigator.of(context).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showEditServerDialog(context, config);
+            }
+          });
+        },
+        onDelete: (config) {
+          Navigator.of(context).pop();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _showDeleteServerDialog(context, config);
+            }
+          });
+        },
+      ),
+    );
+
+    if (selectedConfig != null && mounted) {
+      await _configService.setActiveServerName(selectedConfig.serverName);
+      setState(() {
+        _currentServerName = selectedConfig.serverName;
+      });
+      cubit.loadFiles(selectedConfig);
+    }
+  }
+
+  Future<void> _showAddServerDialog(BuildContext context) async {
+    final config = await FileServerConfigDialog.show(
+      context,
+      null,
+    );
+
+    if (config != null && mounted) {
+      await _configService.saveConfig(config);
+      await _configService.setActiveServerName(config.serverName);
+      setState(() {
+        _currentServerName = config.serverName;
+      });
+      final cubit = BlocProvider.of<FileCubit>(context);
+      cubit.loadFiles(config);
+    }
+  }
+
+  Future<void> _showEditServerDialog(BuildContext context, FileServerConfig config) async {
+    final updatedConfig = await FileServerConfigDialog.show(
+      context,
+      config,
+    );
+
+    if (updatedConfig != null && mounted) {
+      final oldServerName = config.serverName;
+      final newServerName = updatedConfig.serverName;
+      final wasActive = _currentServerName == oldServerName;
+      
+      // If server name changed, delete the old entry first
+      if (oldServerName != newServerName) {
+        await _configService.deleteConfig(oldServerName);
       }
-    } catch (e) {
-      // Failed to save config
+      
+      // Save the updated config (with potentially new server name)
+      await _configService.saveConfig(updatedConfig);
+      
+      // Update active server name if it was the active server
+      if (wasActive) {
+        await _configService.setActiveServerName(newServerName);
+        setState(() {
+          _currentServerName = newServerName;
+        });
+        // Reload files with updated config
+        final cubit = BlocProvider.of<FileCubit>(context);
+        cubit.loadFiles(updatedConfig);
+      } else if (oldServerName != newServerName) {
+        // Server name changed but wasn't active - just update the state if needed
+        setState(() {
+          // State will update on next server list access
+        });
+      }
+    }
+  }
+
+  Future<void> _showDeleteServerDialog(BuildContext context, FileServerConfig config) async {
+    if (!mounted) return;
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Server'),
+        content: Text('Are you sure you want to delete "${config.serverName}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      try {
+        // Delete the server configuration
+        await _configService.deleteConfig(config.serverName);
+        
+        // Check if we deleted the active server
+        final activeName = await _configService.getActiveServerName();
+        if (activeName == config.serverName) {
+          // Deleted the active server, load first available or show empty state
+          final allConfigs = await _configService.getAllConfigs();
+          if (allConfigs.isNotEmpty) {
+            // Switch to the first available server
+            await _configService.setActiveServerName(allConfigs.first.serverName);
+            if (mounted) {
+              setState(() {
+                _currentServerName = allConfigs.first.serverName;
+              });
+              final cubit = BlocProvider.of<FileCubit>(context);
+              cubit.loadFiles(allConfigs.first);
+            }
+          } else {
+            // No servers left, clear the active server
+            await _configService.setActiveServerName(null);
+            if (mounted) {
+              setState(() {
+                _currentServerName = null;
+              });
+              // The UI will show the empty state automatically when no config is available
+            }
+          }
+        }
+        // If deleted a non-active server, the list will update on next access
+      } catch (e) {
+        // Handle error - show message to user
+        // Check if context is still valid before showing snackbar
+        if (mounted) {
+          try {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to delete server: $e')),
+            );
+          } catch (_) {
+            // Context is no longer valid, ignore the error
+            // The server deletion might have succeeded despite the error
+          }
+        }
+      }
     }
   }
 
@@ -352,22 +733,508 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
         ),
       ),
     );
+}
+
+  /// Helper function to load saved config
+  Future<void> _loadSavedConfig(FileCubit cubit) async {
+    if (!mounted) return;
+    try {
+      final activeConfig = await _configService.getActiveConfig();
+      if (mounted) {
+        setState(() {
+          _isLoadingConfig = false;
+          if (activeConfig != null) {
+            _currentServerName = activeConfig.serverName;
+            cubit.loadFiles(activeConfig);
+          }
+        });
+      }
+    } catch (e) {
+      // Failed to load saved config
+      if (mounted) {
+        setState(() {
+          _isLoadingConfig = false;
+        });
+      }
+    }
+  }
+
+  /// Shows the tag editor dialog for a file
+  Future<void> _showTagEditor(BuildContext context, CloudFile file, FileCubit cubit) async {
+    if (!mounted) return;
+    
+    try {
+      await FileTagEditorDialog.show(context, file, cubit);
+      // Refresh the UI to show updated tags
+      if (mounted) {
+        setState(() {
+          // Trigger rebuild to show updated tags
+        });
+      }
+    } catch (e) {
+      // Error showing tag editor - ignore
+    }
+  }
+
+  Future<void> _showFileOptionsBottomSheet(BuildContext context) async {
+    await showAppBottomSheet<void>(
+      context,
+      _FileOptionsBottomSheet(
+        onFileConfiguration: () {
+          Navigator.of(context).pop();
+          _showServerSelectionDialog(context);
+        },
+        onRefresh: () {
+          Navigator.of(context).pop();
+          context.read<FileCubit>().refreshFiles();
+        },
+      ),
+    );
+  }
+
+  Future<void> _showBulkTagEditor(BuildContext context, FileCubit cubit) async {
+    if (_selectedFileIds.isEmpty) return;
+    
+    final result = await BulkTagEditorDialog.show(
+      context,
+      _selectedFileIds.toList(),
+      cubit,
+    );
+    
+    if (result == true && mounted) {
+      // Refresh UI to show updated tags
+      setState(() {
+        _isMultiSelectMode = false;
+        _selectedFileIds.clear();
+      });
+      // Trigger a refresh to show updated tags
+      cubit.refreshFiles();
+    }
+  }
+
+  Future<void> _showFilterBottomSheet(BuildContext context, FileCubit cubit) async {
+    // Get all available tags from all files
+    final allTags = <String>{};
+    final currentState = cubit.state;
+    if (currentState is FilesLoaded) {
+      final files = currentState.files;
+      for (final file in files) {
+        final metadata = cubit.getMetadataForFile(file);
+        if (metadata != null && metadata.tags.isNotEmpty) {
+          allTags.addAll(metadata.tags);
+        }
+      }
+    }
+
+    final selectedTags = await showAppBottomSheet<Set<String>>(
+      context,
+      _FilterBottomSheet(
+        availableTags: allTags.toList()..sort(),
+        selectedTags: Set<String>.from(_selectedFilterTags),
+      ),
+    );
+
+    if (selectedTags != null && mounted) {
+      setState(() {
+        _selectedFilterTags.clear();
+        _selectedFilterTags.addAll(selectedTags);
+      });
+    }
   }
 }
 
-/// Helper function to load saved config
-Future<void> _loadSavedConfig(FileCubit cubit) async {
-  try {
-    if (Hive.isBoxOpen(fileTrackerConfigBoxName)) {
-      final box = Hive.box<FileServerConfigModel>(fileTrackerConfigBoxName);
-      final model = box.get('config');
-      if (model != null) {
-        final config = model.toEntity();
-        cubit.loadFiles(config);
-      }
-    }
-  } catch (e) {
-    // Failed to load saved config
+/// ---------------------------------------------------------------------------
+/// _ActionsFab
+///
+/// Floating action button group for file tracker actions.
+/// Similar to goal tracker's _ActionsFab pattern.
+/// ---------------------------------------------------------------------------
+class _ActionsFab extends StatelessWidget {
+  const _ActionsFab({
+    required this.isGridView,
+    required this.onToggleView,
+  });
+
+  final bool isGridView;
+  final VoidCallback onToggleView;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    
+    return FloatingActionButton.small(
+      heroTag: 'viewToggleFab',
+      tooltip: isGridView ? 'Switch to list view' : 'Switch to grid view',
+      backgroundColor: cs.surface.withValues(alpha: 0.85),
+      onPressed: onToggleView,
+      child: Icon(isGridView ? Icons.list : Icons.grid_view),
+    );
+  }
+}
+
+/// Server selection bottom sheet widget.
+class _ServerSelectionBottomSheet extends StatelessWidget {
+  final List<FileServerConfig> allConfigs;
+  final String? currentServerName;
+  final VoidCallback onAddNew;
+  final Function(FileServerConfig) onEdit;
+  final Function(FileServerConfig) onDelete;
+
+  const _ServerSelectionBottomSheet({
+    required this.allConfigs,
+    required this.currentServerName,
+    required this.onAddNew,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          
+          // Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Select Server',
+                style: textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Close',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Server list
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: allConfigs.length + 1, // +1 for "Add New" option
+              itemBuilder: (context, index) {
+                if (index == allConfigs.length) {
+                  return ListTile(
+                    leading: const Icon(Icons.add),
+                    title: const Text('Add New Server'),
+                    onTap: () {
+                      onAddNew();
+                    },
+                  );
+                }
+                
+                final config = allConfigs[index];
+                final isActive = config.serverName == currentServerName;
+                
+                return ListTile(
+                  leading: Icon(
+                    isActive ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: isActive ? cs.primary : null,
+                  ),
+                  title: Text(config.serverName),
+                  subtitle: Text(
+                    config.baseUrl,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: PopupMenuButton(
+                    itemBuilder: (popupContext) => [
+                      PopupMenuItem(
+                        child: const Text('Edit'),
+                        onTap: () {
+                          Navigator.of(popupContext).pop();
+                          onEdit(config);
+                        },
+                      ),
+                      PopupMenuItem(
+                        child: const Text('Delete'),
+                        onTap: () {
+                          Navigator.of(popupContext).pop();
+                          onDelete(config);
+                        },
+                      ),
+                    ],
+                  ),
+                  onTap: () {
+                    Navigator.of(context).pop(config);
+                  },
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+/// File options bottom sheet widget.
+class _FileOptionsBottomSheet extends StatelessWidget {
+  final VoidCallback onFileConfiguration;
+  final VoidCallback onRefresh;
+
+  const _FileOptionsBottomSheet({
+    required this.onFileConfiguration,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          
+          // Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'File Options',
+                style: textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Close',
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Options list
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: const Text('File Configuration'),
+            subtitle: const Text('Select or configure file server'),
+            onTap: onFileConfiguration,
+          ),
+          ListTile(
+            leading: const Icon(Icons.refresh),
+            title: const Text('Refresh File Server'),
+            subtitle: const Text('Reload files from server'),
+            onTap: onRefresh,
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
+  }
+}
+
+/// Filter bottom sheet widget for selecting tags to filter files.
+class _FilterBottomSheet extends StatefulWidget {
+  final List<String> availableTags;
+  final Set<String> selectedTags;
+
+  const _FilterBottomSheet({
+    required this.availableTags,
+    required this.selectedTags,
+  });
+
+  @override
+  State<_FilterBottomSheet> createState() => _FilterBottomSheetState();
+}
+
+class _FilterBottomSheetState extends State<_FilterBottomSheet> {
+  late Set<String> _selectedTags;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedTags = Set<String>.from(widget.selectedTags);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 8,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Handle bar
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: cs.onSurfaceVariant.withValues(alpha: 0.4),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          
+          // Title
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Filter by Tags',
+                style: textTheme.titleLarge,
+              ),
+              IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.of(context).pop(),
+                tooltip: 'Close',
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Select tags to filter files. Files with at least one selected tag will be shown.',
+            style: textTheme.bodySmall?.copyWith(
+              color: cs.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Tags list
+          if (widget.availableTags.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Center(
+                child: Column(
+                  children: [
+                    Icon(Icons.label_off, size: 48, color: cs.onSurfaceVariant),
+                    const SizedBox(height: 16),
+                    Text(
+                      'No tags available',
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Add tags to files to filter by them',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: widget.availableTags.length,
+                itemBuilder: (context, index) {
+                  final tag = widget.availableTags[index];
+                  final isSelected = _selectedTags.contains(tag);
+                  
+                  return CheckboxListTile(
+                    title: Text(tag),
+                    value: isSelected,
+                    onChanged: (value) {
+                      setState(() {
+                        if (value == true) {
+                          _selectedTags.add(tag);
+                        } else {
+                          _selectedTags.remove(tag);
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
+            ),
+
+          const SizedBox(height: 16),
+
+          // Action buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedTags.clear();
+                  });
+                },
+                child: const Text('Clear All'),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => Navigator.of(context).pop(_selectedTags),
+                    child: const Text('Apply'),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+        ],
+      ),
+    );
   }
 }
 

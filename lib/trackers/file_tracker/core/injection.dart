@@ -3,6 +3,7 @@
 
 import '../data/datasources/file_remote_data_source.dart';
 import '../data/repositories/file_repository_impl.dart';
+import '../data/repositories/file_metadata_repository_impl.dart';
 import '../domain/usecases/get_files.dart';
 import '../domain/usecases/get_files_by_type.dart';
 import '../domain/usecases/get_files_by_folder.dart';
@@ -24,6 +25,7 @@ FileCubit createFileCubit() {
   // Repository layer
   // ---------------------------------------------------------------------------
   final repo = FileRepositoryImpl(remoteDataSource);
+  final metadataRepo = FileMetadataRepositoryImpl();
 
   // ---------------------------------------------------------------------------
   // Use-cases (domain)
@@ -41,6 +43,7 @@ FileCubit createFileCubit() {
     getFilesByType: getFilesByType,
     getFilesByFolder: getFilesByFolder,
     searchFiles: searchFiles,
+    metadataRepository: metadataRepo,
   );
 }
 
