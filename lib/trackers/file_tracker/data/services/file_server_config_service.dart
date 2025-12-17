@@ -13,13 +13,17 @@ class FileServerConfigService {
 
   /// Gets the Hive box for server configurations.
   Future<Box<FileServerConfigModel>> _getBox() async {
-    _box ??= await Hive.openBox<FileServerConfigModel>(fileTrackerConfigBoxName);
+    if (_box == null || !_box!.isOpen) {
+      _box = await Hive.openBox<FileServerConfigModel>(fileTrackerConfigBoxName);
+    }
     return _box!;
   }
 
   /// Gets the Hive box for storing active server name.
   Future<Box<String>> _getActiveServerBox() async {
-    _activeServerBox ??= await Hive.openBox<String>('${fileTrackerConfigBoxName}_active');
+    if (_activeServerBox == null || !_activeServerBox!.isOpen) {
+      _activeServerBox = await Hive.openBox<String>('${fileTrackerConfigBoxName}_active');
+    }
     return _activeServerBox!;
   }
 
@@ -30,6 +34,13 @@ class FileServerConfigService {
     final box = await _getBox();
     final model = FileServerConfigModel.fromEntity(config);
     await box.put(config.serverName, model);
+    // Ensure data is persisted to disk
+    await box.flush();
+    // Verify save
+    final savedModel = box.get(config.serverName);
+    if (savedModel == null) {
+      throw Exception('Failed to save server configuration: ${config.serverName}');
+    }
   }
 
   /// Gets a server configuration by name.
@@ -51,7 +62,18 @@ class FileServerConfigService {
       await _migrateOldConfig(box);
     }
     
-    return box.values.map((model) => model.toEntity()).toList();
+    // Filter out the 'config' key if it still exists (shouldn't happen after migration)
+    final configs = <FileServerConfig>[];
+    for (final key in box.keys) {
+      if (key != 'config') {
+        final model = box.get(key);
+        if (model != null) {
+          configs.add(model.toEntity());
+        }
+      }
+    }
+    
+    return configs;
   }
 
   /// Migrates old config format (stored with key 'config') to new format.
@@ -78,9 +100,42 @@ class FileServerConfigService {
   }
 
   /// Deletes a server configuration by name.
+  /// Simply deletes the record if it exists, no checks or verification.
   Future<void> deleteConfig(String serverName) async {
-    final box = await _getBox();
-    await box.delete(serverName);
+    print('[FILE_TRACKER_SERVICE] deleteConfig called for: $serverName');
+    try {
+      final box = await _getBox();
+      print('[FILE_TRACKER_SERVICE] Box opened, checking if server exists...');
+      final exists = box.containsKey(serverName);
+      print('[FILE_TRACKER_SERVICE] Server exists in box: $exists');
+      
+      if (exists) {
+        print('[FILE_TRACKER_SERVICE] Deleting server from box...');
+        await box.delete(serverName);
+        print('[FILE_TRACKER_SERVICE] Server deleted from box');
+      } else {
+        print('[FILE_TRACKER_SERVICE] Server does not exist in box, nothing to delete');
+      }
+      
+      // Ensure deletion is persisted to disk
+      print('[FILE_TRACKER_SERVICE] Flushing box to disk...');
+      await box.flush();
+      print('[FILE_TRACKER_SERVICE] Box flushed successfully');
+      
+      // Verify deletion
+      final stillExists = box.containsKey(serverName);
+      print('[FILE_TRACKER_SERVICE] Server still exists after delete: $stillExists');
+      
+      if (stillExists) {
+        print('[FILE_TRACKER_SERVICE] WARNING: Server still exists after delete!');
+      } else {
+        print('[FILE_TRACKER_SERVICE] Delete verified: server no longer exists');
+      }
+    } catch (e, stackTrace) {
+      print('[FILE_TRACKER_SERVICE] ERROR in deleteConfig: $e');
+      print('[FILE_TRACKER_SERVICE] Stack trace: $stackTrace');
+      rethrow;
+    }
   }
 
   /// Gets the currently active server name.
@@ -100,6 +155,8 @@ class FileServerConfigService {
     } else {
       await box.put('active_server', serverName);
     }
+    // Ensure data is persisted to disk
+    await box.flush();
   }
 
   /// Gets the currently active server configuration.

@@ -5,20 +5,26 @@ import '../../../../widgets/bottom_sheet_helpers.dart';
 /// Bottom sheet for configuring file server settings (URL, username, password).
 class FileServerConfigDialog extends StatefulWidget {
   final FileServerConfig? initialConfig;
+  final VoidCallback? onDelete;
 
   const FileServerConfigDialog({
     super.key,
     this.initialConfig,
+    this.onDelete,
   });
 
   /// Shows the file server config bottom sheet and returns the config if saved.
   static Future<FileServerConfig?> show(
     BuildContext context,
-    FileServerConfig? initialConfig,
-  ) async {
+    FileServerConfig? initialConfig, {
+    VoidCallback? onDelete,
+  }) async {
     return await showAppBottomSheet<FileServerConfig>(
       context,
-      FileServerConfigDialog(initialConfig: initialConfig),
+      FileServerConfigDialog(
+        initialConfig: initialConfig,
+        onDelete: onDelete,
+      ),
     );
   }
 
@@ -98,11 +104,21 @@ class _FileServerConfigDialogState extends State<FileServerConfigDialog> {
                 'File Server Configuration',
                 style: textTheme.titleLarge,
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(null),
-                tooltip: 'Close',
-              ),
+              // Delete button (only show when editing existing config)
+              if (widget.initialConfig != null && widget.onDelete != null)
+                IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () async {
+                    // Close the config dialog first
+                    Navigator.of(context).pop(null);
+                    // Wait a frame to ensure the dialog is closed
+                    await Future.delayed(const Duration(milliseconds: 100));
+                    // Then show the delete dialog
+                    widget.onDelete?.call();
+                  },
+                  tooltip: 'Delete Server',
+                  color: cs.error,
+                ),
             ],
           ),
           const SizedBox(height: 16),

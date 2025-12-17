@@ -290,5 +290,15 @@ class FileCubit extends Cubit<FileState> {
   Future<List<String>> searchFilesByTags(List<String> tags) async {
     return await metadataRepository.searchByTags(tags);
   }
+
+  /// Resets the cubit to initial state (clears config and files).
+  void reset() {
+    _currentConfig = null;
+    _originalBaseUrl = null;
+    _allFiles = [];
+    _navigationStack.clear();
+    _metadataCache.clear();
+    emit(FilesInitial());
+  }
 }
 

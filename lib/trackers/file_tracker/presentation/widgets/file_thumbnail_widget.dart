@@ -182,11 +182,13 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
         : null;
 
     return CachedNetworkImage(
+      key: ValueKey(widget.file.stableIdentifier),
       imageUrl: widget.file.url,
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
       httpHeaders: headers,
+      cacheKey: widget.file.stableIdentifier,
       placeholder: (context, url) => Container(
         width: widget.width,
         height: widget.height,

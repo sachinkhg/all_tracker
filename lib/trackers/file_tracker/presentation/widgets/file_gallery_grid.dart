@@ -49,6 +49,7 @@ class FileGalleryGrid extends StatelessWidget {
         final metadata = fileMetadata?[file.stableIdentifier];
         final isSelected = selectedFileIds.contains(file.stableIdentifier);
         return _FileGridItem(
+          key: ValueKey(file.stableIdentifier),
           file: file,
           config: config,
           metadata: metadata,
@@ -72,6 +73,7 @@ class _FileGridItem extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   const _FileGridItem({
+    super.key,
     required this.file,
     required this.config,
     this.metadata,
@@ -138,6 +140,7 @@ class _FileGridItem extends StatelessWidget {
                     ),
                   )
                 : FileThumbnailWidget(
+                    key: ValueKey(file.stableIdentifier),
                     file: file,
                     config: config,
                     fit: BoxFit.cover,
