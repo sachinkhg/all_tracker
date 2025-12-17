@@ -84,6 +84,28 @@ class CloudFile extends Equatable {
     return '${(size! / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
+  /// Returns a stable identifier for this file based on folder and name.
+  /// This identifier remains constant even when the server URL changes,
+  /// allowing tags and metadata to persist across URL changes.
+  ///
+  /// Format: "{folder}/{name}" (normalized to handle edge cases)
+  String get stableIdentifier {
+    final normalizedFolder = folder.trim();
+    final normalizedName = name.trim();
+    
+    // Ensure folder ends with / if it's not empty
+    if (normalizedFolder.isNotEmpty && !normalizedFolder.endsWith('/')) {
+      return '$normalizedFolder/$normalizedName';
+    }
+    
+    // If folder is empty, just return the name
+    if (normalizedFolder.isEmpty) {
+      return normalizedName;
+    }
+    
+    return '$normalizedFolder$normalizedName';
+  }
+
   @override
   List<Object?> get props => [
         url,

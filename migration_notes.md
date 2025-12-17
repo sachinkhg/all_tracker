@@ -33,6 +33,8 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **22** | PasswordModel | `passwords_box` | Active | 2025-01-27 | Password entity (encrypted) |
 | **23** | SecretQuestionModel | `secret_questions_box` | Active | 2025-01-27 | Secret question entity (encrypted) |
 | **24** | ExpenseModel | `expenses_tracker_box` | Active | 2025-01-27 | Expense entity for expense tracker |
+| **30** | FileServerConfigModel | `file_tracker_config_box` | Active | 2025-01-28 | File server configuration entity |
+| **31** | FileMetadataModel | `file_tracker_metadata_box` | Active | 2025-01-28 | File metadata (tags, notes) entity |
 
 ---
 
@@ -62,6 +64,9 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `passwords_box`             | Password entities (encrypted)     | PasswordModel | Active | Password storage with encryption |
 | `secret_questions_box`      | Secret question entities (encrypted) | SecretQuestionModel | Active | Secret question storage with encryption |
 | `expenses_tracker_box`      | Expense entities                  | ExpenseModel | Active | Expense tracker storage |
+| `file_tracker_config_box`   | File server configuration entities | FileServerConfigModel | Active | File tracker server configuration storage |
+| `file_tracker_config_box_active` | Active file server name | String | Active | Active server selection storage |
+| `file_tracker_metadata_box` | File metadata entities (tags, notes) | FileMetadataModel | Active | File metadata storage (server-independent) |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
@@ -265,6 +270,67 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 
 **Migration History:**
 - v1.0 (2025-01-27): Initial schema with 4 fields.
+
+---
+
+## 📦 Model: FileServerConfigModel (TypeId: 30)
+
+### Schema Version: 1.1 (Current)
+
+**Fields:**
+
+| Field Number | Field Name    | Type     | Nullable | Default | Notes                                           |
+|--------------|---------------|----------|----------|---------|-------------------------------------------------|
+| 0            | `baseUrl`     | String   | No       | -       | Base URL of the file server                     |
+| 1            | `username`    | String   | No       | ''      | Username for Basic HTTP Authentication          |
+| 2            | `password`    | String   | No       | ''      | Password for Basic HTTP Authentication          |
+| 3            | `serverName`  | String?  | Yes      | null    | Unique name/identifier for this server config   |
+
+**Business Rules:**
+- `serverName` is used as the key for storing configurations, allowing multiple servers to be configured.
+- If `serverName` is null or empty, it is auto-generated from the `baseUrl` (extracts hostname).
+- Server configurations are stored by server name, not URL, allowing URL changes without losing configuration.
+- Supports multiple named server configurations that can be switched between.
+- Old single-server configs (stored with key 'config') are automatically migrated to named servers.
+
+**Migration History:**
+- v1.0 (Initial): Fields 0-2 defined (baseUrl, username, password).
+- v1.1 (2025-01-28): Added field 3 (serverName) for multiple server support. Field is nullable for backward compatibility.
+
+**Notes:**
+- Field order maintained for backward compatibility (baseUrl=0, username=1, password=2, serverName=3).
+- Old configs without `serverName` are automatically migrated with auto-generated names.
+- The model generates a default server name from URL if not provided during construction.
+
+---
+
+## 📦 Model: FileMetadataModel (TypeId: 31)
+
+### Schema Version: 1.0 (Current)
+
+**Fields:**
+
+| Field Number | Field Name        | Type           | Nullable | Default | Notes                                           |
+|--------------|-------------------|----------------|----------|---------|-------------------------------------------------|
+| 0            | `stableIdentifier`| String         | No       | -       | Stable identifier (folder + name) for file      |
+| 1            | `tags`            | List<String>   | No       | []      | List of tags associated with the file           |
+| 2            | `notes`           | String?        | Yes      | null    | Optional notes/description for the file         |
+| 3            | `lastUpdated`     | DateTime       | No       | -       | Timestamp when metadata was last updated        |
+
+**Business Rules:**
+- `stableIdentifier` is the primary key and is server-independent (format: `{folder}/{name}`).
+- Tags persist even when server URLs change or when switching between servers.
+- Metadata is stored separately from file listings and is keyed by stable identifier, not server name.
+- Tags are shared between servers if they have the same folder structure.
+- The stable identifier normalizes folder paths (removes leading/trailing slashes).
+
+**Migration History:**
+- v1.0 (2025-01-28): Initial schema with 4 fields.
+
+**Notes:**
+- Metadata is stored in a separate Hive box (`file_tracker_metadata_box`) from server configurations.
+- The stable identifier ensures tags persist across server URL changes and server switches.
+- Example: `/photos/2024/vacation.jpg` on Server A will share tags with the same path on Server B.
 
 ---
 
@@ -477,7 +543,10 @@ try {
 - **21**: TravelerModel
 - **22**: PasswordModel
 - **23**: SecretQuestionModel
-- **Next Available**: 24
+- **24**: ExpenseModel (expense tracker)
+- **30**: FileServerConfigModel
+- **31**: FileMetadataModel
+- **Next Available**: 32
 
 ### Current Box Names
 - `goals_box` - Goal entities
@@ -501,6 +570,10 @@ try {
 - `expenses_box` - Travel expense entities
 - `passwords_box` - Password entities (encrypted)
 - `secret_questions_box` - Secret question entities (encrypted)
+- `expenses_tracker_box` - Expense tracker entities
+- `file_tracker_config_box` - File server configuration entities
+- `file_tracker_config_box_active` - Active file server name
+- `file_tracker_metadata_box` - File metadata entities (tags, notes)
 - `view_preferences_box` - UI preferences
 - `filter_preferences_box` - Filter preferences
 - `sort_preferences_box` - Sort preferences
@@ -518,8 +591,8 @@ try {
 
 ---
 
-**Last Updated:** 2025-01-27  
-**Version:** 3.0  
+**Last Updated:** 2025-01-28  
+**Version:** 3.1  
 **Maintained by:** Development Team  
 **Review Frequency:** On every schema change  
 **Next Review:** On next model addition

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/entities/cloud_file.dart';
@@ -28,6 +30,9 @@ class _FileViewerPageState extends State<FileViewerPage> {
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
   bool _showVideoControls = true;
+  bool _isFullScreen = false;
+  bool _isLandscapeLocked = false;
+  Timer? _controlsTimer;
 
   @override
   void initState() {
@@ -39,9 +44,110 @@ class _FileViewerPageState extends State<FileViewerPage> {
 
   @override
   void dispose() {
+    _controlsTimer?.cancel();
+    _exitFullScreen();
     _videoController?.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _showControlsTemporarily() {
+    setState(() {
+      _showVideoControls = true;
+    });
+    
+    _controlsTimer?.cancel();
+    _controlsTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && _isFullScreen) {
+        setState(() {
+          _showVideoControls = false;
+        });
+      }
+    });
+  }
+
+  void _enterFullScreen() {
+    if (_isFullScreen) return;
+    
+    setState(() {
+      _isFullScreen = true;
+      _showVideoControls = false; // Hide controls initially in fullscreen
+    });
+    
+    // Hide system UI for fullscreen
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.immersiveSticky,
+    );
+    
+    // Unlock orientation for fullscreen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+  }
+
+  void _exitFullScreen() {
+    if (!_isFullScreen) return;
+    
+    setState(() {
+      _isFullScreen = false;
+      _isLandscapeLocked = false;
+    });
+    
+    // Restore system UI
+    SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+    );
+    
+    // Force portrait mode when exiting fullscreen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+    
+    // After a short delay, restore all orientations
+    Future.delayed(const Duration(milliseconds: 100), () {
+      if (mounted) {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+          DeviceOrientation.portraitDown,
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+      }
+    });
+  }
+
+  void _toggleOrientationLock() {
+    setState(() {
+      _isLandscapeLocked = !_isLandscapeLocked;
+    });
+    
+    if (_isLandscapeLocked) {
+      // Lock to landscape
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      // Unlock orientation - force portrait first, then allow all
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+      
+      // After a short delay, restore all orientations
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          SystemChrome.setPreferredOrientations([
+            DeviceOrientation.portraitUp,
+            DeviceOrientation.portraitDown,
+            DeviceOrientation.landscapeLeft,
+            DeviceOrientation.landscapeRight,
+          ]);
+        }
+      });
+    }
   }
 
   void _initializeVideoIfNeeded() {
@@ -152,9 +258,16 @@ class _FileViewerPageState extends State<FileViewerPage> {
       adjustedIndex = 0;
     }
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
+    return PopScope(
+      canPop: !_isFullScreen,
+      onPopInvoked: (didPop) {
+        if (!didPop && _isFullScreen) {
+          _exitFullScreen();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        appBar: _isFullScreen ? null : AppBar(
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
@@ -261,6 +374,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
             ),
         ],
       ),
+      ),
     );
   }
 
@@ -303,9 +417,13 @@ class _FileViewerPageState extends State<FileViewerPage> {
   Widget _buildVideoView(CloudFile file) {
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _showVideoControls = !_showVideoControls;
-        });
+        if (_isFullScreen) {
+          _showControlsTemporarily();
+        } else {
+          setState(() {
+            _showVideoControls = !_showVideoControls;
+          });
+        }
       },
       child: Stack(
         fit: StackFit.expand,
@@ -351,62 +469,118 @@ class _FileViewerPageState extends State<FileViewerPage> {
                     ),
             ),
 
-          // Video controls overlay
+          // Video controls overlay - positioned at bottom
           if (_videoController != null && _isVideoInitialized && _showVideoControls)
-            Positioned.fill(
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
               child: Container(
-                color: Colors.black38,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Play/Pause button
-                    IconButton(
-                      icon: Icon(
-                        _videoController!.value.isPlaying
-                            ? Icons.pause_circle_filled
-                            : Icons.play_circle_filled,
-                        size: 64,
-                        color: Colors.white,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          if (_videoController!.value.isPlaying) {
-                            _videoController!.pause();
-                          } else {
-                            _videoController!.play();
-                          }
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    // Progress indicator and time
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: Row(
-                        children: [
-                          Text(
-                            _formatDuration(_videoController!.value.position),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                          Expanded(
-                            child: VideoProgressIndicator(
-                              _videoController!,
-                              allowScrubbing: true,
-                              colors: const VideoProgressColors(
-                                playedColor: Colors.white,
-                                bufferedColor: Colors.white54,
-                                backgroundColor: Colors.white24,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                  ),
+                ),
+                child: SafeArea(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Progress indicator and time
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Row(
+                          children: [
+                            Text(
+                              _formatDuration(_videoController!.value.position),
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                            Expanded(
+                              child: VideoProgressIndicator(
+                                _videoController!,
+                                allowScrubbing: true,
+                                colors: const VideoProgressColors(
+                                  playedColor: Colors.white,
+                                  bufferedColor: Colors.white54,
+                                  backgroundColor: Colors.white24,
+                                ),
                               ),
                             ),
-                          ),
-                          Text(
-                            _formatDuration(_videoController!.value.duration),
-                            style: const TextStyle(color: Colors.white, fontSize: 12),
-                          ),
-                        ],
+                            Text(
+                              _formatDuration(_videoController!.value.duration),
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      // Control buttons row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            // Play/Pause button
+                            IconButton(
+                              icon: Icon(
+                                _videoController!.value.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                                size: 32,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  if (_videoController!.value.isPlaying) {
+                                    _videoController!.pause();
+                                  } else {
+                                    _videoController!.play();
+                                  }
+                                });
+                                if (_isFullScreen) {
+                                  _showControlsTemporarily();
+                                }
+                              },
+                            ),
+                            // Fullscreen button
+                            IconButton(
+                              icon: Icon(
+                                _isFullScreen ? Icons.fullscreen_exit : Icons.fullscreen,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                if (_isFullScreen) {
+                                  _exitFullScreen();
+                                } else {
+                                  _enterFullScreen();
+                                }
+                              },
+                              tooltip: _isFullScreen ? 'Exit fullscreen' : 'Enter fullscreen',
+                            ),
+                            // Orientation lock button
+                            IconButton(
+                              icon: Icon(
+                                _isLandscapeLocked ? Icons.screen_lock_rotation : Icons.screen_rotation,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                              onPressed: () {
+                                _toggleOrientationLock();
+                                if (_isFullScreen) {
+                                  _showControlsTemporarily();
+                                }
+                              },
+                              tooltip: _isLandscapeLocked ? 'Unlock orientation' : 'Lock to landscape',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

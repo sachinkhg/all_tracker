@@ -9,6 +9,7 @@ import '../../../../trackers/password_tracker/core/constants.dart' as password_c
 import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tracker_constants;
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
+import '../../../../trackers/file_tracker/core/constants.dart' as file_tracker_constants;
 import '../models/backup_manifest.dart';
 import '../../../../trackers/goal_tracker/data/models/goal_model.dart';
 import '../../../../trackers/goal_tracker/data/models/milestone_model.dart';
@@ -31,11 +32,13 @@ import '../../../../utilities/investment_planner/data/models/income_category_mod
 import '../../../../utilities/investment_planner/data/models/expense_category_model.dart';
 import '../../../../utilities/investment_planner/data/models/investment_plan_model.dart';
 import '../../../../utilities/retirement_planner/data/models/retirement_plan_model.dart';
+import '../../../../trackers/file_tracker/data/models/file_server_config_model.dart';
+import '../../../../trackers/file_tracker/data/models/file_metadata_model.dart';
 
 /// Service for building backup snapshots from Hive data.
 class BackupBuilderService {
   static const String _currentVersion = '1';
-  static const int _currentDbSchemaVersion = 9; // Updated to include password tracker
+  static const int _currentDbSchemaVersion = 10; // Updated to include file tracker
 
   /// Serializes a date-only field to ISO string preserving the date component.
   /// 
@@ -374,6 +377,29 @@ class BackupBuilderService {
       'is_dark': themeBox.get('is_dark'),
     };
 
+    // ========================================================================
+    // File Tracker Data
+    // ========================================================================
+    final fileServerConfigBox = Hive.box<FileServerConfigModel>(file_tracker_constants.fileTrackerConfigBoxName);
+    snapshot['file_server_configs'] = fileServerConfigBox.values.map((config) => {
+          'serverName': config.serverName ?? '',
+          'baseUrl': config.baseUrl,
+          'username': config.username,
+          'password': config.password,
+        }).toList();
+
+    // Backup active server name
+    final activeServerBox = Hive.box<String>('${file_tracker_constants.fileTrackerConfigBoxName}_active');
+    snapshot['file_tracker_active_server'] = activeServerBox.get('active_server_name');
+
+    final fileMetadataBox = Hive.box<FileMetadataModel>(file_tracker_constants.fileTrackerMetadataBoxName);
+    snapshot['file_metadata'] = fileMetadataBox.values.map((metadata) => {
+          'stableIdentifier': metadata.stableIdentifier,
+          'tags': metadata.tags,
+          'notes': metadata.notes,
+          'lastUpdated': metadata.lastUpdated.toUtc().toIso8601String(),
+        }).toList();
+
     // Log summary of what was included in the backup
     print('[BACKUP] Backup snapshot creation completed');
     print('[BACKUP] Summary:');
@@ -387,6 +413,8 @@ class BackupBuilderService {
     print('[BACKUP]   - Expense Tracker Expenses: ${(snapshot['expense_tracker_expenses'] as List).length}');
     print('[BACKUP]   - Investment Plans: ${(snapshot['investment_plans'] as List).length}');
     print('[BACKUP]   - Retirement Plans: ${(snapshot['retirement_plans'] as List).length}');
+    print('[BACKUP]   - File Server Configs: ${(snapshot['file_server_configs'] as List).length}');
+    print('[BACKUP]   - File Metadata: ${(snapshot['file_metadata'] as List).length}');
 
     return snapshot;
   }
