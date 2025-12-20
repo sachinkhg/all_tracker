@@ -10,6 +10,7 @@ import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tra
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../../../../trackers/file_tracker/core/constants.dart' as file_tracker_constants;
+import '../../../../trackers/book_tracker/core/constants.dart' as book_tracker_constants;
 import '../models/backup_manifest.dart';
 import '../../../../trackers/goal_tracker/data/models/goal_model.dart';
 import '../../../../trackers/goal_tracker/data/models/milestone_model.dart';
@@ -34,6 +35,7 @@ import '../../../../utilities/investment_planner/data/models/investment_plan_mod
 import '../../../../utilities/retirement_planner/data/models/retirement_plan_model.dart';
 import '../../../../trackers/file_tracker/data/models/file_server_config_model.dart';
 import '../../../../trackers/file_tracker/data/models/file_metadata_model.dart';
+import '../../../../trackers/book_tracker/data/models/book_model.dart';
 
 /// Service for building backup snapshots from Hive data.
 class BackupBuilderService {
@@ -327,6 +329,30 @@ class BackupBuilderService {
     }).toList();
 
     // ========================================================================
+    // Book Tracker Data
+    // ========================================================================
+    final booksTrackerBox = Hive.box<BookModel>(book_tracker_constants.booksTrackerBoxName);
+    
+    snapshot['book_tracker_books'] = booksTrackerBox.values.map((b) {
+      return {
+        'id': b.id,
+        'title': b.title,
+        'primaryAuthor': b.primaryAuthor,
+        'pageCount': b.pageCount,
+        'avgRating': b.avgRating,
+        'datePublished': _serializeDateOnly(b.datePublished),
+        'dateStarted': _serializeDateOnly(b.dateStarted),
+        'dateRead': _serializeDateOnly(b.dateRead),
+        'readHistory': (b.readHistory ?? []).map((entry) => {
+          'dateStarted': _serializeDateOnly(entry.dateStarted),
+          'dateRead': _serializeDateOnly(entry.dateRead),
+        }).toList(),
+        'createdAt': b.createdAt.toUtc().toIso8601String(),
+        'updatedAt': b.updatedAt.toUtc().toIso8601String(),
+      };
+    }).toList();
+
+    // ========================================================================
     // Retirement Planner Data
     // ========================================================================
     final retirementPlansBox = Hive.box<RetirementPlanModel>(retirement_constants.retirementPlanBoxName);
@@ -411,6 +437,7 @@ class BackupBuilderService {
     print('[BACKUP]   - Passwords: ${(snapshot['passwords'] as List).length}');
     print('[BACKUP]   - Secret Questions: ${(snapshot['secret_questions'] as List).length}');
     print('[BACKUP]   - Expense Tracker Expenses: ${(snapshot['expense_tracker_expenses'] as List).length}');
+    print('[BACKUP]   - Book Tracker Books: ${(snapshot['book_tracker_books'] as List).length}');
     print('[BACKUP]   - Investment Plans: ${(snapshot['investment_plans'] as List).length}');
     print('[BACKUP]   - Retirement Plans: ${(snapshot['retirement_plans'] as List).length}');
     print('[BACKUP]   - File Server Configs: ${(snapshot['file_server_configs'] as List).length}');

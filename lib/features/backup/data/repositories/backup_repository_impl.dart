@@ -9,6 +9,7 @@ import '../../../../trackers/expense_tracker/core/constants.dart' as expense_tra
 import '../../../../utilities/investment_planner/core/constants.dart' as investment_constants;
 import '../../../../utilities/retirement_planner/core/constants.dart' as retirement_constants;
 import '../../../../trackers/file_tracker/core/constants.dart' as file_tracker_constants;
+import '../../../../trackers/book_tracker/core/constants.dart' as book_tracker_constants;
 import '../../core/encryption_service.dart';
 import '../../core/device_info_service.dart';
 import '../datasources/google_auth_datasource.dart';
@@ -49,6 +50,8 @@ import '../../../../utilities/investment_planner/data/models/component_allocatio
 import '../../../../utilities/retirement_planner/data/models/retirement_plan_model.dart';
 import '../../../../trackers/file_tracker/data/models/file_server_config_model.dart';
 import '../../../../trackers/file_tracker/data/models/file_metadata_model.dart';
+import '../../../../trackers/book_tracker/data/models/book_model.dart';
+import '../../../../trackers/book_tracker/data/models/read_history_entry_model.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 
 /// Implementation of BackupRepository.
@@ -370,6 +373,9 @@ class BackupRepositoryImpl implements BackupRepository {
     
     // Expense Tracker boxes
     await Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName).clear();
+    
+    // Book Tracker boxes
+    await Hive.box<BookModel>(book_tracker_constants.booksTrackerBoxName).clear();
     
     // Investment Planner boxes
     await Hive.box<InvestmentComponentModel>(investment_constants.investmentComponentBoxName).clear();
@@ -955,6 +961,74 @@ class BackupRepositoryImpl implements BackupRepository {
     }
     
     print('[RESTORE] Expense Tracker restore process completed');
+
+    // ========================================================================
+    // Book Tracker Data (optional - only restore if present in backup)
+    // ========================================================================
+    print('[RESTORE] Checking for Book Tracker data in snapshot...');
+    print('[RESTORE] Has book_tracker_books key: ${snapshot.containsKey('book_tracker_books')}');
+    
+    if (snapshot.containsKey('book_tracker_books')) {
+      final books = snapshot['book_tracker_books'] as List<dynamic>? ?? [];
+      print('[RESTORE] Found ${books.length} books in snapshot');
+      final bookBox = Hive.box<BookModel>(book_tracker_constants.booksTrackerBoxName);
+      print('[RESTORE] Book tracker box length before restore: ${bookBox.length}');
+      
+      int restoredCount = 0;
+      int skippedCount = 0;
+      
+      for (final b in books) {
+        try {
+          final m = b as Map<String, dynamic>;
+          print('[RESTORE] Processing book: id=${m['id']}, title=${m['title']}');
+          
+          // Parse read history
+          final readHistoryList = m['readHistory'] as List<dynamic>? ?? [];
+          final readHistory = readHistoryList.map((entry) {
+            final e = entry as Map<String, dynamic>;
+            return ReadHistoryEntryModel(
+              dateStarted: _deserializeDateOnly(e['dateStarted'] as String?),
+              dateRead: _deserializeDateOnly(e['dateRead'] as String?),
+            );
+          }).toList();
+          
+          final model = BookModel(
+            id: _safeString(m, 'id', ''),
+            title: _safeString(m, 'title', 'Untitled Book'),
+            primaryAuthor: _safeString(m, 'primaryAuthor', 'Unknown Author'),
+            pageCount: (m['pageCount'] as num?)?.toInt() ?? 0,
+            avgRating: (m['avgRating'] as num?)?.toDouble(),
+            datePublished: _deserializeDateOnly(m['datePublished'] as String?),
+            dateStarted: _deserializeDateOnly(m['dateStarted'] as String?),
+            dateRead: _deserializeDateOnly(m['dateRead'] as String?),
+            readHistory: readHistory,
+            createdAt: DateTime.tryParse(_safeString(m, 'createdAt', '')) ?? DateTime.now(),
+            updatedAt: DateTime.tryParse(_safeString(m, 'updatedAt', '')) ?? DateTime.now(),
+          );
+          
+          if (model.id.isEmpty) {
+            print('[RESTORE] Skipping book with empty ID');
+            skippedCount++;
+            continue; // Skip invalid entries
+          }
+          
+          await bookBox.put(model.id, model);
+          restoredCount++;
+          print('[RESTORE] Restored book: id=${model.id}, title=${model.title}');
+        } catch (e, stackTrace) {
+          print('[RESTORE] Error restoring book: $e');
+          print('[RESTORE] Stack trace: $stackTrace');
+          skippedCount++;
+        }
+      }
+      
+      print('[RESTORE] Book tracker restore completed: restored=$restoredCount, skipped=$skippedCount');
+      print('[RESTORE] Book tracker box length after restore: ${bookBox.length}');
+    } else {
+      print('[RESTORE] WARNING: No book_tracker_books key found in snapshot!');
+    }
+    
+    print('[RESTORE] Book Tracker restore process completed');
 
     // ========================================================================
     // Retirement Planner Data (optional - only restore if present in backup)
