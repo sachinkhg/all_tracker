@@ -21,6 +21,7 @@ import '../../../goal_tracker/presentation/widgets/view_field_bottom_sheet.dart'
 import '../../../goal_tracker/presentation/widgets/filter_group_bottom_sheet.dart';
 import 'package:all_tracker/core/services/view_entity_type.dart';
 import 'trip_detail_page.dart';
+import '../../../travel_tracker/domain/entities/trip.dart';
 
 /// Page displaying the list of trips.
 class TripListPage extends StatelessWidget {
@@ -256,11 +257,25 @@ class _TripListPageViewState extends State<TripListPageView> {
               );
               */
             } else {
+              // Sort trips by start date in descending order (most recent first)
+              // Trips without a start date will be placed at the end
+              final sortedTrips = List<Trip>.from(trips)
+                ..sort((a, b) {
+                  final aDate = a.startDate;
+                  final bDate = b.startDate;
+                  // Handle null start dates - put them at the end
+                  if (aDate == null && bDate == null) return 0;
+                  if (aDate == null) return 1;
+                  if (bDate == null) return -1;
+                  // Sort in descending order (most recent first)
+                  return bDate.compareTo(aDate);
+                });
+
               return ListView.builder(
                 padding: const EdgeInsets.all(12),
-                itemCount: trips.length,
+                itemCount: sortedTrips.length,
                 itemBuilder: (context, index) {
-                  final trip = trips[index];
+                  final trip = sortedTrips[index];
                   return TripListItem(
                     trip: trip,
                     onTap: () async {

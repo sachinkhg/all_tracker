@@ -221,7 +221,7 @@ class _PasswordFormBottomSheetState extends State<PasswordFormBottomSheet> {
                   },
                 ),
                 CheckboxListTile(
-                  title: const Text('Has Secret Questions'),
+                  title: const Text('Has Secret Questions/Other Details'),
                   value: _hasSecretQuestions,
                   onChanged: (value) {
                     setState(() {

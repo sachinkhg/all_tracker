@@ -23,7 +23,7 @@ class SecretQuestionFormBottomSheet extends StatefulWidget {
     required String passwordId,
     required Future<void> Function(String question, String answer) onSubmit,
     Future<void> Function()? onDelete,
-    String title = 'Create Secret Question',
+    String title = 'Create Secret Question/Other Details',
   }) {
     return showModalBottomSheet(
       context: context,

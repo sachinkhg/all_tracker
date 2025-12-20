@@ -272,18 +272,26 @@ class _HomePageState extends State<HomePage> {
         ? ((_milestoneCubit.state as MilestonesLoaded).milestones)
         : <Milestone>[];
     
-    final milestoneOptions = milestones.map((milestone) => '${milestone.id}::${milestone.name}').toList();
+    // Filter out completed milestones (actualValue >= plannedValue)
+    final nonCompletedMilestones = milestones.where((milestone) {
+      if (milestone.plannedValue != null && milestone.actualValue != null) {
+        return milestone.actualValue! < milestone.plannedValue!;
+      }
+      return true; // Include milestones without planned/actual values
+    }).toList();
+    
+    final milestoneOptions = nonCompletedMilestones.map((milestone) => '${milestone.id}::${milestone.name}').toList();
     
     if (milestoneOptions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please create a milestone first before adding a task')),
+        const SnackBar(content: Text('Please create a non-completed milestone first before adding a task')),
       );
       return;
     }
 
     // Create milestone to goal mapping for the task form
     final milestoneGoalMap = <String, String>{};
-    for (final milestone in milestones) {
+    for (final milestone in nonCompletedMilestones) {
       // Find the goal name for this milestone
       final goals = _goalCubit.state is GoalsLoaded 
           ? ((_goalCubit.state as GoalsLoaded).goals)

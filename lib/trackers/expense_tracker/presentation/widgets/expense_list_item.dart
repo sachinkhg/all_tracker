@@ -36,6 +36,7 @@ class ExpenseListItem extends StatelessWidget {
           expense.description,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: cs.onSurface,
+                
               ),
         ),
         subtitle: Column(
@@ -62,7 +63,7 @@ class ExpenseListItem extends StatelessWidget {
           amountFormat.format(expense.amount.abs()),
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: amountColor,
-                fontWeight: FontWeight.bold,
+                // fontWeight: FontWeight.bold,
               ),
         ),
         onTap: onTap,

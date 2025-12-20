@@ -155,7 +155,7 @@ class _PasswordDetailPageViewState extends State<PasswordDetailPageView> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Secret Questions',
+                        'Secret Questions/Other Details',
                         style: Theme.of(context).textTheme.titleLarge,
                       ),
                       IconButton(
@@ -184,7 +184,7 @@ class _PasswordDetailPageViewState extends State<PasswordDetailPageView> {
                         if (secretQuestions.isEmpty) {
                           return const Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Text('No secret questions yet. Tap + to add one.'),
+                            child: Text('No secret questions/other details yet. Tap + to add one.'),
                           );
                         }
 
@@ -316,7 +316,7 @@ class _PasswordDetailPageViewState extends State<PasswordDetailPageView> {
               }
             }
           : null,
-      title: secretQuestion != null ? 'Edit Secret Question' : 'Create Secret Question',
+      title: secretQuestion != null ? 'Edit Secret Question/Other Details' : 'Create Secret Question/Other Details',
     );
   }
 

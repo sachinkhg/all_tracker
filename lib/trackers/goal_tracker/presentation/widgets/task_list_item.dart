@@ -86,7 +86,16 @@ class TaskListItem extends StatelessWidget {
   });
 
   /// Returns the number of days remaining until the target date.
+  ///
+  /// Returns:
+  /// - `null` if no target date exists or if the task is completed.
+  /// - Positive integer if target is in the future.
+  /// - Negative integer if the task is overdue.
+  ///
+  /// A task is considered completed when status == 'Complete'.
   int? get remainingDays {
+    // Don't calculate remaining days for completed tasks
+    if (status == 'Complete') return null;
     if (targetDate == null) return null;
     final today = DateTime.now();
     return targetDate!.difference(DateTime(today.year, today.month, today.day)).inDays;

@@ -39,7 +39,7 @@ class SecretQuestionListPageView extends StatelessWidget {
 
     return Scaffold(
       appBar: PrimaryAppBar(
-        title: 'Secret Questions',
+        title: 'Secret Questions/Other Details',
       ),
       body: Padding(
         padding: const EdgeInsets.all(12.0),
@@ -54,7 +54,7 @@ class SecretQuestionListPageView extends StatelessWidget {
 
               if (secretQuestions.isEmpty) {
                 return const Center(
-                  child: Text('No secret questions yet. Tap + to add one.'),
+                  child: Text('No secret questions/other details yet. Tap + to add one.'),
                 );
               }
 
@@ -127,7 +127,7 @@ class SecretQuestionListPageView extends StatelessWidget {
               }
             }
           : null,
-      title: secretQuestion != null ? 'Edit Secret Question' : 'Create Secret Question',
+      title: secretQuestion != null ? 'Edit Secret Question/Other Details' : 'Create Secret Question/Other Details',
     );
   }
 

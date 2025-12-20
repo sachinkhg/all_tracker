@@ -568,6 +568,7 @@ class _GoalsList extends StatelessWidget {
           openMilestoneCount: stats?.openCount,
           totalMilestoneCount: stats?.totalCount,
           milestoneCompletionPercent: stats?.completionPercent,
+          isCompleted: g.isCompleted,
           onEdit: () => onEdit(context, g),
         );
       },

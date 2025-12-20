@@ -87,7 +87,20 @@ class MilestoneListItem extends StatelessWidget {
   });
 
   /// Returns the number of days remaining until the target date.
+  ///
+  /// Returns:
+  /// - `null` if no target date exists or if the milestone is completed.
+  /// - Positive integer if target is in the future.
+  /// - Negative integer if the milestone is overdue.
+  ///
+  /// A milestone is considered completed when actualValue >= plannedValue (both non-null).
   int? get remainingDays {
+    // Don't calculate remaining days for completed milestones
+    if (plannedValue != null && actualValue != null) {
+      if (actualValue! >= plannedValue!) {
+        return null;
+      }
+    }
     if (targetDate == null) return null;
     final today = DateTime.now();
     return targetDate!.difference(DateTime(today.year, today.month, today.day)).inDays;

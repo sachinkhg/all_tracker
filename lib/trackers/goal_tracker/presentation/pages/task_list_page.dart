@@ -222,13 +222,22 @@ class TaskListPageView extends StatelessWidget {
   }
 
   /// Helper method to fetch milestones from Hive and format them for the dropdown
+  /// Only returns non-completed milestones (actualValue < plannedValue)
   List<String> _getMilestoneOptions() {
     try {
       final box = Hive.box<MilestoneModel>(milestoneBoxName);
       final milestones = box.values.toList();
       
+      // Filter out completed milestones (actualValue >= plannedValue)
+      final nonCompletedMilestones = milestones.where((m) {
+        if (m.plannedValue != null && m.actualValue != null) {
+          return m.actualValue! < m.plannedValue!;
+        }
+        return true; // Include milestones without planned/actual values
+      }).toList();
+      
       // Format as "id::name" for the dropdown
-      return milestones.map((m) => '${m.id}::${m.name}').toList();
+      return nonCompletedMilestones.map((m) => '${m.id}::${m.name}').toList();
     } catch (e) {
       return [];
     }
@@ -278,6 +287,7 @@ class TaskListPageView extends StatelessWidget {
   }
 
   /// Helper to build milestone-to-goal mapping for the form (milestoneId -> goalName)
+  /// Only includes non-completed milestones (actualValue < plannedValue)
   Map<String, String> _getMilestoneGoalMap() {
     try {
       final milestoneBox = Hive.box<MilestoneModel>(milestoneBoxName);
@@ -285,7 +295,15 @@ class TaskListPageView extends StatelessWidget {
       final milestones = milestoneBox.values.toList();
       final goalMap = <String, String>{};
       
-      for (final m in milestones) {
+      // Filter out completed milestones (actualValue >= plannedValue)
+      final nonCompletedMilestones = milestones.where((m) {
+        if (m.plannedValue != null && m.actualValue != null) {
+          return m.actualValue! < m.plannedValue!;
+        }
+        return true; // Include milestones without planned/actual values
+      }).toList();
+      
+      for (final m in nonCompletedMilestones) {
         final goal = goalBox.get(m.goalId);
         if (goal != null) {
           goalMap[m.id] = goal.name;
