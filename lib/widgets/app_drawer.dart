@@ -14,6 +14,8 @@ import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
 import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
 import '../trackers/file_tracker/presentation/pages/file_tracker_home_page.dart';
 import '../trackers/file_tracker/core/app_icons.dart' as file_tracker;
+import '../trackers/book_tracker/presentation/pages/book_list_page.dart';
+import '../trackers/book_tracker/core/app_icons.dart' as book_tracker;
 import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../pages/settings_page.dart';
@@ -27,6 +29,7 @@ enum AppPage {
   passwordTracker,
   expenseTracker,
   fileTracker,
+  bookTracker,
   investmentPlanner,
   retirementPlanner,
   settings,
@@ -217,6 +220,25 @@ class AppDrawer extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const FileTrackerHomePage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+                
+                // Book Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: book_tracker.BookTrackerIcons.book,
+                    title: 'Book Tracker',
+                    isSelected: currentPage == AppPage.bookTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.bookTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const BookListPage(),
                           ),
                         );
                       }

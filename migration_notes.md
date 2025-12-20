@@ -35,6 +35,8 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **24** | ExpenseModel | `expenses_tracker_box` | Active | 2025-01-27 | Expense entity for expense tracker |
 | **30** | FileServerConfigModel | `file_tracker_config_box` | Active | 2025-01-28 | File server configuration entity |
 | **31** | FileMetadataModel | `file_tracker_metadata_box` | Active | 2025-01-28 | File metadata (tags, notes) entity |
+| **32** | BookModel | `books_tracker_box` | Active | 2025-01-28 | Book entity for book tracker |
+| **33** | ReadHistoryEntryModel | `books_tracker_box` | Active | 2025-01-28 | Read history entry entity (nested in BookModel) |
 
 ---
 
@@ -67,6 +69,7 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `file_tracker_config_box`   | File server configuration entities | FileServerConfigModel | Active | File tracker server configuration storage |
 | `file_tracker_config_box_active` | Active file server name | String | Active | Active server selection storage |
 | `file_tracker_metadata_box` | File metadata entities (tags, notes) | FileMetadataModel | Active | File metadata storage (server-independent) |
+| `books_tracker_box`         | Book entities                      | BookModel | Active | Book tracker storage |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |
