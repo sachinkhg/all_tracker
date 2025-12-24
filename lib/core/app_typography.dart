@@ -77,14 +77,14 @@ class AppTypography {
       bodyMedium: TextStyle(
         fontFamily: fontFamily,
         fontSize: 14,
-        fontStyle: FontStyle.italic,
+        //fontStyle: FontStyle.italic,
         color: colorScheme.primary,
       ),
       // Labels (e.g., chips, small buttons) use the secondary color to provide contrast and semantic separation.
       labelLarge: TextStyle(
         fontFamily: fontFamily,
         fontSize: 14,
-        fontWeight: FontWeight.bold,
+        //fontWeight: FontWeight.bold,
         color: colorScheme.primary,
       ),
       // BodySmall for helper text or captions. Slight opacity reduces visual weight while keeping color linked to scheme.

@@ -268,7 +268,7 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
                                 IconButton(
                                   icon: const Icon(Icons.label),
                                   onPressed: () => _showBulkTagEditor(context, cubit),
-                                  tooltip: 'Add tags to selected files',
+                                  tooltip: 'Edit metadata for selected files',
                                 ),
                             ],
                           )

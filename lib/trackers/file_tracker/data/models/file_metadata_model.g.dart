@@ -16,18 +16,35 @@ class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    return FileMetadataModel(
-      stableIdentifier: fields[0] as String,
-      tags: (fields[1] as List).cast<String>(),
-      notes: fields[2] as String?,
-      lastUpdated: fields[3] as DateTime,
-    );
+    
+    // Handle migration from old format (4 fields) to new format (6 fields)
+    if (numOfFields == 4) {
+      // Old format: stableIdentifier, tags, notes, lastUpdated
+      return FileMetadataModel(
+        stableIdentifier: fields[0] as String,
+        tags: (fields[1] as List).cast<String>(),
+        notes: fields[2] as String?,
+        cast: const [], // Default to empty list for old data
+        viewMode: null, // Default to null for old data
+        lastUpdated: fields[3] as DateTime,
+      );
+    } else {
+      // New format: stableIdentifier, tags, notes, cast, viewMode, lastUpdated
+      return FileMetadataModel(
+        stableIdentifier: fields[0] as String,
+        tags: (fields[1] as List).cast<String>(),
+        notes: fields[2] as String?,
+        cast: (fields[3] as List).cast<String>(),
+        viewMode: fields[4] as String?,
+        lastUpdated: fields[5] as DateTime,
+      );
+    }
   }
 
   @override
   void write(BinaryWriter writer, FileMetadataModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.stableIdentifier)
       ..writeByte(1)
@@ -35,6 +52,10 @@ class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
       ..writeByte(2)
       ..write(obj.notes)
       ..writeByte(3)
+      ..write(obj.cast)
+      ..writeByte(4)
+      ..write(obj.viewMode)
+      ..writeByte(5)
       ..write(obj.lastUpdated);
   }
 

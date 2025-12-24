@@ -264,5 +264,105 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
       return false;
     }
   }
+
+  /// Updates the amount for a specific income entry.
+  /// Only works when plan status is approved or executed.
+  Future<bool> updateIncomeEntryAmount(
+    String planId,
+    String entryId,
+    double amount,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Income amounts can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the income entry
+      final updatedIncomeEntries = plan.incomeEntries.map((entry) {
+        if (entry.id == entryId) {
+          return entry.copyWith(amount: amount);
+        }
+        return entry;
+      }).toList();
+
+      // Recalculate allocations with updated income
+      final allocationsResult = await _calculateAllocationsForPlan(
+        updatedIncomeEntries,
+        plan.expenseEntries,
+      );
+
+      // Update plan with new income entries and recalculated allocations
+      final updatedPlan = plan.copyWith(
+        incomeEntries: updatedIncomeEntries,
+        allocations: allocationsResult['allocations'] as List<ComponentAllocation>,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
+  }
+
+  /// Updates the amount for a specific expense entry.
+  /// Only works when plan status is approved or executed.
+  Future<bool> updateExpenseEntryAmount(
+    String planId,
+    String entryId,
+    double amount,
+  ) async {
+    try {
+      final plan = await getPlanById(planId);
+      if (plan == null) {
+        emit(PlansError('Plan not found'));
+        return false;
+      }
+
+      // Only allow updates when plan is approved or executed
+      if (plan.status != PlanStatus.approved && plan.status != PlanStatus.executed) {
+        emit(PlansError('Expense amounts can only be updated for approved or executed plans'));
+        return false;
+      }
+
+      // Find and update the expense entry
+      final updatedExpenseEntries = plan.expenseEntries.map((entry) {
+        if (entry.id == entryId) {
+          return entry.copyWith(amount: amount);
+        }
+        return entry;
+      }).toList();
+
+      // Recalculate allocations with updated expense
+      final allocationsResult = await _calculateAllocationsForPlan(
+        plan.incomeEntries,
+        updatedExpenseEntries,
+      );
+
+      // Update plan with new expense entries and recalculated allocations
+      final updatedPlan = plan.copyWith(
+        expenseEntries: updatedExpenseEntries,
+        allocations: allocationsResult['allocations'] as List<ComponentAllocation>,
+        updatedAt: DateTime.now(),
+      );
+
+      await updatePlan(updatedPlan);
+      await loadPlans();
+      return true;
+    } catch (e) {
+      emit(PlansError(e.toString()));
+      return false;
+    }
+  }
 }
 

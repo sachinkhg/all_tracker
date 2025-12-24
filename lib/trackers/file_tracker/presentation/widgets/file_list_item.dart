@@ -54,7 +54,7 @@ class FileListItem extends StatelessWidget {
           ),
         ],
       ),
-      title: Text(file.name),
+      title: Text(file.decodedName),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -92,6 +92,46 @@ class FileListItem extends StatelessWidget {
                       color: cs.onSurfaceVariant,
                     ),
               ),
+          ],
+          // Display cast if available
+          if (metadata != null && metadata!.hasCast) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(Icons.people, size: 14, color: cs.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    metadata!.cast.join(', '),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          // Display view mode if available
+          if (metadata != null && metadata!.viewMode != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Icon(
+                  metadata!.viewMode == 'portrait' ? Icons.portrait : Icons.landscape,
+                  size: 14,
+                  color: cs.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  metadata!.viewMode!.substring(0, 1).toUpperCase() + metadata!.viewMode!.substring(1),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ),
           ],
         ],
       ),

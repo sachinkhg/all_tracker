@@ -125,7 +125,7 @@ class _FileGridItem extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            file.name.replaceAll('/', ''),
+                            file.decodedName.replaceAll('/', ''),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[700],
@@ -207,36 +207,87 @@ class _FileGridItem extends StatelessWidget {
                     : null,
               ),
             ),
-          // Tags indicator (if any and not in multi-select mode)
-          if (!isMultiSelectMode && metadata != null && metadata!.hasTags && !file.isFolder)
+          // Metadata indicators (if any and not in multi-select mode)
+          if (!isMultiSelectMode && metadata != null && !file.isFolder)
             Positioned(
               top: 4,
               left: 4,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.label,
-                      size: 12,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${metadata!.tags.length}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Tags indicator
+                  if (metadata!.hasTags)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.label,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${metadata!.tags.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
+                  // Cast indicator
+                  if (metadata!.hasCast)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[700],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.people,
+                            size: 12,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${metadata!.cast.length}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  // View mode indicator
+                  if (metadata!.viewMode != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.purple[700],
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        metadata!.viewMode == 'portrait' ? Icons.portrait : Icons.landscape,
+                        size: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
               ),
             ),
           // File name overlay at bottom
@@ -254,7 +305,7 @@ class _FileGridItem extends StatelessWidget {
                 ),
               ),
               child: Text(
-                file.isFolder ? file.name.replaceAll('/', '') : file.name,
+                file.isFolder ? file.decodedName.replaceAll('/', '') : file.decodedName,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,

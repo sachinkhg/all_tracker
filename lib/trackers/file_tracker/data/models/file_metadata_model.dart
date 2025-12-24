@@ -18,12 +18,20 @@ class FileMetadataModel extends HiveObject {
   final String? notes;
 
   @HiveField(3)
+  final List<String> cast;
+
+  @HiveField(4)
+  final String? viewMode;
+
+  @HiveField(5)
   final DateTime lastUpdated;
 
   FileMetadataModel({
     required this.stableIdentifier,
     required this.tags,
     this.notes,
+    required this.cast,
+    this.viewMode,
     required this.lastUpdated,
   });
 
@@ -33,6 +41,8 @@ class FileMetadataModel extends HiveObject {
       stableIdentifier: entity.stableIdentifier,
       tags: List<String>.from(entity.tags),
       notes: entity.notes,
+      cast: List<String>.from(entity.cast),
+      viewMode: entity.viewMode,
       lastUpdated: entity.lastUpdated,
     );
   }
@@ -43,6 +53,8 @@ class FileMetadataModel extends HiveObject {
       stableIdentifier: stableIdentifier,
       tags: List<String>.from(tags),
       notes: notes,
+      cast: List<String>.from(cast),
+      viewMode: viewMode,
       lastUpdated: lastUpdated,
     );
   }

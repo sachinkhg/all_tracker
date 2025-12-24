@@ -1124,6 +1124,13 @@ class BackupRepositoryImpl implements BackupRepository {
           
           final notes = _safeStringNullable(metadataData, 'notes');
           
+          // Read cast (backward compatible - default to empty list if not present)
+          final castList = metadataData['cast'] as List<dynamic>? ?? [];
+          final cast = castList.map((c) => c.toString()).toList();
+          
+          // Read viewMode (backward compatible - default to null if not present)
+          final viewMode = _safeStringNullable(metadataData, 'viewMode');
+          
           final lastUpdatedStr = _safeString(metadataData, 'lastUpdated', '');
           DateTime lastUpdated;
           try {
@@ -1136,6 +1143,8 @@ class BackupRepositoryImpl implements BackupRepository {
             stableIdentifier: stableIdentifier,
             tags: tags,
             notes: notes,
+            cast: cast,
+            viewMode: viewMode,
             lastUpdated: lastUpdated,
           );
           await metadataBox.put(stableIdentifier, model);

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -32,6 +33,9 @@ class _FileViewerPageState extends State<FileViewerPage> {
   bool _showVideoControls = true;
   bool _isFullScreen = false;
   bool _isLandscapeLocked = false;
+  bool _isShuffleOn = false;
+  Set<int> _playedIndices = {}; // Track played videos when shuffle is on
+  final Random _random = Random();
   Timer? _controlsTimer;
 
   @override
@@ -39,6 +43,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
     super.initState();
     _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    _playedIndices.add(widget.initialIndex); // Mark initial video as played
     _initializeVideoIfNeeded();
   }
 
@@ -221,20 +226,118 @@ class _FileViewerPageState extends State<FileViewerPage> {
   }
 
   void _goToPrevious() {
-    if (_currentIndex > 0) {
-      _pageController.previousPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+    final mediaFiles = widget.files.where((f) => f.isImage || f.isVideo).toList();
+    
+    if (_isShuffleOn) {
+      // In shuffle mode, go to a random unplayed video
+      final unplayedIndices = List.generate(mediaFiles.length, (i) => i)
+          .where((i) => !_playedIndices.contains(i) && i != _currentIndex)
+          .toList();
+      
+      if (unplayedIndices.isEmpty) {
+        // All videos played, reset and pick a random one
+        _playedIndices.clear();
+        _playedIndices.add(_currentIndex);
+        final availableIndices = List.generate(mediaFiles.length, (i) => i)
+            .where((i) => i != _currentIndex)
+            .toList();
+        if (availableIndices.isNotEmpty) {
+          final randomIndex = availableIndices[_random.nextInt(availableIndices.length)];
+          _navigateToIndex(randomIndex);
+          _playedIndices.add(randomIndex);
+        }
+      } else {
+        final randomIndex = unplayedIndices[_random.nextInt(unplayedIndices.length)];
+        _navigateToIndex(randomIndex);
+        _playedIndices.add(randomIndex);
+      }
+    } else {
+      // Normal mode: go to previous index
+      if (_currentIndex > 0) {
+        _pageController.previousPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
     }
   }
 
   void _goToNext() {
-    if (_currentIndex < widget.files.length - 1) {
-      _pageController.nextPage(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
+    final mediaFiles = widget.files.where((f) => f.isImage || f.isVideo).toList();
+    
+    if (_isShuffleOn) {
+      // In shuffle mode, go to a random unplayed video
+      final unplayedIndices = List.generate(mediaFiles.length, (i) => i)
+          .where((i) => !_playedIndices.contains(i) && i != _currentIndex)
+          .toList();
+      
+      if (unplayedIndices.isEmpty) {
+        // All videos played, reset and pick a random one
+        _playedIndices.clear();
+        _playedIndices.add(_currentIndex);
+        final availableIndices = List.generate(mediaFiles.length, (i) => i)
+            .where((i) => i != _currentIndex)
+            .toList();
+        if (availableIndices.isNotEmpty) {
+          final randomIndex = availableIndices[_random.nextInt(availableIndices.length)];
+          _navigateToIndex(randomIndex);
+          _playedIndices.add(randomIndex);
+        }
+      } else {
+        final randomIndex = unplayedIndices[_random.nextInt(unplayedIndices.length)];
+        _navigateToIndex(randomIndex);
+        _playedIndices.add(randomIndex);
+      }
+    } else {
+      // Normal mode: go to next index
+      if (_currentIndex < mediaFiles.length - 1) {
+        _pageController.nextPage(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        );
+      }
+    }
+  }
+
+  void _navigateToIndex(int index) {
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  void _toggleShuffle() {
+    setState(() {
+      _isShuffleOn = !_isShuffleOn;
+      if (_isShuffleOn) {
+        // When enabling shuffle, reset played list and add current
+        _playedIndices.clear();
+        _playedIndices.add(_currentIndex);
+      }
+    });
+  }
+
+  void _seekBackward() {
+    if (_videoController != null && _isVideoInitialized) {
+      final currentPosition = _videoController!.value.position;
+      final newPosition = currentPosition - const Duration(seconds: 10);
+      _videoController!.seekTo(newPosition < Duration.zero ? Duration.zero : newPosition);
+      if (_isFullScreen) {
+        _showControlsTemporarily();
+      }
+    }
+  }
+
+  void _seekForward() {
+    if (_videoController != null && _isVideoInitialized) {
+      final currentPosition = _videoController!.value.position;
+      final duration = _videoController!.value.duration;
+      final newPosition = currentPosition + const Duration(seconds: 10);
+      _videoController!.seekTo(newPosition > duration ? duration : newPosition);
+      if (_isFullScreen) {
+        _showControlsTemporarily();
+      }
     }
   }
 
@@ -271,24 +374,18 @@ class _FileViewerPageState extends State<FileViewerPage> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Colors.white),
         title: Text(
-          '${adjustedIndex + 1} / ${mediaFiles.length}',
+          mediaFiles[adjustedIndex].decodedName,
           style: const TextStyle(color: Colors.white),
         ),
         actions: [
-          // File name
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
-            child: Center(
-              child: Text(
-                mediaFiles[adjustedIndex].name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+          // Shuffle toggle button
+          IconButton(
+            icon: Icon(
+              _isShuffleOn ? Icons.shuffle : Icons.shuffle_outlined,
+              color: _isShuffleOn ? Colors.blue : Colors.white,
             ),
+            onPressed: _toggleShuffle,
+            tooltip: _isShuffleOn ? 'Shuffle: On' : 'Shuffle: Off',
           ),
         ],
       ),
@@ -307,6 +404,10 @@ class _FileViewerPageState extends State<FileViewerPage> {
 
               setState(() {
                 _currentIndex = index;
+                // Track played videos when shuffle is on
+                if (_isShuffleOn) {
+                  _playedIndices.add(index);
+                }
               });
 
               // Initialize video if the new page is a video
@@ -321,11 +422,20 @@ class _FileViewerPageState extends State<FileViewerPage> {
             itemBuilder: (context, index) {
               final file = mediaFiles[index];
               if (file.isImage) {
-                return Center(
-                  child: InteractiveViewer(
-                    minScale: 0.5,
-                    maxScale: 4.0,
-                    child: _buildImageView(file),
+                return GestureDetector(
+                  onTap: () {
+                    if (_isFullScreen) {
+                      _exitFullScreen();
+                    } else {
+                      _enterFullScreen();
+                    }
+                  },
+                  child: Center(
+                    child: InteractiveViewer(
+                      minScale: 0.5,
+                      maxScale: 4.0,
+                      child: _buildImageView(file),
+                    ),
                   ),
                 );
               } else {
@@ -335,8 +445,33 @@ class _FileViewerPageState extends State<FileViewerPage> {
             },
           ),
 
+          // Exit fullscreen button (always visible when in fullscreen mode)
+          if (_isFullScreen)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white, size: 32),
+                    onPressed: () {
+                      _exitFullScreen();
+                    },
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.black54,
+                      padding: const EdgeInsets.all(12),
+                    ),
+                    tooltip: 'Exit fullscreen',
+                  ),
+                ),
+              ),
+            ),
+
           // Previous button
-          if (adjustedIndex > 0)
+          // Show if: normal mode and not at first, OR shuffle mode and there are other videos
+          if ((!_isShuffleOn && adjustedIndex > 0) || 
+              (_isShuffleOn && mediaFiles.length > 1))
             Positioned(
               left: 0,
               top: 0,
@@ -355,7 +490,9 @@ class _FileViewerPageState extends State<FileViewerPage> {
             ),
 
           // Next button
-          if (adjustedIndex < mediaFiles.length - 1)
+          // Show if: normal mode and not at last, OR shuffle mode and there are other videos
+          if ((!_isShuffleOn && adjustedIndex < mediaFiles.length - 1) || 
+              (_isShuffleOn && mediaFiles.length > 1))
             Positioned(
               right: 0,
               top: 0,
@@ -462,7 +599,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          file.name,
+                          file.decodedName,
                           style: const TextStyle(color: Colors.white70, fontSize: 14),
                         ),
                       ],
@@ -523,6 +660,16 @@ class _FileViewerPageState extends State<FileViewerPage> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           children: [
+                            // Seek backward button
+                            IconButton(
+                              icon: const Icon(
+                                Icons.replay_10,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                              onPressed: _seekBackward,
+                              tooltip: 'Seek backward 10 seconds',
+                            ),
                             // Play/Pause button
                             IconButton(
                               icon: Icon(
@@ -544,6 +691,16 @@ class _FileViewerPageState extends State<FileViewerPage> {
                                   _showControlsTemporarily();
                                 }
                               },
+                            ),
+                            // Seek forward button
+                            IconButton(
+                              icon: const Icon(
+                                Icons.forward_10,
+                                size: 28,
+                                color: Colors.white,
+                              ),
+                              onPressed: _seekForward,
+                              tooltip: 'Seek forward 10 seconds',
                             ),
                             // Fullscreen button
                             IconButton(
@@ -575,6 +732,21 @@ class _FileViewerPageState extends State<FileViewerPage> {
                                 }
                               },
                               tooltip: _isLandscapeLocked ? 'Unlock orientation' : 'Lock to landscape',
+                            ),
+                            // Shuffle button
+                            IconButton(
+                              icon: Icon(
+                                _isShuffleOn ? Icons.shuffle : Icons.shuffle_outlined,
+                                size: 28,
+                                color: _isShuffleOn ? Colors.blue : Colors.white,
+                              ),
+                              onPressed: () {
+                                _toggleShuffle();
+                                if (_isFullScreen) {
+                                  _showControlsTemporarily();
+                                }
+                              },
+                              tooltip: _isShuffleOn ? 'Shuffle: On' : 'Shuffle: Off',
                             ),
                           ],
                         ),

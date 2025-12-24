@@ -291,6 +291,30 @@ class FileCubit extends Cubit<FileState> {
     return await metadataRepository.searchByTags(tags);
   }
 
+  /// Gets all available tags from all files.
+  ///
+  /// Returns a set of unique tag strings.
+  Future<Set<String>> getAllAvailableTags() async {
+    final allMetadata = await metadataRepository.getAllMetadata();
+    final allTags = <String>{};
+    for (final metadata in allMetadata) {
+      allTags.addAll(metadata.tags);
+    }
+    return allTags;
+  }
+
+  /// Gets all available cast members from all files.
+  ///
+  /// Returns a set of unique cast member names.
+  Future<Set<String>> getAllAvailableCast() async {
+    final allMetadata = await metadataRepository.getAllMetadata();
+    final allCast = <String>{};
+    for (final metadata in allMetadata) {
+      allCast.addAll(metadata.cast);
+    }
+    return allCast;
+  }
+
   /// Resets the cubit to initial state (clears config and files).
   void reset() {
     _currentConfig = null;

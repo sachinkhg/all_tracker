@@ -423,6 +423,8 @@ class BackupBuilderService {
           'stableIdentifier': metadata.stableIdentifier,
           'tags': metadata.tags,
           'notes': metadata.notes,
+          'cast': metadata.cast,
+          'viewMode': metadata.viewMode,
           'lastUpdated': metadata.lastUpdated.toUtc().toIso8601String(),
         }).toList();
 
