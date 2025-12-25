@@ -41,43 +41,6 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
     _currentPlan = widget.plan;
   }
 
-  Future<void> _handleCheckboxChange(
-    BuildContext context,
-    String planId,
-    String componentId,
-    String componentName,
-    double plannedAmount,
-    double? actualAmount,
-    bool newValue,
-  ) async {
-    log(
-      'Handling checkbox change - Component: $componentName, ComponentId: $componentId, '
-      'PlannedAmount: $plannedAmount, ActualAmount: $actualAmount, NewValue: $newValue',
-      name: 'PlanDetailPage',
-    );
-    
-    final success = await context.read<InvestmentPlanCubit>().toggleAllocationCompletion(
-      planId,
-      componentId,
-      newValue,
-    );
-    
-    log(
-      'toggleAllocationCompletion result: $success for component: $componentName',
-      name: 'PlanDetailPage',
-    );
-    
-    if (mounted && success) {
-      log('Reloading plan after successful toggle for component: $componentName', name: 'PlanDetailPage');
-      await _loadPlan(context);
-    } else if (!success) {
-      log(
-        'Toggle failed or widget not mounted. Mounted: $mounted, Success: $success, Component: $componentName',
-        name: 'PlanDetailPage',
-      );
-    }
-  }
-
   Future<void> _loadPlan(BuildContext context) async {
     log('Loading plan with id: ${widget.plan.id}', name: 'PlanDetailPage');
     final cubit = context.read<InvestmentPlanCubit>();
@@ -405,17 +368,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                       );
                     }
                     
-                    // Show bar chart with actual amount input for approved status
-                    if (plan.status == PlanStatus.approved) {
-                      return _buildApprovedBarChart(
-                        context,
-                        plan,
-                        sortedComponents,
-                        cs,
-                        textTheme,
-                      );
-                    }
-                    
+                    // For approved and executed status, show list view with cards
                     return Column(
                       children: sortedComponents.map((component) {
                         // Find allocation for this component, or create a default one with 0 allocated
@@ -438,30 +391,9 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    if (canEditActual || isReadOnly)
-                                      Checkbox(
-                                        value: allocation.isCompleted,
-                                        onChanged: isReadOnly ? null : (value) async {
-                                          await context.read<InvestmentPlanCubit>().toggleAllocationCompletion(
-                                            plan.id,
-                                            allocation.componentId,
-                                            value ?? false,
-                                          );
-                                          // Reload plan to reflect changes
-                                          if (mounted) {
-                                            await _loadPlan(context);
-                                          }
-                                        },
-                                      ),
-                                    Expanded(
-                                      child: Text(
-                                        component.name,
-                                        style: textTheme.bodyMedium,
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  component.name,
+                                  style: textTheme.bodyMedium,
                                 ),
                                 const SizedBox(height: 6),
                                 if (hasActualData || canEditActual || isReadOnly || hasAllocation) ...[
@@ -496,48 +428,10 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                                 'Actual',
                                                 style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                               ),
-                                              if (canEditActual && !allocation.isCompleted)
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: TextFormField(
-                                                    initialValue: allocation.actualAmount?.toString() ?? '',
-                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                    decoration: InputDecoration(
-                                                      hintText: '0.00',
-                                                      isDense: true,
-                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                                      border: OutlineInputBorder(
-                                                        borderRadius: BorderRadius.circular(4),
-                                                      ),
-                                                    ),
-                                                    style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
-                                                    onChanged: (value) async {
-                                                      final amount = double.tryParse(value);
-                                                      if (amount != null && amount >= 0) {
-                                                        await context.read<InvestmentPlanCubit>().updateAllocationActualAmount(
-                                                          plan.id,
-                                                          allocation.componentId,
-                                                          amount,
-                                                        );
-                                                      } else if (value.isEmpty) {
-                                                        await context.read<InvestmentPlanCubit>().updateAllocationActualAmount(
-                                                          plan.id,
-                                                          allocation.componentId,
-                                                          null,
-                                                        );
-                                                      }
-                                                      // Reload plan to reflect changes
-                                                      if (mounted) {
-                                                        await _loadPlan(context);
-                                                      }
-                                                    },
-                                                  ),
-                                                )
-                                              else
-                                                Text(
-                                                  hasActual ? _formatAmount(allocation.actualAmount!) : '-',
-                                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
-                                                ),
+                                              Text(
+                                                hasActual ? _formatAmount(allocation.actualAmount!) : '-',
+                                                style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -810,261 +704,6 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
     );
   }
 
-  Widget _buildApprovedBarChart(
-    BuildContext context,
-    InvestmentPlan plan,
-    List<InvestmentComponent> components,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
-    log(
-      '_buildApprovedBarChart called with ${components.length} components',
-      name: 'PlanDetailPage',
-    );
-    
-    // Prepare data for bar chart with allocations
-    final chartData = components.map((component) {
-      final allocation = plan.allocations.firstWhere(
-        (a) => a.componentId == component.id,
-        orElse: () => ComponentAllocation(
-          componentId: component.id,
-          allocatedAmount: 0.0,
-          actualAmount: null,
-          isCompleted: false,
-        ),
-      );
-      return MapEntry(component, allocation);
-    }).toList();
-    
-    // Find max value for scaling - consider both planned and actual amounts
-    final allAmounts = <double>[];
-    for (final entry in chartData) {
-      allAmounts.add(entry.value.allocatedAmount);
-      if (entry.value.actualAmount != null) {
-        allAmounts.add(entry.value.actualAmount!);
-      }
-    }
-    final maxAmount = allAmounts.isEmpty
-        ? 1.0
-        : allAmounts.reduce((a, b) => a > b ? a : b);
-    final maxAmountScaled = maxAmount == 0.0 ? 1.0 : maxAmount;
-
-    // Filter to show only components with allocations or actual amounts
-    final displayData = chartData.where((entry) {
-      return entry.value.allocatedAmount > 0 || entry.value.actualAmount != null;
-    }).toList();
-
-    if (displayData.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Center(
-            child: Text(
-              'No allocations to display. Use "Add/Edit Actual Allocation" to add actual amounts.',
-              style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Comparison charts for each component
-            ...displayData.map((entry) {
-              final component = entry.key;
-              final allocation = entry.value;
-              final plannedAmount = allocation.allocatedAmount;
-              final actualAmount = allocation.actualAmount ?? 0.0;
-              
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Component name
-                    Text(
-                      component.name,
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    // Comparison chart
-                    _buildComparisonChart(
-                      plannedAmount,
-                      actualAmount,
-                      maxAmountScaled,
-                      colorScheme,
-                      textTheme,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildComparisonChart(
-    double plannedAmount,
-    double actualAmount,
-    double maxAmount,
-    ColorScheme colorScheme,
-    TextTheme textTheme,
-  ) {
-    log(
-      'Building comparison chart - PlannedAmount: $plannedAmount, ActualAmount: $actualAmount, MaxAmount: $maxAmount',
-      name: 'PlanDetailPage',
-    );
-    
-    // Calculate max considering both planned and actual for this specific component
-    final componentMax = [plannedAmount, actualAmount].reduce((a, b) => a > b ? a : b);
-    final maxForScaling = componentMax > 0 ? componentMax : (maxAmount > 0 ? maxAmount : 1.0);
-    
-    log(
-      'Comparison chart scaling - ComponentMax: $componentMax, MaxForScaling: $maxForScaling',
-      name: 'PlanDetailPage',
-    );
-    
-    final plannedPercentage = maxForScaling > 0 ? (plannedAmount / maxForScaling).clamp(0.0, 1.0) : 0.0;
-    final actualPercentage = maxForScaling > 0 ? (actualAmount / maxForScaling).clamp(0.0, 1.0) : 0.0;
-    
-    log(
-      'Comparison chart percentages - PlannedPercentage: $plannedPercentage, ActualPercentage: $actualPercentage',
-      name: 'PlanDetailPage',
-    );
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Labels and values
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Planned',
-                    style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                  Text(
-                    _formatAmount(plannedAmount),
-                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    'Actual',
-                    style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
-                  ),
-                  Text(
-                    _formatAmount(actualAmount),
-                    style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        // Side-by-side comparison bars
-        SizedBox(
-          height: 48,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Planned bar
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 24,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          FractionallySizedBox(
-                            widthFactor: plannedPercentage.clamp(0.0, 1.0),
-                            child: Container(
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: colorScheme.primary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Actual bar
-              Expanded(
-                flex: 1,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Stack(
-                        children: [
-                          Container(
-                            height: 24,
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceVariant,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                          FractionallySizedBox(
-                            widthFactor: actualPercentage.clamp(0.0, 1.0),
-                            child: Container(
-                              height: 24,
-                              decoration: BoxDecoration(
-                                color: colorScheme.secondary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   void _deletePlan(BuildContext context, String id, InvestmentPlanCubit cubit) {
     showDialog(
       context: context,
@@ -1248,164 +887,176 @@ class _ActualAllocationBottomSheetContentState extends State<_ActualAllocationBo
           builder: (context, scrollController) {
             final cs = Theme.of(context).colorScheme;
             final textTheme = Theme.of(context).textTheme;
+            final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
             
-            return Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20),
-                      topRight: Radius.circular(20),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Actual Allocation',
-                        style: textTheme.titleLarge,
-                      ),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: ListView.builder(
-                    controller: scrollController,
+            return Padding(
+              padding: EdgeInsets.only(bottom: keyboardPadding),
+              child: Column(
+                children: [
+                  Container(
                     padding: const EdgeInsets.all(16),
-                    itemCount: sortedComponents.length,
-                    itemBuilder: (context, index) {
-                      final component = sortedComponents[index];
-                      final allocation = widget.plan.allocations.firstWhere(
-                        (a) => a.componentId == component.id,
-                        orElse: () => ComponentAllocation(
-                          componentId: component.id,
-                          allocatedAmount: 0.0,
-                          actualAmount: null,
-                          isCompleted: false,
-                        ),
-                      );
-                      final controller = _controllers[component.id]!;
-                      final plannedAmount = allocation.allocatedAmount;
-                      
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                component.name,
-                                style: textTheme.bodyLarge?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              RichText(
-                                text: TextSpan(
-                                  style: textTheme.bodySmall?.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                  children: [
-                                    const TextSpan(text: 'Planned: '),
-                                    TextSpan(
-                                      text: _formatAmount(plannedAmount),
-                                      style: textTheme.bodySmall?.copyWith(
-                                        color: cs.onSurface,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: controller,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                decoration: InputDecoration(
-                                  labelText: 'Actual Amount',
-                                  hintText: '0.00',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ),
-                                style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
-                              ),
-                            ],
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
                           ),
                         ),
-                      );
-                    },
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cs.surface,
-                    border: Border(
-                      top: BorderSide(color: cs.outline.withValues(alpha: 0.2)),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Actual Allocation',
+                          style: textTheme.titleLarge,
+                        ),
+                      ],
                     ),
                   ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final planCubit = context.read<InvestmentPlanCubit>();
-                        bool hasChanges = false;
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: sortedComponents.length,
+                      itemBuilder: (context, index) {
+                        final component = sortedComponents[index];
+                        final allocation = widget.plan.allocations.firstWhere(
+                          (a) => a.componentId == component.id,
+                          orElse: () => ComponentAllocation(
+                            componentId: component.id,
+                            allocatedAmount: 0.0,
+                            actualAmount: null,
+                            isCompleted: false,
+                          ),
+                        );
+                        final controller = _controllers[component.id]!;
+                        final plannedAmount = allocation.allocatedAmount;
                         
-                        // Save all actual amounts
-                        for (final component in sortedComponents) {
-                          final controller = _controllers[component.id]!;
-                          final text = controller.text.trim();
-                          final amount = text.isEmpty 
-                              ? null 
-                              : double.tryParse(text);
-                          
-                          // Only update if value changed
-                          if (amount != _initialValues[component.id] ||
-                              (amount == null && _initialValues[component.id] != null)) {
-                            await planCubit.updateAllocationActualAmount(
-                              widget.plan.id,
-                              component.id,
-                              amount,
-                            );
-                            hasChanges = true;
-                          }
-                        }
-                        
-                        // Close bottom sheet
-                        if (context.mounted) {
-                          Navigator.pop(context);
-                        }
-                        
-                        // Reload plan to reflect changes using original context
-                        if (hasChanges && widget.originalContext.mounted) {
-                          await widget.onLoadPlan(widget.originalContext);
-                          if (widget.originalContext.mounted) {
-                            ScaffoldMessenger.of(widget.originalContext).showSnackBar(
-                              const SnackBar(content: Text('Actual allocations saved successfully')),
-                            );
-                          }
-                        }
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  component.name,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                RichText(
+                                  text: TextSpan(
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'Planned: '),
+                                      TextSpan(
+                                        text: _formatAmount(plannedAmount),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: cs.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: controller,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  textInputAction: TextInputAction.done,
+                                  decoration: InputDecoration(
+                                    labelText: 'Actual Amount',
+                                    hintText: '0.00',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                  onEditingComplete: () {
+                                    // Dismiss keyboard when done editing
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
                       },
-                      icon: const Icon(Icons.save),
-                      label: const Text('Save'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(
+                        top: BorderSide(color: cs.outline.withValues(alpha: 0.2)),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // Dismiss keyboard before saving
+                          FocusScope.of(context).unfocus();
+                          
+                          final planCubit = context.read<InvestmentPlanCubit>();
+                          bool hasChanges = false;
+                          
+                          // Save all actual amounts
+                          for (final component in sortedComponents) {
+                            final controller = _controllers[component.id]!;
+                            final text = controller.text.trim();
+                            final amount = text.isEmpty 
+                                ? null 
+                                : double.tryParse(text);
+                            
+                            // Only update if value changed
+                            if (amount != _initialValues[component.id] ||
+                                (amount == null && _initialValues[component.id] != null)) {
+                              await planCubit.updateAllocationActualAmount(
+                                widget.plan.id,
+                                component.id,
+                                amount,
+                              );
+                              hasChanges = true;
+                            }
+                          }
+                          
+                          // Close bottom sheet
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                          
+                          // Reload plan to reflect changes using original context
+                          if (hasChanges && widget.originalContext.mounted) {
+                            await widget.onLoadPlan(widget.originalContext);
+                            if (widget.originalContext.mounted) {
+                              ScaffoldMessenger.of(widget.originalContext).showSnackBar(
+                                const SnackBar(content: Text('Actual allocations saved successfully')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             );
           },
         );

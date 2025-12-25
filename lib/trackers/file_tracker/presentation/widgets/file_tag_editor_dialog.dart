@@ -243,10 +243,11 @@ class _FileTagEditorDialogState extends State<FileTagEditorDialog> {
         right: 16,
         top: 8,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
           // Handle bar
           Center(
             child: Container(
@@ -667,7 +668,8 @@ class _FileTagEditorDialogState extends State<FileTagEditorDialog> {
             ],
           ),
           const SizedBox(height: 16),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -107,10 +107,16 @@ class FileCubit extends Cubit<FileState> {
     try {
       final stableIdentifiers = files.map((f) => f.stableIdentifier).toList();
       final metadataMap = await metadataRepository.getMetadataBatch(stableIdentifiers);
-      _metadataCache = metadataMap;
+      // Merge with existing cache instead of replacing to preserve recently saved data
+      _metadataCache.addAll(metadataMap);
+      // Also ensure we only keep cache entries for current files to avoid memory leaks
+      final currentIdentifiers = stableIdentifiers.toSet();
+      _metadataCache.removeWhere((key, value) => !currentIdentifiers.contains(key));
+      // Re-add the loaded metadata to ensure it's up to date
+      _metadataCache.addAll(metadataMap);
     } catch (e) {
       // If metadata loading fails, continue without metadata
-      _metadataCache = {};
+      // Don't clear cache, just don't update it
     }
   }
   
@@ -264,8 +270,18 @@ class FileCubit extends Cubit<FileState> {
 
   /// Saves or updates metadata for a file.
   Future<void> saveFileMetadata(FileMetadata metadata) async {
+    // Save to repository first
     await metadataRepository.saveMetadata(metadata);
+    
+    // Update cache with the saved metadata
     _metadataCache[metadata.stableIdentifier] = metadata;
+    
+    // Verify the save by reading back from repository
+    final savedMetadata = await metadataRepository.getMetadata(metadata.stableIdentifier);
+    if (savedMetadata != null) {
+      // Update cache with the verified saved data
+      _metadataCache[metadata.stableIdentifier] = savedMetadata;
+    }
     
     // Emit updated state to refresh UI
     if (state is FilesLoaded) {

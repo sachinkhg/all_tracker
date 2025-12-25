@@ -37,11 +37,19 @@ class FileMetadataModel extends HiveObject {
 
   /// Creates a model from a domain entity.
   factory FileMetadataModel.fromEntity(FileMetadata entity) {
+    // Ensure we create new list instances to avoid any reference issues
+    final tagsList = entity.tags.isNotEmpty 
+        ? List<String>.from(entity.tags)
+        : <String>[];
+    final castList = entity.cast.isNotEmpty
+        ? List<String>.from(entity.cast)
+        : <String>[];
+    
     return FileMetadataModel(
       stableIdentifier: entity.stableIdentifier,
-      tags: List<String>.from(entity.tags),
+      tags: tagsList,
       notes: entity.notes,
-      cast: List<String>.from(entity.cast),
+      cast: castList,
       viewMode: entity.viewMode,
       lastUpdated: entity.lastUpdated,
     );

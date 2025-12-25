@@ -18,7 +18,14 @@ class FileMetadataRepositoryImpl implements FileMetadataRepository {
   Future<FileMetadata?> getMetadata(String stableIdentifier) async {
     final box = await _getBox();
     final model = box.get(stableIdentifier);
-    return model?.toEntity();
+    if (model != null) {
+      final entity = model.toEntity();
+      print('[FILE_METADATA_REPO] Loading metadata for: $stableIdentifier');
+      print('[FILE_METADATA_REPO] Loaded Tags: ${entity.tags} (count: ${entity.tags.length})');
+      print('[FILE_METADATA_REPO] Loaded Cast: ${entity.cast} (count: ${entity.cast.length})');
+      return entity;
+    }
+    return null;
   }
 
   @override
@@ -41,7 +48,26 @@ class FileMetadataRepositoryImpl implements FileMetadataRepository {
   Future<void> saveMetadata(FileMetadata metadata) async {
     final box = await _getBox();
     final model = FileMetadataModel.fromEntity(metadata);
+    
+    // Debug: Verify tags and cast are present before saving
+    print('[FILE_METADATA_REPO] Saving metadata for: ${metadata.stableIdentifier}');
+    print('[FILE_METADATA_REPO] Tags: ${metadata.tags} (count: ${metadata.tags.length})');
+    print('[FILE_METADATA_REPO] Cast: ${metadata.cast} (count: ${metadata.cast.length})');
+    print('[FILE_METADATA_REPO] Model tags: ${model.tags} (count: ${model.tags.length})');
+    print('[FILE_METADATA_REPO] Model cast: ${model.cast} (count: ${model.cast.length})');
+    
     await box.put(metadata.stableIdentifier, model);
+    // Ensure data is persisted to disk
+    await box.flush();
+    
+    // Verify the save by reading back
+    final savedModel = box.get(metadata.stableIdentifier);
+    if (savedModel != null) {
+      print('[FILE_METADATA_REPO] Verified save - Tags: ${savedModel.tags} (count: ${savedModel.tags.length})');
+      print('[FILE_METADATA_REPO] Verified save - Cast: ${savedModel.cast} (count: ${savedModel.cast.length})');
+    } else {
+      print('[FILE_METADATA_REPO] ERROR: Saved model not found after save!');
+    }
   }
 
   @override

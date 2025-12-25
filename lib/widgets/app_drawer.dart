@@ -12,7 +12,7 @@ import '../trackers/password_tracker/presentation/pages/password_list_page.dart'
 import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
 import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
 import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
-import '../trackers/file_tracker/presentation/pages/file_tracker_home_page.dart';
+import '../trackers/file_tracker/presentation/pages/file_tracker_main_page.dart';
 import '../trackers/file_tracker/core/app_icons.dart' as file_tracker;
 import '../trackers/book_tracker/presentation/pages/book_list_page.dart';
 import '../trackers/book_tracker/core/app_icons.dart' as book_tracker;
@@ -222,7 +222,7 @@ class AppDrawer extends StatelessWidget {
                       if (currentPage != AppPage.fileTracker) {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const FileTrackerHomePage(),
+                            builder: (_) => const FileTrackerMainPage(),
                           ),
                         );
                       }

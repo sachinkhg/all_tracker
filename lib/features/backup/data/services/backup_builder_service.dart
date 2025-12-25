@@ -241,6 +241,7 @@ class BackupBuilderService {
           'percentage': ic.percentage,
           'minLimit': ic.minLimit,
           'maxLimit': ic.maxLimit,
+          'multipleOf': ic.multipleOf,
           'priority': ic.priority,
         }).toList();
 
@@ -260,6 +261,9 @@ class BackupBuilderService {
     snapshot['investment_plans'] = investmentPlansBox.values.map((ip) => {
           'id': ip.id,
           'name': ip.name,
+          'duration': ip.duration,
+          'period': ip.period,
+          'status': ip.status,
           'incomeEntries': ip.incomeEntries.map((ie) => {
                 'id': ie.id,
                 'categoryId': ie.categoryId,
@@ -273,6 +277,8 @@ class BackupBuilderService {
           'allocations': ip.allocations.map((a) => {
                 'componentId': a.componentId,
                 'allocatedAmount': a.allocatedAmount,
+                'actualAmount': a.actualAmount,
+                'isCompleted': a.isCompleted,
               }).toList(),
           'createdAt': ip.createdAt.toUtc().toIso8601String(),
           'updatedAt': ip.updatedAt.toUtc().toIso8601String(),

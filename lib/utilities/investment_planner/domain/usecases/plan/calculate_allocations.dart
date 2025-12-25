@@ -18,7 +18,8 @@ import '../../repositories/investment_component_repository.dart';
 ///    - Apply min limit if specified: target = max(target, minLimit)
 ///    - Apply max limit if specified: target = min(target, maxLimit)
 ///    - If available funds < target, allocate what's available
-///    - Subtract allocated amount from available funds
+///    - Create allocation entry (saved even if zero or negative)
+///    - Subtract allocated amount from available funds (only if positive)
 /// 4. Return allocations and remaining unallocated amount
 class CalculateAllocations {
   final InvestmentComponentRepository componentRepository;
@@ -69,11 +70,14 @@ class CalculateAllocations {
         }
       }
       
+      // Always add allocation, even if amount is zero or negative
+      allocations.add(ComponentAllocation(
+        componentId: component.id,
+        allocatedAmount: allocatedAmount,
+      ));
+      
+      // Only subtract from remaining if amount is positive
       if (allocatedAmount > 0) {
-        allocations.add(ComponentAllocation(
-          componentId: component.id,
-          allocatedAmount: allocatedAmount,
-        ));
         remaining -= allocatedAmount;
       }
 

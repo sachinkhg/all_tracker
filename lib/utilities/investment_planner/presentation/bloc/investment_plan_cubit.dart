@@ -199,13 +199,32 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
         return false;
       }
 
-      // Find and update the allocation
-      final updatedAllocations = plan.allocations.map((allocation) {
-        if (allocation.componentId == componentId) {
-          return allocation.copyWith(actualAmount: actualAmount);
-        }
-        return allocation;
-      }).toList();
+      // Find and update the allocation, or create a new one if it doesn't exist
+      // (for backward compatibility with old data where 0 allocations weren't saved)
+      final existingAllocationIndex = plan.allocations.indexWhere(
+        (allocation) => allocation.componentId == componentId,
+      );
+      
+      final List<ComponentAllocation> updatedAllocations;
+      if (existingAllocationIndex >= 0) {
+        // Update existing allocation
+        updatedAllocations = plan.allocations.map((allocation) {
+          if (allocation.componentId == componentId) {
+            return allocation.copyWith(actualAmount: actualAmount);
+          }
+          return allocation;
+        }).toList();
+      } else {
+        // Create new allocation entry with allocatedAmount = 0 for backward compatibility
+        updatedAllocations = [
+          ...plan.allocations,
+          ComponentAllocation(
+            componentId: componentId,
+            allocatedAmount: 0.0,
+            actualAmount: actualAmount,
+          ),
+        ];
+      }
 
       // Update plan with new allocations
       final updatedPlan = plan.copyWith(
@@ -242,13 +261,32 @@ class InvestmentPlanCubit extends Cubit<InvestmentPlanState> {
         return false;
       }
 
-      // Find and update the allocation
-      final updatedAllocations = plan.allocations.map((allocation) {
-        if (allocation.componentId == componentId) {
-          return allocation.copyWith(isCompleted: isCompleted);
-        }
-        return allocation;
-      }).toList();
+      // Find and update the allocation, or create a new one if it doesn't exist
+      // (for backward compatibility with old data where 0 allocations weren't saved)
+      final existingAllocationIndex = plan.allocations.indexWhere(
+        (allocation) => allocation.componentId == componentId,
+      );
+      
+      final List<ComponentAllocation> updatedAllocations;
+      if (existingAllocationIndex >= 0) {
+        // Update existing allocation
+        updatedAllocations = plan.allocations.map((allocation) {
+          if (allocation.componentId == componentId) {
+            return allocation.copyWith(isCompleted: isCompleted);
+          }
+          return allocation;
+        }).toList();
+      } else {
+        // Create new allocation entry with allocatedAmount = 0 for backward compatibility
+        updatedAllocations = [
+          ...plan.allocations,
+          ComponentAllocation(
+            componentId: componentId,
+            allocatedAmount: 0.0,
+            isCompleted: isCompleted,
+          ),
+        ];
+      }
 
       // Update plan with new allocations
       final updatedPlan = plan.copyWith(

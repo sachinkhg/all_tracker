@@ -12,7 +12,7 @@ import '../trackers/password_tracker/presentation/pages/password_list_page.dart'
 import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
 import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
 import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
-import '../trackers/file_tracker/presentation/pages/file_tracker_home_page.dart';
+import '../trackers/file_tracker/presentation/pages/file_tracker_main_page.dart';
 import '../trackers/file_tracker/core/app_icons.dart' as file_tracker;
 import '../trackers/book_tracker/presentation/pages/book_list_page.dart';
 import '../trackers/book_tracker/core/app_icons.dart' as book_tracker;
@@ -21,6 +21,7 @@ import '../trackers/portfolio_tracker/core/app_icons.dart' as portfolio_tracker;
 import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../widgets/app_drawer.dart';
+import '../features/backup/presentation/widgets/backup_sync_dialog.dart';
 
 /// Main landing page for the All Tracker app
 /// Displays all available sections (Trackers, Utilities) as navigable cards
@@ -132,7 +133,7 @@ class AppHomePage extends StatelessWidget {
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => const FileTrackerHomePage(),
+              builder: (_) => const FileTrackerMainPage(),
             ),
           );
         },
@@ -283,6 +284,13 @@ class AppHomePage extends StatelessWidget {
             const SizedBox(height: AppSpacing.l),
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showBackupSyncDialog(context);
+        },
+        tooltip: 'Sync from Backup',
+        child: const Icon(Icons.sync),
       ),
     );
   }

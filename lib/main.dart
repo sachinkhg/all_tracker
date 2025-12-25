@@ -101,7 +101,11 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  // Temporarily disabled - will be re-enabled after fixing automatic backup issues
+  // ignore: unused_field
   late final BackupSchedulerService _backupScheduler;
+  // Temporarily disabled - will be re-enabled after fixing automatic backup issues
+  // ignore: unused_field
   late final BackupSyncService _backupSyncService;
 
   @override
@@ -112,11 +116,12 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _backupSyncService = createBackupSyncService();
     
     // Check for restore on app startup (after a short delay to ensure everything is initialized)
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        _backupSyncService.checkAndRestoreIfNeeded();
-      }
-    });
+    // PAUSED: Backup sync temporarily disabled - will fix and re-enable later
+    // Future.delayed(const Duration(seconds: 2), () {
+    //   if (mounted) {
+    //     _backupSyncService.checkAndRestoreIfNeeded();
+    //   }
+    // });
   }
 
   @override
@@ -130,15 +135,17 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.paused) {
       // Trigger automatic backup when app goes to background
-      _backupScheduler.runAutomaticBackup();
+      // PAUSED: Automatic backup temporarily disabled - will fix and re-enable later
+      // _backupScheduler.runAutomaticBackup();
     } else if (state == AppLifecycleState.resumed) {
       // Check for restore when app comes to foreground
       // Wait a bit to ensure any backup created when going to background is indexed
-      Future.delayed(const Duration(seconds: 3), () {
-        if (mounted) {
-          _backupSyncService.checkAndRestoreIfNeeded();
-        }
-      });
+      // PAUSED: Backup sync temporarily disabled - will fix and re-enable later
+      // Future.delayed(const Duration(seconds: 3), () {
+      //   if (mounted) {
+      //     _backupSyncService.checkAndRestoreIfNeeded();
+      //   }
+      // });
     }
   }
 

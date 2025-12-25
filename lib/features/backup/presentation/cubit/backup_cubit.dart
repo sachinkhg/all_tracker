@@ -42,7 +42,10 @@ class BackupCubit extends Cubit<BackupState> {
   /// Check authentication status and initialize state.
   /// Automatically initiates sign-in if user is not signed in.
   Future<void> checkAuthStatus() async {
-    emit(BackupInitial());
+    if (isClosed) return;
+    if (!isClosed) {
+      emit(BackupInitial());
+    }
 
     // Check if user is already signed in (this checks for existing sessions)
     // The isSignedIn() method now properly checks for existing sessions
@@ -52,44 +55,60 @@ class BackupCubit extends Cubit<BackupState> {
       final account = await _googleAuth.getCurrentAccount();
       if (account != null) {
         debugPrint('[BACKUP_CUBIT] User already signed in: ${account.email}');
-        await loadBackups();
-        
-        // Also refresh after a delay to catch any newly created backups
-        Future.delayed(const Duration(seconds: 3), () {
-          loadBackups();
-        });
+        if (!isClosed) {
+          await loadBackups();
+          
+          // Also refresh after a delay to catch any newly created backups
+          Future.delayed(const Duration(seconds: 3), () {
+            if (!isClosed) {
+              loadBackups();
+            }
+          });
+        }
         return;
       }
     }
 
     // If not signed in, automatically initiate sign-in flow
-    debugPrint('[BACKUP_CUBIT] No existing session found, initiating sign-in...');
-    await signIn();
+    if (!isClosed) {
+      debugPrint('[BACKUP_CUBIT] No existing session found, initiating sign-in...');
+      await signIn();
+    }
   }
 
   /// Sign in to Google.
   Future<void> signIn() async {
+    if (isClosed) return;
+    
     // Prevent concurrent sign-in attempts
     if (_isSigningIn) {
       return;
     }
 
     _isSigningIn = true;
-    emit(BackupSigningIn());
+    if (!isClosed) {
+      emit(BackupSigningIn());
+    }
 
     try {
       final success = await _googleAuth.signIn();
       if (success) {
-        await loadBackups();
+        if (!isClosed) {
+          await loadBackups();
+        }
       } else {
         // Sign-in was cancelled or failed - show signed-out state
         // This allows the user to try again if they want
-        emit(BackupSignedOut());
+        if (!isClosed) {
+          emit(BackupSignedOut());
+        }
       }
     } catch (e) {
       // On error, still show signed-out state so user can retry
       // Silently handle cancellation exceptions - they're expected user behavior
-      emit(BackupSignedOut());
+      if (!isClosed) {
+        emit(BackupSignedOut());
+      }
     } finally {
       _isSigningIn = false;
     }
@@ -97,15 +116,22 @@ class BackupCubit extends Cubit<BackupState> {
 
   /// Sign out from Google.
   Future<void> signOut() async {
+    if (isClosed) return;
     await _googleAuth.signOut();
-    emit(BackupSignedOut());
+    if (!isClosed) {
+      emit(BackupSignedOut());
+    }
   }
 
   /// Load list of available backups.
   Future<void> loadBackups() async {
+    if (isClosed) return;
+    
     final account = await _googleAuth.getCurrentAccount();
     if (account == null) {
-      emit(BackupSignedOut());
+      if (!isClosed) {
+        emit(BackupSignedOut());
+      }
       return;
     }
 
@@ -113,18 +139,22 @@ class BackupCubit extends Cubit<BackupState> {
       debugPrint('[BACKUP_CUBIT] Loading backups...');
       final backups = await _listBackups.call();
       debugPrint('[BACKUP_CUBIT] Loaded ${backups.length} backups');
-      emit(BackupSignedIn(
-        accountEmail: account.email,
-        backups: backups,
-      ));
+      if (!isClosed) {
+        emit(BackupSignedIn(
+          accountEmail: account.email,
+          backups: backups,
+        ));
+      }
     } catch (e) {
       debugPrint('[BACKUP_CUBIT] Failed to load backups: $e');
       // Even if loading backups fails, preserve signed-in state
-      emit(BackupSignedIn(
-        accountEmail: account.email,
-        backups: const [],
-        errorMessage: 'Failed to load backups: $e',
-      ));
+      if (!isClosed) {
+        emit(BackupSignedIn(
+          accountEmail: account.email,
+          backups: const [],
+          errorMessage: 'Failed to load backups: $e',
+        ));
+      }
     }
   }
 
@@ -134,6 +164,8 @@ class BackupCubit extends Cubit<BackupState> {
     String? passphrase,
     String? name,
   }) async {
+    if (isClosed) return;
+    
     try {
       final result = await _createBackup.call(
         mode: mode,
@@ -143,13 +175,19 @@ class BackupCubit extends Cubit<BackupState> {
 
       if (result is domain.BackupSuccess) {
         await _preferencesService.setLastBackupTime(DateTime.now());
-        emit(BackupOperationSuccess(backupId: result.backupId, sizeBytes: result.sizeBytes));
-        await loadBackups();
+        if (!isClosed) {
+          emit(BackupOperationSuccess(backupId: result.backupId, sizeBytes: result.sizeBytes));
+          await loadBackups();
+        }
       } else if (result is domain.BackupFailure) {
-        emit(BackupError(message: result.error));
+        if (!isClosed) {
+          emit(BackupError(message: result.error));
+        }
       }
     } catch (e) {
-      emit(BackupError(message: 'Backup failed: $e'));
+      if (!isClosed) {
+        emit(BackupError(message: 'Backup failed: $e'));
+      }
     }
   }
 
@@ -158,7 +196,8 @@ class BackupCubit extends Cubit<BackupState> {
     required String backupId,
     String? passphrase,
   }) async {
-    try {
+      try {
+      if (isClosed) return;
       emit(RestoreInProgress(stage: 'Restoring...', progress: 0.0));
 
       final result = await _restoreBackup.call(
@@ -169,12 +208,15 @@ class BackupCubit extends Cubit<BackupState> {
       if (result is domain.RestoreSuccess) {
         // Update last restore time
         await _preferencesService.setLastRestoreTime(DateTime.now());
-        // Show success state briefly, then restore signed-in state
-        emit(RestoreOperationSuccess());
-        // Reload backups to restore signed-in state
-        await loadBackups();
+        // Show success state - bottom sheet will close after this
+        if (!isClosed) {
+          emit(RestoreOperationSuccess());
+        }
+        // Don't call loadBackups() here as the bottom sheet will close and dispose the cubit
+        return;
       } else if (result is domain.RestoreFailure) {
         // Check if user is still signed in and preserve that state
+        if (isClosed) return;
         final isSignedIn = await _googleAuth.isSignedIn();
         if (isSignedIn) {
           // User is still signed in - preserve signed-in state with error message
@@ -182,29 +224,38 @@ class BackupCubit extends Cubit<BackupState> {
           if (account != null) {
             try {
               final backups = await _listBackups.call();
-              emit(BackupSignedIn(
-                accountEmail: account.email,
-                backups: backups,
-                errorMessage: result.error, // Include error in signed-in state
-              ));
+              if (!isClosed) {
+                emit(BackupSignedIn(
+                  accountEmail: account.email,
+                  backups: backups,
+                  errorMessage: result.error, // Include error in signed-in state
+                ));
+              }
             } catch (e) {
               // If loading backups fails, still preserve signed-in state
-              emit(BackupSignedIn(
-                accountEmail: account.email,
-                backups: const [],
-                errorMessage: result.error,
-              ));
+              if (!isClosed) {
+                emit(BackupSignedIn(
+                  accountEmail: account.email,
+                  backups: const [],
+                  errorMessage: result.error,
+                ));
+              }
             }
           } else {
-            emit(BackupSignedOut());
+            if (!isClosed) {
+              emit(BackupSignedOut());
+            }
           }
         } else {
           // User is actually signed out
-          emit(BackupSignedOut());
+          if (!isClosed) {
+            emit(BackupSignedOut());
+          }
         }
       }
     } catch (e) {
       // Check if user is still signed in after error
+      if (isClosed) return;
       final isSignedIn = await _googleAuth.isSignedIn();
       if (isSignedIn) {
         // Preserve signed-in state even after error
@@ -212,39 +263,55 @@ class BackupCubit extends Cubit<BackupState> {
         if (account != null) {
           try {
             final backups = await _listBackups.call();
-            emit(BackupSignedIn(
-              accountEmail: account.email,
-              backups: backups,
-              errorMessage: 'Restore failed: $e',
-            ));
+            if (!isClosed) {
+              emit(BackupSignedIn(
+                accountEmail: account.email,
+                backups: backups,
+                errorMessage: 'Restore failed: $e',
+              ));
+            }
           } catch (loadError) {
-            emit(BackupSignedIn(
-              accountEmail: account.email,
-              backups: const [],
-              errorMessage: 'Restore failed: $e',
-            ));
+            if (!isClosed) {
+              emit(BackupSignedIn(
+                accountEmail: account.email,
+                backups: const [],
+                errorMessage: 'Restore failed: $e',
+              ));
+            }
           }
         } else {
-          emit(BackupSignedOut());
+          if (!isClosed) {
+            emit(BackupSignedOut());
+          }
         }
       } else {
-        emit(BackupError(message: 'Restore failed: $e'));
+        if (!isClosed) {
+          emit(BackupError(message: 'Restore failed: $e'));
+        }
       }
     }
   }
 
   /// Delete a backup.
   Future<void> deleteBackup(String backupId) async {
+    if (isClosed) return;
+    
     try {
       await _deleteBackup.call(backupId);
-      await loadBackups();
+      if (!isClosed) {
+        await loadBackups();
+      }
     } catch (e) {
-      emit(BackupError(message: 'Delete failed: $e'));
+      if (!isClosed) {
+        emit(BackupError(message: 'Delete failed: $e'));
+      }
     }
   }
 
   /// Update automatic backup preference.
   Future<void> setAutoBackupEnabled(bool enabled) async {
+    if (isClosed) return;
+    
     // Prevent duplicate calls if already set to the same value
     if (_preferencesService.autoBackupEnabled == enabled) {
       return;
@@ -255,7 +322,7 @@ class BackupCubit extends Cubit<BackupState> {
     // Emit a new state to trigger UI rebuild
     // Preserve the current signed-in state if we're signed in
     // Create a new list instance to ensure state is different (forces rebuild)
-    if (state is BackupSignedIn) {
+    if (!isClosed && state is BackupSignedIn) {
       final currentState = state as BackupSignedIn;
       emit(BackupSignedIn(
         accountEmail: currentState.accountEmail,
@@ -267,6 +334,8 @@ class BackupCubit extends Cubit<BackupState> {
 
   /// Update backup encryption mode.
   Future<void> setBackupMode(BackupMode mode) async {
+    if (isClosed) return;
+    
     // Prevent duplicate calls if already set to the same value
     if (_preferencesService.backupMode == mode) {
       return;
@@ -277,7 +346,7 @@ class BackupCubit extends Cubit<BackupState> {
     // Emit a new state to trigger UI rebuild
     // Preserve the current signed-in state if we're signed in
     // Create a new list instance to ensure state is different (forces rebuild)
-    if (state is BackupSignedIn) {
+    if (!isClosed && state is BackupSignedIn) {
       final currentState = state as BackupSignedIn;
       emit(BackupSignedIn(
         accountEmail: currentState.accountEmail,
