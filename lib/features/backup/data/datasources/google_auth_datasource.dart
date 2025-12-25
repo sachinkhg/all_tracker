@@ -23,8 +23,13 @@ class GoogleAuthDataSource {
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
   // Configure GoogleSignIn with Drive and Sheets scopes
+  // Server Client ID is required for Android to get access tokens for Google APIs
+  // iOS uses the client ID from Info.plist (GIDClientID)
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [_driveAppDataScope, _sheetsReadonlyScope],
+    // Server Client ID for Android OAuth flow (same as iOS GIDClientID)
+    // This allows the app to get access tokens for Google Drive API
+    serverClientId: '378687370097-rqr0gb7bbggfcvnj85erb966nvbv84d9.apps.googleusercontent.com',
   );
   
   GoogleSignInAccount? _currentUser;

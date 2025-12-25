@@ -43,12 +43,50 @@ class BookListPageView extends StatefulWidget {
   State<BookListPageView> createState() => _BookListPageViewState();
 }
 
-class _BookListPageViewState extends State<BookListPageView> {
+class _BookListPageViewState extends State<BookListPageView>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
   BookFilter _currentFilter = BookFilter(readYear: DateTime.now().year);
   String _sortBy = 'dateRead'; // Default: Date Read (descending)
 
-  List<Book> _applyFiltersAndSort(List<Book> books) {
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// Checks if a book is currently being read.
+  /// A book is currently reading if:
+  /// 1. Current read cycle has dateStarted but no dateRead
+  /// 2. OR any entry in readHistory has dateStarted but no dateRead
+  bool _isCurrentlyReading(Book book) {
+    // Check current read cycle
+    if (book.dateStarted != null && book.dateRead == null) {
+      return true;
+    }
+    
+    // Check read history entries
+    if (book.readHistory.any((entry) => 
+        entry.dateStarted != null && entry.dateRead == null)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  List<Book> _applyFiltersAndSort(List<Book> books, {bool isCurrentlyReading = false}) {
     var filtered = List<Book>.from(books);
+
+    // For "Currently Reading" tab, filter to only books that are currently being read
+    if (isCurrentlyReading) {
+      filtered = filtered.where((book) => _isCurrentlyReading(book)).toList();
+    }
 
     // Apply filters
     if (_currentFilter.status != null) {
@@ -63,7 +101,8 @@ class _BookListPageViewState extends State<BookListPageView> {
       filtered = filtered.where((book) =>
           book.datePublished?.year == _currentFilter.publishedYear).toList();
     }
-    if (_currentFilter.readYear != null) {
+    // Only apply readYear filter for "All books" tab
+    if (!isCurrentlyReading && _currentFilter.readYear != null) {
       filtered = filtered.where((book) {
         if (book.dateRead != null && book.dateRead!.year == _currentFilter.readYear) {
           return true;
@@ -140,29 +179,61 @@ class _BookListPageViewState extends State<BookListPageView> {
 
             if (state is BooksLoaded) {
               final books = state.books;
-              final filteredAndSorted = _applyFiltersAndSort(books);
+              final allBooksFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false);
+              final currentlyReadingFiltered = _applyFiltersAndSort(books, isCurrentlyReading: true);
 
               return Column(
                 children: [
-                  BookStatsCard(stats: _calculateStats(filteredAndSorted)),
+                  BookStatsCard(stats: _calculateStats(allBooksFiltered)),
+                  const SizedBox(height: 12),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: const [
+                      Tab(text: 'All Books'),
+                      Tab(text: 'Currently Reading'),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: filteredAndSorted.isEmpty
-                        ? const Center(
-                            child: Text('No books found. Tap + to add one.'),
-                          )
-                        : ListView.builder(
-                            itemCount: filteredAndSorted.length,
-                            itemBuilder: (context, index) {
-                              final book = filteredAndSorted[index];
-                              return BookListItem(
-                                book: book,
-                                onTap: () {
-                                  _showBookForm(context, cubit, book: book);
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // All Books tab
+                        allBooksFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books found. Tap + to add one.'),
+                              )
+                            : ListView.builder(
+                                itemCount: allBooksFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = allBooksFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
+                              ),
+                        // Currently Reading tab
+                        currentlyReadingFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books currently being read.'),
+                              )
+                            : ListView.builder(
+                                itemCount: currentlyReadingFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = currentlyReadingFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
                   ),
                 ],
               );

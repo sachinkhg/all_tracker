@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../widgets/primary_app_bar.dart';
 import '../../../../widgets/app_drawer.dart';
+import '../../../../pages/app_home_page.dart';
 import '../../../../core/organization_notifier.dart';
 import 'package:provider/provider.dart';
 import '../../core/injection.dart';
@@ -14,6 +15,7 @@ import '../../domain/entities/file_metadata.dart';
 import '../bloc/file_cubit.dart';
 import '../bloc/file_state.dart';
 import '../widgets/file_tag_editor_dialog.dart';
+import '../widgets/bulk_tag_editor_dialog.dart';
 import '../widgets/file_server_config_dialog.dart';
 import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
@@ -24,7 +26,7 @@ import 'package:flutter/services.dart';
 import '../widgets/file_thumbnail_widget.dart';
 import '../widgets/file_gallery_grid.dart';
 import '../widgets/file_list_item.dart';
-import 'file_tracker_main_page.dart';
+import 'file_tracker_manage_tags_page.dart';
 import 'file_viewer_page.dart';
 
 /// Instagram Reels-like view for File Tracker.
@@ -47,6 +49,8 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
   List<CloudFile>? _shuffledPostsFiles; // Shuffled files for Posts session
   List<CloudFile>? _shuffledGalleryFiles; // Shuffled files for Gallery session
   final Random _random = Random();
+  bool _isMultiSelectMode = false;
+  final Set<String> _selectedFileIds = {}; // Store stable identifiers of selected files
   final Set<String> _selectedFilterTags = {}; // Tags selected for filtering in Gallery
   bool _isGalleryGridView = true; // Gallery view mode (grid or list)
 
@@ -98,15 +102,27 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
                       ? 'Gallery - $_currentServerName'
                       : 'Gallery'),
           actions: [
+            // Checklist button for multi-select mode (only in Gallery tab)
+            if (_currentTabIndex == 2 && !_isMultiSelectMode)
+              IconButton(
+                icon: const Icon(Icons.checklist),
+                onPressed: () {
+                  setState(() {
+                    _isMultiSelectMode = true;
+                    _selectedFileIds.clear();
+                  });
+                },
+                tooltip: 'Select files',
+              ),
             Consumer<OrganizationNotifier>(
               builder: (context, orgNotifier, _) {
                 if (orgNotifier.defaultHomePage == 'app_home') {
                   return IconButton(
-                    tooltip: 'File Tracker Home',
+                    tooltip: 'App Home',
                     icon: const Icon(Icons.home),
                     onPressed: () {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const FileTrackerMainPage()),
+                        MaterialPageRoute(builder: (_) => const AppHomePage()),
                         (route) => false,
                       );
                     },
@@ -357,59 +373,166 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
                     ),
                   );
                 }
-                return RefreshIndicator(
-                  onRefresh: () async {
-                    await cubit.refreshFiles();
-                  },
-                  child: _isGalleryGridView
-                      ? FileGalleryGrid(
-                          files: filteredFiles,
-                          config: state.config!,
-                          fileMetadata: metadataMap,
-                          crossAxisCount: 3,
-                          onFileTap: (file) {
-                            // Open file viewer when file is tapped
-                            final index = filteredFiles.indexOf(file);
-                            if (index >= 0) {
-                              Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder: (context) => FileViewerPage(
-                                    files: filteredFiles,
-                                    initialIndex: index,
-                                    config: state.config!,
-                                  ),
-                                ),
-                              );
-                            }
-                          },
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(8),
-                          itemCount: filteredFiles.length,
-                          itemBuilder: (context, index) {
-                            final file = filteredFiles[index];
-                            return FileListItem(
-                              file: file,
-                              config: state.config!,
-                              metadata: metadataMap[file.stableIdentifier],
-                              onTap: () {
-                                // Open file viewer when file is tapped
-                                final fileIndex = filteredFiles.indexOf(file);
-                                if (fileIndex >= 0) {
-                                  Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => FileViewerPage(
-                                        files: filteredFiles,
-                                        initialIndex: fileIndex,
-                                        config: state.config!,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
+                return Column(
+                  children: [
+                    // Multi-select toolbar
+                    if (_isMultiSelectMode)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                setState(() {
+                                  _isMultiSelectMode = false;
+                                  _selectedFileIds.clear();
+                                });
+                              },
+                              tooltip: 'Cancel selection',
+                            ),
+                            Expanded(
+                              child: Text(
+                                '${_selectedFileIds.length} file${_selectedFileIds.length != 1 ? 's' : ''} selected',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            if (_selectedFileIds.isNotEmpty)
+                              IconButton(
+                                icon: const Icon(Icons.label),
+                                onPressed: () => _showBulkTagEditor(context, cubit),
+                                tooltip: 'Edit metadata for selected files',
+                              ),
+                          ],
+                        ),
+                      ),
+                    // Gallery content
+                    Expanded(
+                      child: RefreshIndicator(
+                        onRefresh: () async {
+                          await cubit.refreshFiles();
+                        },
+                        child: _isGalleryGridView
+                            ? FileGalleryGrid(
+                                files: filteredFiles,
+                                config: state.config!,
+                                fileMetadata: metadataMap,
+                                crossAxisCount: 3,
+                                isMultiSelectMode: _isMultiSelectMode,
+                                selectedFileIds: _selectedFileIds,
+                                onFileTap: (file) {
+                                  if (_isMultiSelectMode) {
+                                    if (!file.isFolder) {
+                                      setState(() {
+                                        if (_selectedFileIds.contains(file.stableIdentifier)) {
+                                          _selectedFileIds.remove(file.stableIdentifier);
+                                        } else {
+                                          _selectedFileIds.add(file.stableIdentifier);
+                                        }
+                                      });
+                                    }
+                                  } else {
+                                    // Open file viewer when file is tapped
+                                    final index = filteredFiles.indexOf(file);
+                                    if (index >= 0) {
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (context) => FileViewerPage(
+                                            files: filteredFiles,
+                                            initialIndex: index,
+                                            config: state.config!,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+                                },
+                                onFileLongPress: (file) {
+                                  if (!file.isFolder) {
+                                    if (_isMultiSelectMode) {
+                                      setState(() {
+                                        if (_selectedFileIds.contains(file.stableIdentifier)) {
+                                          _selectedFileIds.remove(file.stableIdentifier);
+                                        } else {
+                                          _selectedFileIds.add(file.stableIdentifier);
+                                        }
+                                      });
+                                    } else {
+                                      _showTagEditor(context, file, cubit);
+                                    }
+                                  }
+                                },
+                              )
+                            : ListView.builder(
+                                padding: const EdgeInsets.all(8),
+                                itemCount: filteredFiles.length,
+                                itemBuilder: (context, index) {
+                                  final file = filteredFiles[index];
+                                  final isSelected = _selectedFileIds.contains(file.stableIdentifier);
+                                  return FileListItem(
+                                    file: file,
+                                    config: state.config!,
+                                    metadata: metadataMap[file.stableIdentifier],
+                                    isMultiSelectMode: _isMultiSelectMode,
+                                    isSelected: isSelected,
+                                    onTap: () {
+                                      if (_isMultiSelectMode) {
+                                        if (!file.isFolder) {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedFileIds.remove(file.stableIdentifier);
+                                            } else {
+                                              _selectedFileIds.add(file.stableIdentifier);
+                                            }
+                                          });
+                                        }
+                                      } else {
+                                        // Open file viewer when file is tapped
+                                        final fileIndex = filteredFiles.indexOf(file);
+                                        if (fileIndex >= 0) {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (context) => FileViewerPage(
+                                                files: filteredFiles,
+                                                initialIndex: fileIndex,
+                                                config: state.config!,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
+                                    onLongPress: () {
+                                      if (!file.isFolder) {
+                                        if (_isMultiSelectMode) {
+                                          setState(() {
+                                            if (isSelected) {
+                                              _selectedFileIds.remove(file.stableIdentifier);
+                                            } else {
+                                              _selectedFileIds.add(file.stableIdentifier);
+                                            }
+                                          });
+                                        } else {
+                                          _showTagEditor(context, file, cubit);
+                                        }
+                                      }
+                                    },
+                                  );
+                                },
+                              ),
+                      ),
+                    ),
+                  ],
                 );
               }
             }
@@ -553,6 +676,11 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
           onTap: (index) {
             setState(() {
               _currentTabIndex = index;
+              // Exit multi-select mode when switching tabs
+              if (_currentTabIndex != 2) {
+                _isMultiSelectMode = false;
+                _selectedFileIds.clear();
+              }
             });
           },
           type: BottomNavigationBarType.fixed,
@@ -736,6 +864,41 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
       });
       final cubit = BlocProvider.of<FileCubit>(context);
       cubit.loadFiles(selectedConfig);
+    }
+  }
+
+  Future<void> _showTagEditor(BuildContext context, CloudFile file, FileCubit cubit) async {
+    if (!mounted) return;
+    
+    try {
+      final result = await FileTagEditorDialog.show(context, file, cubit);
+      // Refresh the UI to show updated tags and cast
+      if (mounted && result != null) {
+        // Force a refresh of files to reload metadata from repository
+        await cubit.refreshFiles();
+      }
+    } catch (e) {
+      // Error showing tag editor - ignore
+    }
+  }
+
+  Future<void> _showBulkTagEditor(BuildContext context, FileCubit cubit) async {
+    if (_selectedFileIds.isEmpty) return;
+    
+    final result = await BulkTagEditorDialog.show(
+      context,
+      _selectedFileIds.toList(),
+      cubit,
+    );
+    
+    if (result == true && mounted) {
+      // Clear selection first
+      setState(() {
+        _isMultiSelectMode = false;
+        _selectedFileIds.clear();
+      });
+      // Force a refresh of files to reload metadata from repository
+      await cubit.refreshFiles();
     }
   }
 
@@ -2379,10 +2542,27 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 'Filter by Tags',
                 style: textTheme.titleLarge,
               ),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-                tooltip: 'Close',
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.label),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const FileTrackerManageTagsPage(),
+                        ),
+                      );
+                    },
+                    tooltip: 'Manage Tags',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Close',
+                  ),
+                ],
               ),
             ],
           ),
