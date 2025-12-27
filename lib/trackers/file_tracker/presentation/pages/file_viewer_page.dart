@@ -34,7 +34,7 @@ class _FileViewerPageState extends State<FileViewerPage> {
   bool _isFullScreen = false;
   bool _isLandscapeLocked = false;
   bool _isShuffleOn = false;
-  Set<int> _playedIndices = {}; // Track played videos when shuffle is on
+  final Set<int> _playedIndices = {}; // Track played videos when shuffle is on
   final Random _random = Random();
   Timer? _controlsTimer;
 

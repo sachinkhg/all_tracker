@@ -616,7 +616,7 @@ class _FileTagEditorDialogState extends State<FileTagEditorDialog> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
-                  value: _viewMode,
+                  initialValue: _viewMode,
                   decoration: const InputDecoration(
                     hintText: 'Select view mode',
                     border: OutlineInputBorder(),

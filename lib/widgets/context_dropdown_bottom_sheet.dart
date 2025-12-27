@@ -121,7 +121,7 @@ class ContextDropdownBottomSheet {
                           trailing: isSelected ? Icon(Icons.check, color: cs.primary) : null,
                           onTap: () => setState(() => selected = opt),
                         );
-                      }).toList(),
+                      }),
 
                       const Divider(),
 

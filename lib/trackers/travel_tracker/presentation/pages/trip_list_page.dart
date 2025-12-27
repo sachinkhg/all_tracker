@@ -397,7 +397,7 @@ class _TripListPageViewState extends State<TripListPageView> {
     final currentState = cubit.state;
     final Map<String, bool>? initial =
         currentState is TripsLoaded ? currentState.visibleFields : <String, bool>{};
-    final String? initialViewType =
+    final String initialViewType =
         currentState is TripsLoaded ? currentState.viewType : 'list';
 
     final result = await showAppBottomSheet<Map<String, dynamic>?>(

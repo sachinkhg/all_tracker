@@ -175,7 +175,7 @@ class TaskListPageView extends StatelessWidget {
               final currentState = cubit.state;
               final Map<String, bool>? initial =
                   currentState is TasksLoaded ? currentState.visibleFields : <String, bool>{};
-              final String? initialViewType =
+              final String initialViewType =
                   currentState is TasksLoaded ? currentState.viewType : 'list';
 
               final result = await showAppBottomSheet<Map<String, dynamic>?>(

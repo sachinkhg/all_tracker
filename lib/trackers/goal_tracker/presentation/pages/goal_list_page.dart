@@ -146,7 +146,7 @@ class GoalListPageView extends StatelessWidget {
             onView: () async {
               // read the up-to-date visible fields directly from cubit.state
               final currentState = cubit.state;
-              final Map<String, bool>? initial =
+              final Map<String, bool> initial =
                   currentState is GoalsLoaded ? currentState.visibleFields : <String, bool>{};
 
               final result = await showAppBottomSheet<Map<String, dynamic>?>(

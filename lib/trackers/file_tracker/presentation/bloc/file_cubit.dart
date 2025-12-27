@@ -28,7 +28,7 @@ class FileCubit extends Cubit<FileState> {
   String? _currentFolderFilter;
   String? _currentSearchQuery;
   List<String> _navigationStack = []; // Track folder navigation path
-  Map<String, FileMetadata> _metadataCache = {}; // Cache metadata by stable identifier
+  final Map<String, FileMetadata> _metadataCache = {}; // Cache metadata by stable identifier
 
   FileCubit({
     required this.getFiles,

@@ -101,7 +101,7 @@ class TripFormBottomSheet {
               const SizedBox(height: 16),
               // Trip Type Selector
               DropdownButtonFormField<TripType>(
-                value: tripType,
+                initialValue: tripType,
                 decoration: const InputDecoration(
                   labelText: 'Trip Type',
                   border: OutlineInputBorder(),

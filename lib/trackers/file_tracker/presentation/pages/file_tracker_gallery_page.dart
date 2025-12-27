@@ -791,7 +791,7 @@ class _FileTrackerGalleryPageState extends State<FileTrackerGalleryPage> {
           try {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Server "${newServerName}" updated successfully'),
+                content: Text('Server "$newServerName" updated successfully'),
                 duration: const Duration(seconds: 2),
               ),
             );

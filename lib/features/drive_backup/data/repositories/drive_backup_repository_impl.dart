@@ -184,36 +184,53 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       print('[Drive Backup] Could not get sheet metadata: $e');
     }
 
-    // Determine which source to use (prefer sheet if newer, otherwise JSON)
+    // Determine which source to use
+    // ALWAYS prefer Google Sheet if it exists (since user can edit it directly)
+    // JSON is only used as fallback
     bool useSheet = false;
-    if (sheetModifiedTime != null && jsonModifiedTime != null) {
-      useSheet = sheetModifiedTime.isAfter(jsonModifiedTime);
-      print('[Drive Backup] Sheet modified: $sheetModifiedTime, JSON modified: $jsonModifiedTime');
-      print('[Drive Backup] Using ${useSheet ? "Google Sheet" : "JSON file"} (newer source)');
-    } else if (sheetModifiedTime != null) {
+    if (sheetModifiedTime != null) {
+      // Sheet exists - always use it (user can edit it directly)
       useSheet = true;
-      print('[Drive Backup] Using Google Sheet (JSON file not found)');
+      print('[Drive Backup] Using Google Sheet (user-editable source)');
+      if (jsonModifiedTime != null) {
+        print('[Drive Backup] Sheet modified: $sheetModifiedTime, JSON modified: $jsonModifiedTime');
+      }
     } else if (jsonModifiedTime != null) {
+      // Sheet not available, use JSON as fallback
       useSheet = false;
-      print('[Drive Backup] Using JSON file (sheet metadata not available)');
+      print('[Drive Backup] Using JSON file (sheet not available)');
     } else {
       throw Exception('No backup data found in Drive');
     }
 
     if (useSheet) {
       // Restore from Google Sheet
+      print('[Drive Backup] Reading books from Google Sheet...');
       final booksList = await _sheetsCrudDataSource.readBooksFromSheet(config.spreadsheetId);
+      print('[Drive Backup] Read ${booksList.length} books from sheet');
+      
       // Restore books to Hive
       await _backupService.restoreBooksToHive(booksList);
+      print('[Drive Backup] Restored ${booksList.length} books to app');
+      
+      // Also update JSON file to match the sheet (keep them in sync)
+      print('[Drive Backup] Updating JSON file to match Google Sheet...');
+      final jsonData = await _backupService.serializeBooksToJson();
+      const fileName = 'books_backup.json';
+      await _folderDataSource.uploadJsonFile(fileName, jsonData, config.folderId);
+      print('[Drive Backup] JSON file updated to match sheet');
     } else {
       // Restore from JSON file
       if (jsonFileId == null) {
         throw Exception('Backup JSON file not found in Drive');
       }
+      print('[Drive Backup] Reading books from JSON file...');
       final jsonData = await _folderDataSource.downloadJsonFile(jsonFileId);
       final booksList = _backupService.deserializeBooksFromJson(jsonData);
+      print('[Drive Backup] Read ${booksList.length} books from JSON');
       // Restore books to Hive
       await _backupService.restoreBooksToHive(booksList);
+      print('[Drive Backup] Restored ${booksList.length} books to app');
     }
 
     // Update last restore time

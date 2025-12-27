@@ -677,7 +677,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                             height: 24,
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color: colorScheme.surfaceVariant,
+                              color: colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(4),
                             ),
                           ),
@@ -697,7 +697,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),

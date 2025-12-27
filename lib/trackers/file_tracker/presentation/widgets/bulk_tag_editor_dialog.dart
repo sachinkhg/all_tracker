@@ -34,8 +34,8 @@ class BulkTagEditorDialog extends StatefulWidget {
 }
 
 class _BulkTagEditorDialogState extends State<BulkTagEditorDialog> {
-  List<String> _tags = [];
-  List<String> _cast = [];
+  final List<String> _tags = [];
+  final List<String> _cast = [];
   String? _viewMode;
   bool _isLoading = true;
   Set<String> _allAvailableTags = {}; // All tags from all files
@@ -484,7 +484,7 @@ class _BulkTagEditorDialogState extends State<BulkTagEditorDialog> {
           ),
           const SizedBox(height: 8),
           DropdownButtonFormField<String?>(
-            value: _viewMode,
+            initialValue: _viewMode,
             decoration: const InputDecoration(
               hintText: 'Select view mode (optional)',
               border: OutlineInputBorder(),

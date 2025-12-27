@@ -58,8 +58,8 @@ class DatePickerBottomSheet {
     String title = 'Select date',
   }) {
     final now = DateTime.now();
-    final _first = firstDate ?? DateTime(2000);
-    final _last = lastDate ?? DateTime(now.year + 10);
+    final first = firstDate ?? DateTime(2000);
+    final last = lastDate ?? DateTime(now.year + 10);
 
     // Default selection is either the provided initial date or the current date.
     DateTime selected = initialDate ?? now;
@@ -105,8 +105,8 @@ class DatePickerBottomSheet {
                 height: 320,
                 child: CalendarDatePicker(
                   initialDate: initialDate ?? now,
-                  firstDate: _first,
-                  lastDate: _last,
+                  firstDate: first,
+                  lastDate: last,
                   onDateChanged: (d) => selected = d, // Update selected locally
                 ),
               ),

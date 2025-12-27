@@ -118,7 +118,7 @@ class HabitListItem extends StatelessWidget {
   /// Returns a color for the status badge.
   Color _statusColor(BuildContext context, bool isActive) {
     final cs = Theme.of(context).colorScheme;
-    return isActive ? cs.primaryContainer : cs.surfaceVariant;
+    return isActive ? cs.primaryContainer : cs.surfaceContainerHighest;
   }
 
   Color _statusTextColor(BuildContext context, bool isActive) {

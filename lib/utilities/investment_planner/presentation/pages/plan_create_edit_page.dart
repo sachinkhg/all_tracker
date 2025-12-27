@@ -207,11 +207,11 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
               entryId = originalEntry.id; // Preserve existing ID
             } catch (e) {
               // Category didn't exist in original plan, generate new ID
-              entryId = DateTime.now().millisecondsSinceEpoch.toString() + '_${category.id}';
+              entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
             }
           } else {
             // When creating, generate new ID
-            entryId = DateTime.now().millisecondsSinceEpoch.toString() + '_${category.id}';
+            entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
           }
           completeIncomeEntries.add(IncomeEntry(
             id: entryId,
@@ -240,11 +240,11 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
               entryId = originalEntry.id; // Preserve existing ID
             } catch (e) {
               // Category didn't exist in original plan, generate new ID
-              entryId = DateTime.now().millisecondsSinceEpoch.toString() + '_${category.id}';
+              entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
             }
           } else {
             // When creating, generate new ID
-            entryId = DateTime.now().millisecondsSinceEpoch.toString() + '_${category.id}';
+            entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
           }
           completeExpenseEntries.add(ExpenseEntry(
             id: entryId,

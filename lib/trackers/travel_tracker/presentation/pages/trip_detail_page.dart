@@ -937,9 +937,7 @@ class _ExpenseSummarySection extends StatelessWidget {
             for (final expense in expenses) {
               // For now, we'll show total in the first currency we encounter
               // In a real app, you might want to handle currency conversion
-              if (primaryCurrency == null) {
-                primaryCurrency = expense.currency;
-              }
+              primaryCurrency ??= expense.currency;
               
               // Only sum expenses in the primary currency for simplicity
               if (expense.currency == primaryCurrency) {

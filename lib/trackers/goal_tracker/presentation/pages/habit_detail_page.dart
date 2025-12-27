@@ -225,7 +225,7 @@ class _HabitDetailPageState extends State<HabitDetailPage> {
                         decoration: BoxDecoration(
                           color: _habit!.isActive
                               ? theme.colorScheme.primaryContainer
-                              : theme.colorScheme.surfaceVariant,
+                              : theme.colorScheme.surfaceContainerHighest,
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(

@@ -86,10 +86,10 @@ class BackupSyncService {
       // If we have a reference time and the latest backup is newer, restore it
       if (referenceTime != null) {
         if (latestBackup.createdAt.isAfter(referenceTime)) {
-          debugPrint('[BACKUP_SYNC] Found newer backup (${latestBackup.createdAt}) than reference time (${referenceTime}), restoring...');
+          debugPrint('[BACKUP_SYNC] Found newer backup (${latestBackup.createdAt}) than reference time ($referenceTime), restoring...');
           await _restoreBackup(latestBackup);
         } else {
-          debugPrint('[BACKUP_SYNC] Latest backup (${latestBackup.createdAt}) is not newer than reference time (${referenceTime}), no restore needed');
+          debugPrint('[BACKUP_SYNC] Latest backup (${latestBackup.createdAt}) is not newer than reference time ($referenceTime), no restore needed');
         }
       } else {
         // No reference time - this might be first time or no previous restore/backup
@@ -99,10 +99,10 @@ class BackupSyncService {
         final hoursSinceBackup = now.difference(latestBackup.createdAt).inHours;
         
         if (hoursSinceBackup <= 24) {
-          debugPrint('[BACKUP_SYNC] No reference time found, but latest backup is recent (${hoursSinceBackup} hours ago), restoring...');
+          debugPrint('[BACKUP_SYNC] No reference time found, but latest backup is recent ($hoursSinceBackup hours ago), restoring...');
           await _restoreBackup(latestBackup);
         } else {
-          debugPrint('[BACKUP_SYNC] No reference time found, and latest backup is old (${hoursSinceBackup} hours ago), skipping restore');
+          debugPrint('[BACKUP_SYNC] No reference time found, and latest backup is old ($hoursSinceBackup hours ago), skipping restore');
         }
       }
     } catch (e) {

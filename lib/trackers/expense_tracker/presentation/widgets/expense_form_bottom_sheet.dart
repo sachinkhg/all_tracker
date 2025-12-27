@@ -222,7 +222,7 @@ class _ExpenseFormBottomSheetState extends State<ExpenseFormBottomSheet> {
                 const SizedBox(height: 16),
                 // Group dropdown
                 DropdownButtonFormField<ExpenseGroup>(
-                  value: _selectedGroup,
+                  initialValue: _selectedGroup,
                   decoration: const InputDecoration(
                     labelText: 'Group',
                   ),

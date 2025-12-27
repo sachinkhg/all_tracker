@@ -182,7 +182,7 @@ class _InvestmentMasterFormBottomSheetState extends State<InvestmentMasterFormBo
                 const SizedBox(height: 16),
                 // Investment Category dropdown
                 DropdownButtonFormField<InvestmentCategory>(
-                  value: _selectedCategory,
+                  initialValue: _selectedCategory,
                   decoration: const InputDecoration(
                     labelText: 'Category *',
                   ),
@@ -207,7 +207,7 @@ class _InvestmentMasterFormBottomSheetState extends State<InvestmentMasterFormBo
                 const SizedBox(height: 16),
                 // Tracking Type dropdown
                 DropdownButtonFormField<InvestmentTrackingType>(
-                  value: _selectedTrackingType,
+                  initialValue: _selectedTrackingType,
                   decoration: const InputDecoration(
                     labelText: 'Tracking Type *',
                   ),
@@ -232,7 +232,7 @@ class _InvestmentMasterFormBottomSheetState extends State<InvestmentMasterFormBo
                 const SizedBox(height: 16),
                 // Currency dropdown
                 DropdownButtonFormField<InvestmentCurrency>(
-                  value: _selectedCurrency,
+                  initialValue: _selectedCurrency,
                   decoration: const InputDecoration(
                     labelText: 'Currency *',
                   ),
@@ -257,7 +257,7 @@ class _InvestmentMasterFormBottomSheetState extends State<InvestmentMasterFormBo
                 const SizedBox(height: 16),
                 // Risk Factor dropdown
                 DropdownButtonFormField<RiskFactor>(
-                  value: _selectedRiskFactor,
+                  initialValue: _selectedRiskFactor,
                   decoration: const InputDecoration(
                     labelText: 'Risk Factor *',
                   ),

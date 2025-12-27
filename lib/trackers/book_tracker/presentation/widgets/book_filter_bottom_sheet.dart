@@ -123,7 +123,7 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
           const SizedBox(height: 16),
           // Status filter
           DropdownButtonFormField<BookStatus?>(
-            value: _filter.status,
+            initialValue: _filter.status,
             decoration: const InputDecoration(
               labelText: 'Status',
             ),
