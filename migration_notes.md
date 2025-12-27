@@ -37,6 +37,9 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | **31** | FileMetadataModel | `file_tracker_metadata_box` | Active | 2025-01-28 | File metadata (tags, notes) entity |
 | **32** | BookModel | `books_tracker_box` | Active | 2025-01-28 | Book entity for book tracker |
 | **33** | ReadHistoryEntryModel | `books_tracker_box` | Active | 2025-01-28 | Read history entry entity (nested in BookModel) |
+| **34** | InvestmentMasterModel | `investment_masters_box` | Active | 2025-01-28 | Investment master entity for portfolio tracker |
+| **35** | InvestmentLogModel | `investment_logs_box` | Active | 2025-01-28 | Investment log entity for portfolio tracker |
+| **36** | RedemptionLogModel | `redemption_logs_box` | Active | 2025-01-28 | Redemption log entity for portfolio tracker |
 
 ---
 
@@ -70,6 +73,9 @@ This document serves as the single source of truth for all Hive TypeIds and sche
 | `file_tracker_config_box_active` | Active file server name | String | Active | Active server selection storage |
 | `file_tracker_metadata_box` | File metadata entities (tags, notes) | FileMetadataModel | Active | File metadata storage (server-independent) |
 | `books_tracker_box`         | Book entities                      | BookModel | Active | Book tracker storage |
+| `investment_masters_box`    | Investment master entities         | InvestmentMasterModel | Active | Portfolio tracker investment master storage |
+| `investment_logs_box`       | Investment log entities            | InvestmentLogModel | Active | Portfolio tracker investment log storage |
+| `redemption_logs_box`       | Redemption log entities            | RedemptionLogModel | Active | Portfolio tracker redemption log storage |
 | `view_preferences_box`      | User view field preferences       | String    | Active    | UI customization settings                  |
 | `filter_preferences_box`    | User filter preferences           | String    | Active    | Filter state persistence                   |
 | `sort_preferences_box`      | User sort preferences             | String    | Active    | Sort state persistence                     |

@@ -19,6 +19,7 @@ import '../../../../widgets/app_drawer.dart';
 import '../../../../pages/app_home_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/organization_notifier.dart';
+import '../../../../features/drive_backup/presentation/pages/drive_backup_settings_page.dart';
 
 class BookListPage extends StatelessWidget {
   const BookListPage({super.key});
@@ -150,6 +151,17 @@ class _BookListPageViewState extends State<BookListPageView>
       appBar: PrimaryAppBar(
         title: 'Book Tracker',
         actions: [
+          IconButton(
+            tooltip: 'Drive Backup',
+            icon: const Icon(Icons.backup),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DriveBackupSettingsPage(),
+                ),
+              );
+            },
+          ),
           Consumer<OrganizationNotifier>(
             builder: (context, orgNotifier, _) {
               if (orgNotifier.defaultHomePage == 'app_home') {
@@ -378,9 +390,7 @@ class _BookListPageViewState extends State<BookListPageView>
         }
         
         if (includeInRating) {
-          if (sumRatings == null) {
-            sumRatings = 0.0;
-          }
+          sumRatings ??= 0.0;
           sumRatings += book.avgRating!;
           completedBooksWithRating++;
         }

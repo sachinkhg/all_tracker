@@ -16,6 +16,7 @@ import '../domain/usecases/book/get_books_by_read_year.dart';
 import '../domain/usecases/book/update_book.dart';
 import '../domain/usecases/book/delete_book.dart';
 import '../presentation/bloc/book_cubit.dart';
+import '../../../features/drive_backup/core/injection.dart' as drive_backup;
 import 'constants.dart';
 
 /// Factory that constructs a fully-wired [BookCubit].
@@ -61,6 +62,9 @@ BookCubit createBookCubit() {
   // ---------------------------------------------------------------------------
   // Presentation
   // ---------------------------------------------------------------------------
+  // Get CRUD logger for Drive backup (optional, may be null if not configured)
+  final crudLogger = drive_backup.getDriveBackupCrudLogger();
+
   return BookCubit(
     getAll: getAll,
     getById: getById,
@@ -71,6 +75,7 @@ BookCubit createBookCubit() {
     create: create,
     update: update,
     delete: delete,
+    crudLogger: crudLogger,
   );
 }
 

@@ -9,6 +9,9 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 /// Uses google_sign_in v6.2.1 which has reliable session management.
 class GoogleAuthDataSource {
   static const String _driveAppDataScope = 'https://www.googleapis.com/auth/drive.appdata';
+  static const String _driveFileScope = 'https://www.googleapis.com/auth/drive.file';
+  static const String _driveScope = 'https://www.googleapis.com/auth/drive';
+  static const String _sheetsScope = 'https://www.googleapis.com/auth/spreadsheets';
   static const String _sheetsReadonlyScope = 'https://www.googleapis.com/auth/spreadsheets.readonly';
   static const String _signedInKey = 'google_sign_in_state';
   static const String _userEmailKey = 'google_user_email';
@@ -25,8 +28,9 @@ class GoogleAuthDataSource {
   // Configure GoogleSignIn with Drive and Sheets scopes
   // Server Client ID is required for Android to get access tokens for Google APIs
   // iOS uses the client ID from Info.plist (GIDClientID)
+  // Note: _driveScope is needed for creating folders in user-selected locations
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    scopes: [_driveAppDataScope, _sheetsReadonlyScope],
+    scopes: [_driveAppDataScope, _driveScope, _sheetsScope],
     // Server Client ID for Android OAuth flow (same as iOS GIDClientID)
     // This allows the app to get access tokens for Google Drive API
     serverClientId: '378687370097-rqr0gb7bbggfcvnj85erb966nvbv84d9.apps.googleusercontent.com',
