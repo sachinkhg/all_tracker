@@ -160,6 +160,14 @@ flutter analyze
 - `lib/util/` — Utility helpers and common functions.
 - `lib/widgets/` — Shared UI widgets (buttons, forms, date pickers).
 
+---
+
+## Developer documentation
+
+- `readme/DEVELOPER_REFERENCE.md` — **Models, use cases, and UI components** (with copy/paste examples).
+- `migration_notes.md` — Hive **TypeId + box registry** and migration rules.
+- `readme/new_model_checklist.md` — Step-by-step checklist for adding a new model end-to-end.
+
 ## Key Implementation Details
 
 - **Hierarchical Data Model**: Goal → Milestone → Task with automatic goal assignment for tasks.

@@ -206,3 +206,12 @@ All Tracker’s architecture ensures:
 
 **Next Steps:**  
 Implement the Portfolio Management module mirroring the same clean architecture pattern.
+
+---
+
+## Developer reference
+
+For concrete documentation of **models, use cases, and UI components** (with examples), see:
+
+- `readme/DEVELOPER_REFERENCE.md`
+- `migration_notes.md`
