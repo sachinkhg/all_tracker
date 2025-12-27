@@ -47,7 +47,7 @@ class BookListPageView extends StatefulWidget {
 class _BookListPageViewState extends State<BookListPageView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  BookFilter _currentFilter = BookFilter(readYear: DateTime.now().year);
+  BookFilter _currentFilter = BookFilter(); // No default filters - show all books
   String _sortBy = 'dateRead'; // Default: Date Read (descending)
 
   @override
@@ -117,9 +117,13 @@ class _BookListPageViewState extends State<BookListPageView>
     switch (_sortBy) {
       case 'dateRead':
         filtered.sort((a, b) {
-          if (a.dateRead == null && b.dateRead == null) return 0;
-          if (a.dateRead == null) return 1;
-          if (b.dateRead == null) return -1;
+          // Books with dateRead come first, sorted by date (most recent first)
+          if (a.dateRead == null && b.dateRead == null) {
+            // Both have no dateRead - sort by title for consistency
+            return a.title.compareTo(b.title);
+          }
+          if (a.dateRead == null) return 1; // a goes to end
+          if (b.dateRead == null) return -1; // b goes to end
           return b.dateRead!.compareTo(a.dateRead!); // Descending
         });
         break;
@@ -428,31 +432,65 @@ class _BookListPageViewState extends State<BookListPageView>
         DateTime? dateRead,
         List<ReadHistoryEntry>? readHistory,
       }) async {
-        if (book != null) {
-          // Update existing
-          final updated = book.copyWith(
-            title: title,
-            primaryAuthor: primaryAuthor,
-            pageCount: pageCount,
-            avgRating: avgRating,
-            datePublished: datePublished,
-            dateStarted: dateStarted,
-            dateRead: dateRead,
-            readHistory: readHistory ?? book.readHistory,
-            updatedAt: DateTime.now(),
-          );
-          await cubit.updateBook(updated);
-        } else {
-          // Create new
-          await cubit.createBook(
-            title: title,
-            primaryAuthor: primaryAuthor,
-            pageCount: pageCount,
-            avgRating: avgRating,
-            datePublished: datePublished,
-            dateStarted: dateStarted,
-            dateRead: dateRead,
-          );
+        try {
+          if (book != null) {
+            // Update existing
+            final updated = book.copyWith(
+              title: title,
+              primaryAuthor: primaryAuthor,
+              pageCount: pageCount,
+              avgRating: avgRating,
+              datePublished: datePublished,
+              dateStarted: dateStarted,
+              dateRead: dateRead,
+              readHistory: readHistory ?? book.readHistory,
+              updatedAt: DateTime.now(),
+            );
+            await cubit.updateBook(updated);
+          } else {
+            // Create new
+            await cubit.createBook(
+              title: title,
+              primaryAuthor: primaryAuthor,
+              pageCount: pageCount,
+              avgRating: avgRating,
+              datePublished: datePublished,
+              dateStarted: dateStarted,
+              dateRead: dateRead,
+            );
+          }
+          
+          // Check if there's an error state after the operation
+          if (context.mounted) {
+            final state = cubit.state;
+            if (state is BooksError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error: ${state.message}'),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            } else {
+              // Success - show confirmation
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(book != null ? 'Book updated successfully' : 'Book created successfully'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: $e'),
+                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         }
       },
       onDelete: book != null

@@ -91,6 +91,10 @@ class BookLocalDataSourceImpl implements BookLocalDataSource {
 
   @override
   Future<void> createBook(BookModel book) async {
+    // Ensure box is open before attempting to write
+    if (!box.isOpen) {
+      throw Exception('Book box is not open. Cannot create book.');
+    }
     // Use book.id as the key. This keeps keys consistent and human-readable.
     // We intentionally rely on Hive's `put` semantics — it will create or overwrite.
     await box.put(book.id, book);

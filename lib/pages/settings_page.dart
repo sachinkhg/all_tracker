@@ -9,6 +9,7 @@ import '../features/backup/backup_restore.dart';
 import '../features/backup/presentation/pages/backup_settings_page.dart';
 import '../features/auth/presentation/cubit/auth_cubit.dart';
 import '../features/auth/presentation/states/auth_state.dart';
+import '../core/reset_service.dart';
 import 'app_home_page.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -147,7 +148,7 @@ class SettingsPage extends StatelessWidget {
           Text('Font', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            value: notifier.fontKey,
+            initialValue: notifier.fontKey,
             decoration: InputDecoration(
               border: const OutlineInputBorder(),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -376,7 +377,7 @@ class SettingsPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: selectedValue,
+                    initialValue: selectedValue,
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -407,6 +408,19 @@ class SettingsPage extends StatelessWidget {
                 ],
               );
             },
+          ),
+          
+          const Divider(height: 32),
+          Text('Reset Data', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 8),
+          ExpansionTile(
+            title: const Text('Reset Trackers & Utilities'),
+            subtitle: const Text('Clear all data for a specific tracker or utility'),
+            leading: const Icon(Icons.refresh),
+            initiallyExpanded: false,
+            children: [
+              _ResetSection(),
+            ],
           ),
         ],
       ),
@@ -466,6 +480,165 @@ class _ColorPresetTile extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _ResetSection extends StatelessWidget {
+  const _ResetSection();
+
+  Future<void> _showResetConfirmation(
+    BuildContext context,
+    ResetTarget target,
+  ) async {
+    final displayName = ResetService.getDisplayName(target);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset $displayName'),
+        content: Text(
+          'Are you sure you want to reset all data for $displayName? '
+          'This action cannot be undone. All data will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            child: const Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      final success = await ResetService.resetData(target);
+
+      if (context.mounted) {
+        Navigator.of(context).pop(); // Close loading indicator
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$displayName data has been reset successfully'),
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to reset $displayName data'),
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Trackers
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Trackers',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.flag),
+          title: const Text('Goal Tracker'),
+          subtitle: const Text('Clear all goals, milestones, tasks, and habits'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.goalTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.flight),
+          title: const Text('Travel Tracker'),
+          subtitle: const Text('Clear all trips, itineraries, and travel data'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.travelTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.lock),
+          title: const Text('Password Tracker'),
+          subtitle: const Text('Clear all passwords and secret questions'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.passwordTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.receipt),
+          title: const Text('Expense Tracker'),
+          subtitle: const Text('Clear all expense records'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.expenseTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.folder),
+          title: const Text('File Tracker'),
+          subtitle: const Text('Clear all file metadata and server configurations'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.fileTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.book),
+          title: const Text('Book Tracker'),
+          subtitle: const Text('Clear all book records and reading history'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.bookTracker),
+        ),
+        ListTile(
+          leading: const Icon(Icons.trending_up),
+          title: const Text('Portfolio Tracker'),
+          subtitle: const Text('Clear all investment and redemption records'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.portfolioTracker),
+        ),
+        const Divider(),
+        // Utilities
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Utilities',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+        ),
+        ListTile(
+          leading: const Icon(Icons.account_balance),
+          title: const Text('Investment Planner'),
+          subtitle: const Text('Clear all investment plans, components, and categories'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.investmentPlanner),
+        ),
+        ListTile(
+          leading: const Icon(Icons.account_balance_wallet),
+          title: const Text('Retirement Planner'),
+          subtitle: const Text('Clear all retirement plans and preferences'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => _showResetConfirmation(context, ResetTarget.retirementPlanner),
+        ),
+      ],
     );
   }
 }

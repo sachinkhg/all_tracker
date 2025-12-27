@@ -58,6 +58,7 @@ dependencies:
   googleapis: ^15.0.0
   http: ^1.2.0
   cryptography: ^2.7.0
+  crypto: ^3.0.5
   flutter_secure_storage: ^10.0.0-beta.5
   device_info_plus: ^12.3.0
   image_picker: ^1.0.7

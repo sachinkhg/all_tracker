@@ -65,7 +65,9 @@ class BookCubit extends Cubit<BookState> {
     try {
       _allBooks = await getAll();
       emit(BooksLoaded(_allBooks));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Error loading books: $e');
+      print('Stack trace: $stackTrace');
       emit(BooksError('Failed to load books: $e'));
     }
   }
@@ -148,9 +150,19 @@ class BookCubit extends Cubit<BookState> {
       await create(newBook);
       // Log CRUD operation for Drive backup
       _crudLogger?.logCreate(newBook);
+      // Reload to get updated list - ensure we're in a good state first
+      _allBooks = [];
       await loadBooks(); // Reload to get updated list
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Error creating book: $e');
+      print('Stack trace: $stackTrace');
       emit(BooksError('Failed to create book: $e'));
+      // Try to reload anyway to get current state
+      try {
+        await loadBooks();
+      } catch (_) {
+        // If reload also fails, keep the error state
+      }
     }
   }
 
