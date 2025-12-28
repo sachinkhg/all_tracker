@@ -47,7 +47,6 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
   int _currentTabIndex = 0; // 0 = Reels, 1 = Posts, 2 = Gallery
   List<CloudFile>? _shuffledReelsFiles; // Shuffled files for Reels session
   List<CloudFile>? _shuffledPostsFiles; // Shuffled files for Posts session
-  List<CloudFile>? _shuffledGalleryFiles; // Shuffled files for Gallery session
   final Random _random = Random();
   bool _isMultiSelectMode = false;
   final Set<String> _selectedFileIds = {}; // Store stable identifiers of selected files
@@ -60,7 +59,6 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
     // Reset shuffled files when entering a new session
     _shuffledReelsFiles = null;
     _shuffledPostsFiles = null;
-    _shuffledGalleryFiles = null;
   }
 
   /// Shuffles a list of files randomly and non-repeating
@@ -257,12 +255,23 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
                   return true;
                 }).toList();
                 
-                // Shuffle files for this session if not already shuffled
-                if (_shuffledGalleryFiles == null && filteredFiles.isNotEmpty) {
-                  _shuffledGalleryFiles = _shuffleFiles(filteredFiles);
-                }
-                // Use shuffled files if available, otherwise use filtered files
-                filteredFiles = _shuffledGalleryFiles ?? filteredFiles;
+                // Sort Gallery files: files without tags first (alphabetically), 
+                // then files with tags (alphabetically)
+                filteredFiles.sort((a, b) {
+                  final metadataA = metadataMap[a.stableIdentifier];
+                  final metadataB = metadataMap[b.stableIdentifier];
+                  
+                  final hasTagsA = metadataA?.tags.isNotEmpty ?? false;
+                  final hasTagsB = metadataB?.tags.isNotEmpty ?? false;
+                  
+                  // Files without tags come first
+                  if (hasTagsA != hasTagsB) {
+                    return hasTagsA ? 1 : -1;
+                  }
+                  
+                  // Both have same tag status, sort alphabetically by name
+                  return a.decodedName.toLowerCase().compareTo(b.decodedName.toLowerCase());
+                });
               }
 
               // Show appropriate view based on selected tab
@@ -928,8 +937,6 @@ class _FileTrackerInstaViewPageState extends State<FileTrackerInstaViewPage> {
       setState(() {
         _selectedFilterTags.clear();
         _selectedFilterTags.addAll(selectedTags);
-        // Reset shuffled files when filter changes
-        _shuffledGalleryFiles = null;
       });
     }
   }
@@ -1566,6 +1573,7 @@ class _PostItemContentState extends State<_PostItemContent> {
   double? _videoAspectRatio;
   bool _isVideoInitialized = false;
   bool _isPlaying = false;
+  bool _isBuffering = false;
 
   @override
   void initState() {
@@ -1612,6 +1620,7 @@ class _PostItemContentState extends State<_PostItemContent> {
         _videoAspectRatio = widget.videoController!.value.aspectRatio;
         _isVideoInitialized = widget.videoController!.value.isInitialized;
         _isPlaying = widget.videoController!.value.isPlaying;
+        _isBuffering = widget.videoController!.value.isBuffering;
       });
     }
   }
@@ -1854,15 +1863,66 @@ class _PostItemContentState extends State<_PostItemContent> {
                                 aspectRatio: _videoAspectRatio ?? (16 / 9),
                                 isPlaying: _isPlaying,
                               ),
+                              // Buffering indicator
+                              if (_isBuffering)
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  child: const Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Buffering...',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               // Video progress line at the bottom (only for videos when playing)
                               if (_isPlaying && widget.videoController != null)
                                 _buildVideoProgressLine(),
                             ],
                           )
-                        : FileThumbnailWidget(
-                            file: widget.file,
-                            config: widget.config,
-                            fit: BoxFit.cover,
+                        : Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              FileThumbnailWidget(
+                                file: widget.file,
+                                config: widget.config,
+                                fit: BoxFit.cover,
+                              ),
+                              // Show buffering indicator while video is initializing
+                              if (widget.file.isVideo && widget.videoController == null)
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.3),
+                                  child: const Center(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        CircularProgressIndicator(
+                                          color: Colors.white,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'Loading...',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
               ],
             ),
@@ -2067,11 +2127,13 @@ class _FullscreenVideoDialog extends StatefulWidget {
 class _FullscreenVideoDialogState extends State<_FullscreenVideoDialog> {
   bool _isPlaying = false;
   bool _showControls = true;
+  bool _isBuffering = false;
 
   @override
   void initState() {
     super.initState();
     _isPlaying = widget.isPlaying;
+    _isBuffering = widget.videoController.value.isBuffering;
     widget.videoController.addListener(_onVideoUpdate);
     // Auto-hide controls after 3 seconds
     _hideControlsAfterDelay();
@@ -2087,6 +2149,7 @@ class _FullscreenVideoDialogState extends State<_FullscreenVideoDialog> {
     if (mounted) {
       setState(() {
         _isPlaying = widget.videoController.value.isPlaying;
+        _isBuffering = widget.videoController.value.isBuffering;
       });
     }
   }
@@ -2124,6 +2187,78 @@ class _FullscreenVideoDialogState extends State<_FullscreenVideoDialog> {
     widget.onPlayPause(_isPlaying);
   }
 
+  Widget _buildFullscreenVideoProgressLine() {
+    final videoValue = widget.videoController.value;
+    final duration = videoValue.duration;
+    final position = videoValue.position;
+    final buffered = videoValue.buffered;
+    final progress = duration.inMilliseconds > 0 
+        ? position.inMilliseconds / duration.inMilliseconds 
+        : 0.0;
+
+    return Positioned(
+      bottom: 0,
+      left: 0,
+      right: 0,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (details) {
+          if (duration.inMilliseconds > 0) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final localX = details.localPosition.dx.clamp(0.0, screenWidth);
+            final seekPosition = (localX / screenWidth) * duration.inMilliseconds;
+            widget.videoController.seekTo(Duration(milliseconds: seekPosition.round()));
+          }
+        },
+        onPanUpdate: (details) {
+          if (duration.inMilliseconds > 0) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final localX = details.localPosition.dx.clamp(0.0, screenWidth);
+            final seekPosition = (localX / screenWidth) * duration.inMilliseconds;
+            widget.videoController.seekTo(Duration(milliseconds: seekPosition.round()));
+          }
+        },
+        child: Container(
+          height: 6,
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.6),
+          ),
+          child: Stack(
+            children: [
+              // Buffered progress
+              if (buffered.isNotEmpty)
+                ...buffered.map((range) {
+                  final startPercent = duration.inMilliseconds > 0
+                      ? range.start.inMilliseconds / duration.inMilliseconds
+                      : 0.0;
+                  final endPercent = duration.inMilliseconds > 0
+                      ? range.end.inMilliseconds / duration.inMilliseconds
+                      : 0.0;
+                  return Positioned(
+                    left: MediaQuery.of(context).size.width * startPercent,
+                    width: MediaQuery.of(context).size.width * (endPercent - startPercent),
+                    child: Container(
+                      height: 6,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                  );
+                }),
+              // Played progress
+              Positioned(
+                left: 0,
+                width: MediaQuery.of(context).size.width * progress,
+                child: Container(
+                  height: 6,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -2140,6 +2275,31 @@ class _FullscreenVideoDialogState extends State<_FullscreenVideoDialog> {
                 child: VideoPlayer(widget.videoController),
               ),
             ),
+            // Buffering indicator
+            if (_isBuffering)
+              Container(
+                color: Colors.black.withValues(alpha: 0.3),
+                child: const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                      SizedBox(height: 8),
+                      Text(
+                        'Buffering...',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            // Video progress line at the bottom
+            _buildFullscreenVideoProgressLine(),
             // Controls overlay
             if (_showControls)
               Positioned(

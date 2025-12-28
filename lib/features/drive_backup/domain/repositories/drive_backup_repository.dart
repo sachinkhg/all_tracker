@@ -25,13 +25,18 @@ abstract class DriveBackupRepository {
   /// Also syncs CRUD operations to Google Sheets.
   Future<void> backupToDrive();
 
-  /// Restore book tracker data from Drive.
-  /// 
-  /// Checks if Google Sheet is newer than JSON file.
-  /// If sheet is newer, restores from sheet; otherwise from JSON.
-  Future<void> restoreFromDrive();
-
   /// Sync queued CRUD operations to Google Sheets.
   Future<void> syncCrudToSheet();
+
+  /// Sync actions from Google Sheets to the app.
+  /// 
+  /// Reads rows with actions (CREATE, UPDATE, DELETE) from the sheet,
+  /// processes them, and clears the action column after processing.
+  /// 
+  /// - CREATE with no GUID: generates GUID and creates new book
+  /// - CREATE with existing GUID: adds read history entry to existing book
+  /// - UPDATE: updates existing book
+  /// - DELETE: deletes book by ID
+  Future<void> syncActionsFromSheet();
 }
 

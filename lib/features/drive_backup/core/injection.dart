@@ -1,3 +1,4 @@
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../backup/data/datasources/google_auth_datasource.dart';
 import '../../backup/data/datasources/drive_api_client.dart';
 import '../data/datasources/drive_backup_config_datasource.dart';
@@ -8,9 +9,13 @@ import '../data/services/google_sheets_service.dart';
 import '../data/repositories/drive_backup_repository_impl.dart';
 import '../domain/usecases/setup_drive_backup.dart';
 import '../domain/usecases/backup_to_drive.dart';
-import '../domain/usecases/restore_from_drive.dart';
+import '../domain/usecases/sync_actions_from_sheet.dart';
 import '../presentation/cubit/drive_backup_cubit.dart';
 import '../../../trackers/book_tracker/features/drive_backup_crud_logger.dart';
+import '../../../trackers/book_tracker/data/datasources/book_local_data_source.dart';
+import '../../../trackers/book_tracker/data/repositories/book_repository_impl.dart';
+import '../../../trackers/book_tracker/data/models/book_model.dart';
+import '../../../trackers/book_tracker/core/constants.dart';
 
 /// Create Drive backup repository with all dependencies.
 DriveBackupRepositoryImpl createDriveBackupRepository() {
@@ -24,6 +29,17 @@ DriveBackupRepositoryImpl createDriveBackupRepository() {
   final backupService = DriveBackupService();
   final crudLogger = DriveBackupCrudLogger();
 
+  // Book repository (for syncing actions)
+  if (!Hive.isBoxOpen(booksTrackerBoxName)) {
+    throw StateError(
+      'Book tracker box is not open. This may happen during hot reload. '
+      'Please restart the app to reinitialize Hive boxes.',
+    );
+  }
+  final Box<BookModel> box = Hive.box<BookModel>(booksTrackerBoxName);
+  final bookLocalDataSource = BookLocalDataSourceImpl(box);
+  final bookRepository = BookRepositoryImpl(bookLocalDataSource);
+
   // Repository
   return DriveBackupRepositoryImpl(
     configDataSource: configDataSource,
@@ -32,6 +48,7 @@ DriveBackupRepositoryImpl createDriveBackupRepository() {
     backupService: backupService,
     sheetsService: sheetsService,
     crudLogger: crudLogger,
+    bookRepository: bookRepository,
   );
 }
 
@@ -42,13 +59,13 @@ DriveBackupCubit createDriveBackupCubit() {
   // Use cases
   final setupBackup = SetupDriveBackup(repository);
   final backupToDrive = BackupToDrive(repository);
-  final restoreFromDrive = RestoreFromDrive(repository);
+  final syncActionsFromSheet = SyncActionsFromSheet(repository);
 
   // Cubit
   return DriveBackupCubit(
     setupBackup: setupBackup,
     backupToDrive: backupToDrive,
-    restoreFromDrive: restoreFromDrive,
+    syncActionsFromSheet: syncActionsFromSheet,
   );
 }
 

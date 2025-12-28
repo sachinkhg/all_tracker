@@ -76,7 +76,7 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
               const Divider(height: 32),
               _buildBackupSection(context, state),
               const Divider(height: 32),
-              _buildRestoreSection(context, state),
+              _buildSyncActionsSection(context, state),
               const Divider(height: 32),
               _buildStatusSection(context, state),
             ],
@@ -178,7 +178,8 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
     );
   }
 
-  Widget _buildRestoreSection(BuildContext context, DriveBackupState state) {
+
+  Widget _buildSyncActionsSection(BuildContext context, DriveBackupState state) {
     final cubit = context.read<DriveBackupCubit>();
     final isConfigured = state is DriveBackupConfigured || state is DriveBackupIdle;
 
@@ -189,50 +190,38 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Restore from Drive',
+              'Sync Actions from Sheet',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 8),
             const Text(
-              'Restores book data from Google Drive. Uses Google Sheet if newer, otherwise uses JSON file.',
+              'Processes actions marked in the Google Sheet. '
+              'Mark rows with actions in the Action column, then sync to apply changes to the app.',
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Book Actions:\n'
+              '• CREATE BOOK - Create a new book and associated read\n'
+              '• UPDATE BOOK - Update book metadata (title, author, etc.)\n'
+              '• DELETE BOOK - Delete book and all read history\n\n'
+              'Read History Actions:\n'
+              '• CREATE REREAD - Add new read history entry to existing book\n'
+              '• UPDATE REREAD - Update an existing read history entry (matches by dateStarted)\n'
+              '• DELETE REREAD - Delete a specific read history entry (matches by dateStarted)',
+              style: TextStyle(fontSize: 12),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: (isConfigured && state is! DriveBackupLoading)
-                  ? () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: const Text('Restore from Drive?'),
-                          content: const Text(
-                            'This will replace all current book data with data from Drive. '
-                            'This action cannot be undone.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context, false),
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.pop(context, true),
-                              child: const Text('Restore'),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirmed == true) {
-                        await cubit.restoreFromDrive();
-                      }
-                    }
+                  ? () => cubit.syncActionsFromSheet()
                   : null,
-              icon: const Icon(Icons.cloud_download),
-              label: const Text('Restore Now'),
+              icon: const Icon(Icons.sync),
+              label: const Text('Sync Actions Now'),
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size(double.infinity, 48),
               ),
             ),
-            if (state is DriveBackupLoading && state.operation == 'restore') ...[
+            if (state is DriveBackupLoading && state.operation == 'sync') ...[
               const SizedBox(height: 16),
               const LinearProgressIndicator(),
               const SizedBox(height: 8),

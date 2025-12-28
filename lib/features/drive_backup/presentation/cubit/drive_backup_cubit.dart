@@ -1,22 +1,22 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../domain/usecases/setup_drive_backup.dart';
 import '../../domain/usecases/backup_to_drive.dart';
-import '../../domain/usecases/restore_from_drive.dart';
+import '../../domain/usecases/sync_actions_from_sheet.dart';
 import '../states/drive_backup_state.dart';
 
 /// Cubit for managing Drive backup state and operations.
 class DriveBackupCubit extends Cubit<DriveBackupState> {
   final SetupDriveBackup _setupBackup;
   final BackupToDrive _backupToDrive;
-  final RestoreFromDrive _restoreFromDrive;
+  final SyncActionsFromSheet _syncActionsFromSheet;
 
   DriveBackupCubit({
     required SetupDriveBackup setupBackup,
     required BackupToDrive backupToDrive,
-    required RestoreFromDrive restoreFromDrive,
+    required SyncActionsFromSheet syncActionsFromSheet,
   })  : _setupBackup = setupBackup,
         _backupToDrive = backupToDrive,
-        _restoreFromDrive = restoreFromDrive,
+        _syncActionsFromSheet = syncActionsFromSheet,
         super(const DriveBackupInitial()) {
     _loadConfig();
   }
@@ -84,23 +84,26 @@ class DriveBackupCubit extends Cubit<DriveBackupState> {
     }
   }
 
-  /// Restore data from Drive.
-  Future<void> restoreFromDrive() async {
+  /// Sync actions from Google Sheets.
+  /// 
+  /// Processes CREATE, UPDATE, and DELETE actions marked in the sheet
+  /// and applies them to the book tracker.
+  Future<void> syncActionsFromSheet() async {
     emit(const DriveBackupLoading(
-      operation: 'restore',
-      message: 'Restoring from Drive...',
+      operation: 'sync',
+      message: 'Syncing actions from sheet...',
     ));
 
     try {
-      await _restoreFromDrive();
+      await _syncActionsFromSheet();
       await _loadConfig(); // Reload to get updated timestamps
-      emit(DriveBackupSuccess('Restore completed successfully'));
+      emit(DriveBackupSuccess('Actions synced successfully'));
       // Return to configured state after showing success
       Future.delayed(const Duration(seconds: 2), () async {
         await _loadConfig();
       });
     } catch (e) {
-      emit(DriveBackupError('Failed to restore: $e'));
+      emit(DriveBackupError('Failed to sync actions: $e'));
     }
   }
 }

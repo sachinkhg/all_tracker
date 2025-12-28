@@ -434,23 +434,6 @@ class BackupBuilderService {
           'lastUpdated': metadata.lastUpdated.toUtc().toIso8601String(),
         }).toList();
 
-    // Log summary of what was included in the backup
-    print('[BACKUP] Backup snapshot creation completed');
-    print('[BACKUP] Summary:');
-    print('[BACKUP]   - Goals: ${(snapshot['goals'] as List).length}');
-    print('[BACKUP]   - Milestones: ${(snapshot['milestones'] as List).length}');
-    print('[BACKUP]   - Tasks: ${(snapshot['tasks'] as List).length}');
-    print('[BACKUP]   - Habits: ${(snapshot['habits'] as List).length}');
-    print('[BACKUP]   - Trips: ${(snapshot['trips'] as List).length}');
-    print('[BACKUP]   - Passwords: ${(snapshot['passwords'] as List).length}');
-    print('[BACKUP]   - Secret Questions: ${(snapshot['secret_questions'] as List).length}');
-    print('[BACKUP]   - Expense Tracker Expenses: ${(snapshot['expense_tracker_expenses'] as List).length}');
-    print('[BACKUP]   - Book Tracker Books: ${(snapshot['book_tracker_books'] as List).length}');
-    print('[BACKUP]   - Investment Plans: ${(snapshot['investment_plans'] as List).length}');
-    print('[BACKUP]   - Retirement Plans: ${(snapshot['retirement_plans'] as List).length}');
-    print('[BACKUP]   - File Server Configs: ${(snapshot['file_server_configs'] as List).length}');
-    print('[BACKUP]   - File Metadata: ${(snapshot['file_metadata'] as List).length}');
-
     return snapshot;
   }
 
