@@ -12,10 +12,12 @@ import '../trackers/password_tracker/presentation/pages/password_list_page.dart'
 import '../trackers/password_tracker/core/app_icons.dart' as password_tracker;
 import '../trackers/expense_tracker/presentation/pages/expense_list_page.dart';
 import '../trackers/expense_tracker/core/app_icons.dart' as expense_tracker;
-import '../trackers/file_tracker/presentation/pages/file_tracker_home_page.dart';
+import '../trackers/file_tracker/presentation/pages/file_tracker_insta_view_page.dart';
 import '../trackers/file_tracker/core/app_icons.dart' as file_tracker;
 import '../trackers/book_tracker/presentation/pages/book_list_page.dart';
 import '../trackers/book_tracker/core/app_icons.dart' as book_tracker;
+import '../trackers/portfolio_tracker/presentation/pages/investment_master_list_page.dart';
+import '../trackers/portfolio_tracker/core/app_icons.dart' as portfolio_tracker;
 import '../utilities/investment_planner/presentation/pages/plan_list_page.dart';
 import '../utilities/retirement_planner/presentation/pages/retirement_planner_home_page.dart';
 import '../pages/settings_page.dart';
@@ -30,6 +32,7 @@ enum AppPage {
   expenseTracker,
   fileTracker,
   bookTracker,
+  portfolioTracker,
   investmentPlanner,
   retirementPlanner,
   settings,
@@ -219,7 +222,7 @@ class AppDrawer extends StatelessWidget {
                       if (currentPage != AppPage.fileTracker) {
                         Navigator.of(context).push(
                           MaterialPageRoute(
-                            builder: (_) => const FileTrackerHomePage(),
+                            builder: (_) => const FileTrackerInstaViewPage(),
                           ),
                         );
                       }
@@ -239,6 +242,25 @@ class AppDrawer extends StatelessWidget {
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const BookListPage(),
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                );
+                
+                // Portfolio Tracker is always available
+                trackerItems.add(
+                  _DrawerTile(
+                    icon: portfolio_tracker.PortfolioTrackerIcons.portfolio,
+                    title: 'Portfolio Tracker',
+                    isSelected: currentPage == AppPage.portfolioTracker,
+                    onTap: () {
+                      Navigator.of(context).pop(); // Close drawer
+                      if (currentPage != AppPage.portfolioTracker) {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const InvestmentMasterListPage(),
                           ),
                         );
                       }

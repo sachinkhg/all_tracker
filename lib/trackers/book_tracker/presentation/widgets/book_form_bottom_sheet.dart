@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../domain/entities/book.dart';
 import '../../domain/entities/read_history_entry.dart';
+import '../../domain/entities/book_search_result.dart';
+import '../../domain/usecases/book/search_books.dart';
+import '../../core/injection.dart';
 
 class BookFormBottomSheet extends StatefulWidget {
   final Book? book;
@@ -9,7 +12,7 @@ class BookFormBottomSheet extends StatefulWidget {
     required String title,
     required String primaryAuthor,
     required int pageCount,
-    double? avgRating,
+    double? selfRating,
     DateTime? datePublished,
     DateTime? dateStarted,
     DateTime? dateRead,
@@ -37,7 +40,7 @@ class BookFormBottomSheet extends StatefulWidget {
       required String title,
       required String primaryAuthor,
       required int pageCount,
-      double? avgRating,
+      double? selfRating,
       DateTime? datePublished,
       DateTime? dateStarted,
       DateTime? dateRead,
@@ -76,18 +79,21 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
   late final TextEditingController _titleController;
   late final TextEditingController _authorController;
   late final TextEditingController _pageCountController;
-  late final TextEditingController _ratingController;
+  late final TextEditingController _selfRatingController;
   DateTime? _datePublished;
   DateTime? _dateStarted;
   DateTime? _dateRead;
   Book? _currentBook; // Track current book state for read history display
   int? _selectedHistoryIndex; // Track which read history entry is being edited
   bool _showDateFields = false; // Track if Date Started/Read fields should be visible
+  bool _isSearching = false; // Track if search is in progress
+  late final SearchBooks _searchBooksUseCase; // Use case for searching books
 
   @override
   void initState() {
     super.initState();
     _currentBook = widget.book;
+    _searchBooksUseCase = createSearchBooksUseCase();
     _titleController = TextEditingController(
       text: widget.book?.title ?? '',
     );
@@ -97,8 +103,8 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
     _pageCountController = TextEditingController(
       text: widget.book?.pageCount.toString() ?? '',
     );
-    _ratingController = TextEditingController(
-      text: widget.book?.avgRating?.toString() ?? '',
+    _selfRatingController = TextEditingController(
+      text: widget.book?.selfRating?.toString() ?? '',
     );
     _datePublished = widget.book?.datePublished;
     // Keep Date Started and Date Read empty for edit mode to allow selecting from history
@@ -111,8 +117,141 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
     _titleController.dispose();
     _authorController.dispose();
     _pageCountController.dispose();
-    _ratingController.dispose();
+    _selfRatingController.dispose();
     super.dispose();
+  }
+
+  /// Searches for books using the Open Library API.
+  Future<void> _searchBooks() async {
+    final title = _titleController.text.trim();
+    if (title.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter a book title to search'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final results = await _searchBooksUseCase(title);
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSearching = false;
+      });
+
+      if (results.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No books found. Please try a different title or enter details manually.'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+        return;
+      }
+
+      // If only one result, auto-fill directly
+      if (results.length == 1) {
+        _fillBookData(results.first);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Book details filled automatically'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        // Show dialog with multiple results
+        _showSearchResultsDialog(results);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error searching for books: $e'),
+          backgroundColor: Theme.of(context).colorScheme.errorContainer,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  /// Shows a dialog with search results for user to select from.
+  void _showSearchResultsDialog(List<BookSearchResult> results) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select a Book'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: results.length,
+            itemBuilder: (context, index) {
+              final result = results[index];
+              return ListTile(
+                title: Text(result.title),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (result.authors.isNotEmpty)
+                      Text('Author: ${result.authors.join(", ")}'),
+                    if (result.pageCount != null)
+                      Text('Pages: ${result.pageCount}'),
+                    if (result.datePublished != null)
+                      Text('Published: ${DateFormat('yyyy').format(result.datePublished!)}'),
+                  ],
+                ),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _fillBookData(result);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Fills the form fields with data from a search result.
+  void _fillBookData(BookSearchResult result) {
+    setState(() {
+      // Fill title
+      if (result.title.isNotEmpty) {
+        _titleController.text = result.title;
+      }
+
+      // Fill author (use first author as primary)
+      if (result.primaryAuthor != null) {
+        _authorController.text = result.primaryAuthor!;
+      }
+
+      // Fill page count
+      if (result.pageCount != null && result.pageCount! > 0) {
+        _pageCountController.text = result.pageCount.toString();
+      }
+
+      // Fill publication date
+      if (result.datePublished != null) {
+        _datePublished = result.datePublished;
+      }
+    });
   }
 
   Future<void> _selectDate(
@@ -135,10 +274,10 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
   Future<void> _handleSubmit() async {
     if (_formKey.currentState!.validate()) {
       final pageCount = int.parse(_pageCountController.text.trim());
-      final ratingText = _ratingController.text.trim();
-      final avgRating = ratingText.isEmpty
+      final selfRatingText = _selfRatingController.text.trim();
+      final selfRating = selfRatingText.isEmpty
           ? null
-          : double.tryParse(ratingText);
+          : double.tryParse(selfRatingText);
 
       // If editing a read history entry, update that specific entry
       // If editing the current read (_selectedHistoryIndex == -1), update active dates
@@ -163,7 +302,7 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
         title: _titleController.text.trim(),
         primaryAuthor: _authorController.text.trim(),
         pageCount: pageCount,
-        avgRating: avgRating,
+        selfRating: selfRating,
         datePublished: _datePublished,
         dateStarted: (_selectedHistoryIndex != null && _selectedHistoryIndex! >= 0) ? null : _dateStarted,
         dateRead: (_selectedHistoryIndex != null && _selectedHistoryIndex! >= 0) ? null : _dateRead,
@@ -218,19 +357,37 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                // Title field
-                TextFormField(
-                  controller: _titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Title',
-                    hintText: 'Enter book title',
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a title';
-                    }
-                    return null;
-                  },
+                // Title field with search button
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: 'Title',
+                          hintText: 'Enter book title',
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter a title';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: _isSearching
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.search),
+                      tooltip: 'Search for book details',
+                      onPressed: _isSearching ? null : _searchBooks,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 // Author field
@@ -267,25 +424,30 @@ class _BookFormBottomSheetState extends State<BookFormBottomSheet> {
                     return null;
                   },
                 ),
-                const SizedBox(height: 16),
-                // Rating field
-                TextFormField(
-                  controller: _ratingController,
-                  decoration: const InputDecoration(
-                    labelText: 'Average Rating (0-5)',
-                    hintText: 'Optional',
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: (value) {
-                    if (value != null && value.trim().isNotEmpty) {
-                      final rating = double.tryParse(value.trim());
-                      if (rating == null || rating < 0 || rating > 5) {
-                        return 'Rating must be between 0 and 5';
+                // Self Rating field - only show in edit mode if book has been read at least once
+                if (widget.book != null && 
+                    _currentBook != null && 
+                    (_currentBook!.dateRead != null || 
+                     _currentBook!.readHistory.any((entry) => entry.isCompleted))) ...[
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _selfRatingController,
+                    decoration: const InputDecoration(
+                      labelText: 'Self Rating (0-5)',
+                      hintText: 'Optional',
+                    ),
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: (value) {
+                      if (value != null && value.trim().isNotEmpty) {
+                        final selfRating = double.tryParse(value.trim());
+                        if (selfRating == null || selfRating < 0 || selfRating > 5) {
+                          return 'Self Rating must be between 0 and 5';
+                        }
                       }
-                    }
-                    return null;
-                  },
-                ),
+                      return null;
+                    },
+                  ),
+                ],
                 const SizedBox(height: 16),
                 // Read History Section (always show when editing a book)
                 if (_currentBook != null) ...[

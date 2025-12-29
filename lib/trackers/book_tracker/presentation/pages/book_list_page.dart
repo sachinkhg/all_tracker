@@ -19,6 +19,7 @@ import '../../../../widgets/app_drawer.dart';
 import '../../../../pages/app_home_page.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/organization_notifier.dart';
+import '../../../../features/drive_backup/presentation/pages/drive_backup_settings_page.dart';
 
 class BookListPage extends StatelessWidget {
   const BookListPage({super.key});
@@ -43,12 +44,66 @@ class BookListPageView extends StatefulWidget {
   State<BookListPageView> createState() => _BookListPageViewState();
 }
 
-class _BookListPageViewState extends State<BookListPageView> {
-  BookFilter _currentFilter = BookFilter(readYear: DateTime.now().year);
+class _BookListPageViewState extends State<BookListPageView>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  BookFilter _currentFilter = BookFilter(); // No default filters - show all books
   String _sortBy = 'dateRead'; // Default: Date Read (descending)
 
-  List<Book> _applyFiltersAndSort(List<Book> books) {
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// Checks if a book is currently being read.
+  /// A book is currently reading if:
+  /// 1. Current read cycle has dateStarted but no dateRead
+  /// 2. OR any entry in readHistory has dateStarted but no dateRead
+  bool _isCurrentlyReading(Book book) {
+    // Check current read cycle
+    if (book.dateStarted != null && book.dateRead == null) {
+      return true;
+    }
+    
+    // Check read history entries
+    if (book.readHistory.any((entry) => 
+        entry.dateStarted != null && entry.dateRead == null)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /// Checks if a book is in TBR (To Be Read) list.
+  /// A book is TBR if:
+  /// 1. No dateStarted
+  /// 2. No dateRead
+  /// 3. Empty readHistory
+  bool _isTBR(Book book) {
+    return book.dateStarted == null &&
+        book.dateRead == null &&
+        book.readHistory.isEmpty;
+  }
+
+  List<Book> _applyFiltersAndSort(List<Book> books, {bool isCurrentlyReading = false, bool isTBR = false}) {
     var filtered = List<Book>.from(books);
+
+    // For "Currently Reading" tab, filter to only books that are currently being read
+    if (isCurrentlyReading) {
+      filtered = filtered.where((book) => _isCurrentlyReading(book)).toList();
+    }
+
+    // For "TBR" tab, filter to only books with no read history
+    if (isTBR) {
+      filtered = filtered.where((book) => _isTBR(book)).toList();
+    }
 
     // Apply filters
     if (_currentFilter.status != null) {
@@ -63,7 +118,8 @@ class _BookListPageViewState extends State<BookListPageView> {
       filtered = filtered.where((book) =>
           book.datePublished?.year == _currentFilter.publishedYear).toList();
     }
-    if (_currentFilter.readYear != null) {
+    // Only apply readYear filter for "All books" tab
+    if (!isCurrentlyReading && !isTBR && _currentFilter.readYear != null) {
       filtered = filtered.where((book) {
         if (book.dateRead != null && book.dateRead!.year == _currentFilter.readYear) {
           return true;
@@ -77,18 +133,14 @@ class _BookListPageViewState extends State<BookListPageView> {
     switch (_sortBy) {
       case 'dateRead':
         filtered.sort((a, b) {
-          if (a.dateRead == null && b.dateRead == null) return 0;
-          if (a.dateRead == null) return 1;
-          if (b.dateRead == null) return -1;
+          // Books with dateRead come first, sorted by date (most recent first)
+          if (a.dateRead == null && b.dateRead == null) {
+            // Both have no dateRead - sort by title for consistency
+            return a.title.compareTo(b.title);
+          }
+          if (a.dateRead == null) return 1; // a goes to end
+          if (b.dateRead == null) return -1; // b goes to end
           return b.dateRead!.compareTo(a.dateRead!); // Descending
-        });
-        break;
-      case 'avgRating':
-        filtered.sort((a, b) {
-          if (a.avgRating == null && b.avgRating == null) return 0;
-          if (a.avgRating == null) return 1;
-          if (b.avgRating == null) return -1;
-          return b.avgRating!.compareTo(a.avgRating!); // Descending
         });
         break;
       case 'pageCount':
@@ -111,6 +163,17 @@ class _BookListPageViewState extends State<BookListPageView> {
       appBar: PrimaryAppBar(
         title: 'Book Tracker',
         actions: [
+          IconButton(
+            tooltip: 'Drive Backup',
+            icon: const Icon(Icons.backup),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const DriveBackupSettingsPage(),
+                ),
+              );
+            },
+          ),
           Consumer<OrganizationNotifier>(
             builder: (context, orgNotifier, _) {
               if (orgNotifier.defaultHomePage == 'app_home') {
@@ -140,29 +203,90 @@ class _BookListPageViewState extends State<BookListPageView> {
 
             if (state is BooksLoaded) {
               final books = state.books;
-              final filteredAndSorted = _applyFiltersAndSort(books);
+              final allBooksFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false, isTBR: false);
+              final currentlyReadingFiltered = _applyFiltersAndSort(books, isCurrentlyReading: true, isTBR: false);
+              final tbrFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false, isTBR: true);
 
               return Column(
                 children: [
-                  BookStatsCard(stats: _calculateStats(filteredAndSorted)),
+                  BookStatsCard(stats: _calculateStats(allBooksFiltered)),
+                  const SizedBox(height: 12),
+                  TabBar(
+                    controller: _tabController,
+                    tabs: [
+                      const Tab(text: 'All Books'),
+                      Tab(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text(
+                            'Currently\nReading',
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ),
+                      const Tab(text: 'TBR'),
+                    ],
+                  ),
                   const SizedBox(height: 12),
                   Expanded(
-                    child: filteredAndSorted.isEmpty
-                        ? const Center(
-                            child: Text('No books found. Tap + to add one.'),
-                          )
-                        : ListView.builder(
-                            itemCount: filteredAndSorted.length,
-                            itemBuilder: (context, index) {
-                              final book = filteredAndSorted[index];
-                              return BookListItem(
-                                book: book,
-                                onTap: () {
-                                  _showBookForm(context, cubit, book: book);
+                    child: TabBarView(
+                      controller: _tabController,
+                      children: [
+                        // All Books tab
+                        allBooksFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books found. Tap + to add one.'),
+                              )
+                            : ListView.builder(
+                                itemCount: allBooksFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = allBooksFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
+                              ),
+                        // Currently Reading tab
+                        currentlyReadingFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books currently being read.'),
+                              )
+                            : ListView.builder(
+                                itemCount: currentlyReadingFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = currentlyReadingFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
+                                },
+                              ),
+                        // TBR tab
+                        tbrFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books in TBR list. Add books without read history.'),
+                              )
+                            : ListView.builder(
+                                itemCount: tbrFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = tbrFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
+                                },
+                              ),
+                      ],
+                    ),
                   ),
                 ],
               );
@@ -208,16 +332,6 @@ class _BookListPageViewState extends State<BookListPageView> {
                         Navigator.pop(context);
                       },
                       trailing: _sortBy == 'dateRead' ? const Icon(Icons.check) : null,
-                    ),
-                    ListTile(
-                      title: const Text('Average Rating'),
-                      onTap: () {
-                        setState(() {
-                          _sortBy = 'avgRating';
-                        });
-                        Navigator.pop(context);
-                      },
-                      trailing: _sortBy == 'avgRating' ? const Icon(Icons.check) : null,
                     ),
                     ListTile(
                       title: const Text('Page Count'),
@@ -293,24 +407,22 @@ class _BookListPageViewState extends State<BookListPageView> {
         totalReads += bookReads;
         totalPagesRead += book.pageCount * bookReads;
 
-        // Calculate average rating only for completed books
+        // Calculate average self rating only for completed books
         // Only include if the current read matches the filter (or no filter)
         bool includeInRating = false;
         if (_currentFilter.readYear != null) {
           // Only include if current read matches the year filter
-          includeInRating = book.avgRating != null && 
+          includeInRating = book.selfRating != null && 
               book.dateRead != null && 
               book.dateRead!.year == _currentFilter.readYear;
         } else {
           // No filter: include if book has current read completed
-          includeInRating = book.avgRating != null && book.dateRead != null;
+          includeInRating = book.selfRating != null && book.dateRead != null;
         }
         
         if (includeInRating) {
-          if (sumRatings == null) {
-            sumRatings = 0.0;
-          }
-          sumRatings += book.avgRating!;
+          sumRatings ??= 0.0;
+          sumRatings += book.selfRating!;
           completedBooksWithRating++;
         }
       }
@@ -341,37 +453,71 @@ class _BookListPageViewState extends State<BookListPageView> {
         required String title,
         required String primaryAuthor,
         required int pageCount,
-        double? avgRating,
+        double? selfRating,
         DateTime? datePublished,
         DateTime? dateStarted,
         DateTime? dateRead,
         List<ReadHistoryEntry>? readHistory,
       }) async {
-        if (book != null) {
-          // Update existing
-          final updated = book.copyWith(
-            title: title,
-            primaryAuthor: primaryAuthor,
-            pageCount: pageCount,
-            avgRating: avgRating,
-            datePublished: datePublished,
-            dateStarted: dateStarted,
-            dateRead: dateRead,
-            readHistory: readHistory ?? book.readHistory,
-            updatedAt: DateTime.now(),
-          );
-          await cubit.updateBook(updated);
-        } else {
-          // Create new
-          await cubit.createBook(
-            title: title,
-            primaryAuthor: primaryAuthor,
-            pageCount: pageCount,
-            avgRating: avgRating,
-            datePublished: datePublished,
-            dateStarted: dateStarted,
-            dateRead: dateRead,
-          );
+        try {
+          if (book != null) {
+            // Update existing
+            final updated = book.copyWith(
+              title: title,
+              primaryAuthor: primaryAuthor,
+              pageCount: pageCount,
+              selfRating: selfRating,
+              datePublished: datePublished,
+              dateStarted: dateStarted,
+              dateRead: dateRead,
+              readHistory: readHistory ?? book.readHistory,
+              updatedAt: DateTime.now(),
+            );
+            await cubit.updateBook(updated);
+          } else {
+            // Create new
+            await cubit.createBook(
+              title: title,
+              primaryAuthor: primaryAuthor,
+              pageCount: pageCount,
+              selfRating: selfRating,
+              datePublished: datePublished,
+              dateStarted: dateStarted,
+              dateRead: dateRead,
+            );
+          }
+          
+          // Check if there's an error state after the operation
+          if (context.mounted) {
+            final state = cubit.state;
+            if (state is BooksError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Error: ${state.message}'),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            } else {
+              // Success - show confirmation
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(book != null ? 'Book updated successfully' : 'Book created successfully'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: $e'),
+                backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+          }
         }
       },
       onDelete: book != null

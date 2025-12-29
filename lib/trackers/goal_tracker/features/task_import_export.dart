@@ -259,7 +259,7 @@ Future<void> importTasksFromXlsx(BuildContext context) async {
 
       String? status = 'To Do';
       if (statusIdx != -1 && statusIdx < row.length) {
-        final String? rawStatus = (row[statusIdx]?.value?.toString() ?? '').trim();
+        final String rawStatus = (row[statusIdx]?.value?.toString() ?? '').trim();
         final normalized = _normalizeStatus(rawStatus);
         if (normalized != null) status = normalized;
       }

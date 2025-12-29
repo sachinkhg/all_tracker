@@ -181,9 +181,13 @@ class TripCubit extends Cubit<TripState> {
           final weekStart = today.subtract(Duration(days: today.weekday - 1));
           final weekEnd = weekStart.add(const Duration(days: 6));
           if (startDate != null && startDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-              startDate.isBefore(weekEnd.add(const Duration(days: 1)))) return true;
+              startDate.isBefore(weekEnd.add(const Duration(days: 1)))) {
+            return true;
+          }
           if (endDate != null && endDate.isAfter(weekStart.subtract(const Duration(days: 1))) &&
-              endDate.isBefore(weekEnd.add(const Duration(days: 1)))) return true;
+              endDate.isBefore(weekEnd.add(const Duration(days: 1)))) {
+            return true;
+          }
           if (startDate != null && endDate != null) {
             return startDate.isBefore(weekEnd) && endDate.isAfter(weekStart);
           }
@@ -192,9 +196,13 @@ class TripCubit extends Cubit<TripState> {
           final nextWeekStart = today.add(Duration(days: 8 - today.weekday));
           final nextWeekEnd = nextWeekStart.add(const Duration(days: 6));
           if (startDate != null && startDate.isAfter(nextWeekStart.subtract(const Duration(days: 1))) &&
-              startDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) return true;
+              startDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) {
+            return true;
+          }
           if (endDate != null && endDate.isAfter(nextWeekStart.subtract(const Duration(days: 1))) &&
-              endDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) return true;
+              endDate.isBefore(nextWeekEnd.add(const Duration(days: 1)))) {
+            return true;
+          }
           if (startDate != null && endDate != null) {
             return startDate.isBefore(nextWeekEnd) && endDate.isAfter(nextWeekStart);
           }

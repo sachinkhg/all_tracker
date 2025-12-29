@@ -12,6 +12,7 @@ import '../../domain/usecases/book/create_book.dart';
 import '../../domain/usecases/book/update_book.dart';
 import '../../domain/usecases/book/delete_book.dart';
 import '../../domain/usecases/book/get_book_stats.dart';
+import '../../features/drive_backup_crud_logger.dart';
 import 'book_state.dart';
 
 /// ---------------------------------------------------------------------------
@@ -39,6 +40,7 @@ class BookCubit extends Cubit<BookState> {
   final CreateBook create;
   final UpdateBook update;
   final DeleteBook delete;
+  final DriveBackupCrudLogger? _crudLogger;
 
   // master copy of all books fetched from the domain layer.
   List<Book> _allBooks = [];
@@ -53,7 +55,9 @@ class BookCubit extends Cubit<BookState> {
     required this.create,
     required this.update,
     required this.delete,
-  }) : super(BooksLoading());
+    DriveBackupCrudLogger? crudLogger,
+  })  : _crudLogger = crudLogger,
+        super(BooksLoading());
 
   /// Loads all books from the repository.
   Future<void> loadBooks() async {
@@ -61,7 +65,9 @@ class BookCubit extends Cubit<BookState> {
     try {
       _allBooks = await getAll();
       emit(BooksLoaded(_allBooks));
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Error loading books: $e');
+      print('Stack trace: $stackTrace');
       emit(BooksError('Failed to load books: $e'));
     }
   }
@@ -121,7 +127,7 @@ class BookCubit extends Cubit<BookState> {
     required String title,
     required String primaryAuthor,
     required int pageCount,
-    double? avgRating,
+    double? selfRating,
     DateTime? datePublished,
     DateTime? dateStarted,
     DateTime? dateRead,
@@ -133,7 +139,7 @@ class BookCubit extends Cubit<BookState> {
         title: title,
         primaryAuthor: primaryAuthor,
         pageCount: pageCount,
-        avgRating: avgRating,
+        selfRating: selfRating,
         datePublished: datePublished,
         dateStarted: dateStarted,
         dateRead: dateRead,
@@ -142,9 +148,21 @@ class BookCubit extends Cubit<BookState> {
       );
 
       await create(newBook);
+      // Log CRUD operation for Drive backup
+      _crudLogger?.logCreate(newBook);
+      // Reload to get updated list - ensure we're in a good state first
+      _allBooks = [];
       await loadBooks(); // Reload to get updated list
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('Error creating book: $e');
+      print('Stack trace: $stackTrace');
       emit(BooksError('Failed to create book: $e'));
+      // Try to reload anyway to get current state
+      try {
+        await loadBooks();
+      } catch (_) {
+        // If reload also fails, keep the error state
+      }
     }
   }
 
@@ -155,6 +173,8 @@ class BookCubit extends Cubit<BookState> {
         updatedAt: DateTime.now(),
       );
       await update(updatedBook);
+      // Log CRUD operation for Drive backup
+      _crudLogger?.logUpdate(updatedBook);
       await loadBooks(); // Reload to get updated list
     } catch (e) {
       emit(BooksError('Failed to update book: $e'));
@@ -165,6 +185,8 @@ class BookCubit extends Cubit<BookState> {
   Future<void> deleteBook(String id) async {
     try {
       await delete(id);
+      // Log CRUD operation for Drive backup
+      _crudLogger?.logDelete(id);
       await loadBooks(); // Reload to get updated list
     } catch (e) {
       emit(BooksError('Failed to delete book: $e'));
@@ -196,6 +218,8 @@ class BookCubit extends Cubit<BookState> {
       );
       
       await update(updatedBook);
+      // Log CRUD operation for Drive backup
+      _crudLogger?.logUpdate(updatedBook);
       await loadBooks();
       
       return updatedBook;

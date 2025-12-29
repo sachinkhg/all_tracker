@@ -188,7 +188,7 @@ class _ItineraryDayCardState extends State<ItineraryDayCard> {
                   tooltip: 'Edit',
                 ),
               );
-            }).toList(),
+            }),
           // if (!hasActivities)
           //   Padding(
           //     padding: const EdgeInsets.all(16),

@@ -75,14 +75,11 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Default readYear to current year if not set
-    final currentYear = DateTime.now().year;
-    final readYear = widget.initialFilter.readYear ?? currentYear;
-    _filter = widget.initialFilter.copyWith(readYear: readYear);
+    _filter = widget.initialFilter;
     _authorController.text = _filter.author ?? '';
     _publishedYearController.text =
         _filter.publishedYear?.toString() ?? '';
-    _readYearController.text = readYear.toString();
+    _readYearController.text = _filter.readYear?.toString() ?? '';
   }
 
   @override
@@ -123,7 +120,7 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
           const SizedBox(height: 16),
           // Status filter
           DropdownButtonFormField<BookStatus?>(
-            value: _filter.status,
+            initialValue: _filter.status,
             decoration: const InputDecoration(
               labelText: 'Status',
             ),
@@ -169,10 +166,21 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
             ),
             keyboardType: TextInputType.number,
             onChanged: (value) {
-              final year = int.tryParse(value.trim());
-              _filter = _filter.copyWith(
-                publishedYear: year,
-              );
+              final trimmed = value.trim();
+              if (trimmed.isEmpty) {
+                // Explicitly clear the publishedYear when field is empty
+                _filter = BookFilter(
+                  status: _filter.status,
+                  author: _filter.author,
+                  publishedYear: null,
+                  readYear: _filter.readYear,
+                );
+              } else {
+                final year = int.tryParse(trimmed);
+                _filter = _filter.copyWith(
+                  publishedYear: year,
+                );
+              }
             },
           ),
           const SizedBox(height: 16),
@@ -185,10 +193,21 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
             ),
             keyboardType: TextInputType.number,
             onChanged: (value) {
-              final year = int.tryParse(value.trim());
-              _filter = _filter.copyWith(
-                readYear: year,
-              );
+              final trimmed = value.trim();
+              if (trimmed.isEmpty) {
+                // Explicitly clear the readYear when field is empty
+                _filter = BookFilter(
+                  status: _filter.status,
+                  author: _filter.author,
+                  publishedYear: _filter.publishedYear,
+                  readYear: null,
+                );
+              } else {
+                final year = int.tryParse(trimmed);
+                _filter = _filter.copyWith(
+                  readYear: year,
+                );
+              }
             },
           ),
           const SizedBox(height: 24),
@@ -197,12 +216,11 @@ class _BookFilterBottomSheetState extends State<BookFilterBottomSheet> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    final currentYear = DateTime.now().year;
                     setState(() {
-                      _filter = BookFilter(readYear: currentYear);
+                      _filter = const BookFilter();
                       _authorController.clear();
                       _publishedYearController.clear();
-                      _readYearController.text = currentYear.toString();
+                      _readYearController.clear();
                     });
                   },
                   child: const Text('Clear'),

@@ -157,7 +157,7 @@ class HabitListPageView extends StatelessWidget {
               filterActive: filterActive,
               onView: () async {
                 final currentState = cubit.state;
-                final Map<String, bool>? initial =
+                final Map<String, bool> initial =
                     currentState is HabitsLoaded ? currentState.visibleFields : <String, bool>{};
 
                 final result = await showAppBottomSheet<Map<String, dynamic>?>(

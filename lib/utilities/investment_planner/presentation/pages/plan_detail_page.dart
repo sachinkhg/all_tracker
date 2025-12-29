@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -5,8 +6,11 @@ import '../../../../core/design_tokens.dart';
 import '../../domain/entities/investment_plan.dart';
 import '../../domain/entities/plan_status.dart';
 import '../../domain/entities/investment_component.dart';
+import '../../domain/entities/component_allocation.dart';
 import '../../domain/entities/income_category.dart';
 import '../../domain/entities/expense_category.dart';
+import '../../domain/entities/income_entry.dart';
+import '../../domain/entities/expense_entry.dart';
 import '../../core/injection.dart';
 import '../bloc/investment_component_cubit.dart';
 import '../bloc/investment_component_state.dart';
@@ -38,12 +42,33 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
   }
 
   Future<void> _loadPlan(BuildContext context) async {
+    log('Loading plan with id: ${widget.plan.id}', name: 'PlanDetailPage');
     final cubit = context.read<InvestmentPlanCubit>();
     final updatedPlan = await cubit.loadPlanById(widget.plan.id);
     if (updatedPlan != null && mounted) {
+      log(
+        'Plan loaded successfully. Plan status: ${updatedPlan.status}, '
+        'Allocations count: ${updatedPlan.allocations.length}',
+        name: 'PlanDetailPage',
+      );
+      // Log allocation completion statuses
+      for (final allocation in updatedPlan.allocations) {
+        log(
+          'Allocation - ComponentId: ${allocation.componentId}, '
+          'IsCompleted: ${allocation.isCompleted}, AllocatedAmount: ${allocation.allocatedAmount}, '
+          'ActualAmount: ${allocation.actualAmount}',
+          name: 'PlanDetailPage',
+        );
+      }
       setState(() {
         _currentPlan = updatedPlan;
       });
+    } else {
+      log(
+        'Plan load failed or widget not mounted. UpdatedPlan is null: ${updatedPlan == null}, '
+        'Mounted: $mounted',
+        name: 'PlanDetailPage',
+      );
     }
   }
 
@@ -65,6 +90,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
             _loadPlan(context);
           });
           final cs = Theme.of(context).colorScheme;
+          final textTheme = Theme.of(context).textTheme;
           return PopScope(
             canPop: !_planStatusChanged,
             onPopInvoked: (didPop) {
@@ -150,25 +176,58 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                           Expanded(
                             child: Text(
                               plan.name,
-                              style: const TextStyle(fontSize: 20),
+                              style: textTheme.titleLarge,
                             ),
                           ),
-                          _buildStatusChip(plan.status),
+                          // _buildStatusChip(plan.status),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      Text('Total Income: ${_formatAmount(plan.totalIncome)}', style: const TextStyle(fontSize: 18)),
+                      RichText(
+                        text: TextSpan(
+                          style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                          children: [
+                            const TextSpan(text: 'Total Income: '),
+                            TextSpan(
+                              text: _formatAmount(plan.totalIncome),
+                              style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 8),
-                      Text('Total Expense: ${_formatAmount(plan.totalExpense)}', style: const TextStyle(fontSize: 18)),
+                      RichText(
+                        text: TextSpan(
+                          style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                          children: [
+                            const TextSpan(text: 'Total Expense: '),
+                            TextSpan(
+                              text: _formatAmount(plan.totalExpense),
+                              style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                            ),
+                          ],
+                        ),
+                      ),
                       // Show Available only when plan is in draft status
                       if (plan.status == PlanStatus.draft) ...[
                         const SizedBox(height: 8),
-                        Text('Available: ${_formatAmount(plan.availableAmount)}', style: const TextStyle(fontSize: 20, color: Colors.green)),
+                        RichText(
+                          text: TextSpan(
+                            style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                            children: [
+                              const TextSpan(text: 'Available: '),
+                              TextSpan(
+                                text: _formatAmount(plan.availableAmount),
+                                style: textTheme.bodyMedium?.copyWith(color: Colors.green),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                       // Investment summary dashboard (shown after plan is approved)
                       if (plan.status == PlanStatus.approved || plan.status == PlanStatus.executed) ...[
-                        const SizedBox(height: 16),
-                        const Divider(),
+                        //const SizedBox(height: 16),
+                        //const Divider(),
                         const SizedBox(height: 8),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -179,18 +238,12 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                 children: [
                                   Text(
                                     'Total Planned',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
+                                    style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _formatAmount(plan.totalAllocated),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                    style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
                                   ),
                                 ],
                               ),
@@ -201,19 +254,12 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                 children: [
                                   Text(
                                     'Total Actual',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade600,
-                                    ),
+                                    style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     _formatAmount(plan.allocations.fold(0.0, (sum, a) => sum + (a.actualAmount ?? 0.0))),
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
-                                    ),
+                                    style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
                                   ),
                                 ],
                               ),
@@ -221,7 +267,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                           ],
                         ),
                       ],
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       // Show Income and Show Expense buttons
                       Row(
                         children: [
@@ -229,7 +275,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                             child: OutlinedButton.icon(
                               onPressed: () => _showIncomeBottomSheet(context, plan),
                               icon: const Icon(Icons.arrow_upward, size: 16),
-                              label: const Text('Show Income', style: TextStyle(fontSize: 12)),
+                              label: Text('Show Income', style: textTheme.labelLarge),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 minimumSize: const Size(0, 32),
@@ -241,7 +287,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                             child: OutlinedButton.icon(
                               onPressed: () => _showExpenseBottomSheet(context, plan),
                               icon: const Icon(Icons.arrow_downward, size: 16),
-                              label: const Text('Show Expense', style: TextStyle(fontSize: 12)),
+                              label: Text('Show Expense', style: textTheme.labelLarge),
                               style: OutlinedButton.styleFrom(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 minimumSize: const Size(0, 32),
@@ -250,7 +296,7 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 8),
                       // Status action buttons
                       if (plan.status == PlanStatus.draft) ...[
                         SizedBox(
@@ -269,6 +315,19 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton.icon(
+                            onPressed: () => _showActualAllocationBottomSheet(context, plan),
+                            icon: const Icon(Icons.edit),
+                            label: const Text('Add/Edit Actual Allocation'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
                             onPressed: () => _executePlan(context, plan.id),
                             icon: const Icon(Icons.play_circle),
                             label: const Text('Mark as Executed'),
@@ -283,8 +342,8 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text('Allocations', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 8),
+              Text('Allocations', style: textTheme.titleLarge),
               const SizedBox(height: 8),
               BlocBuilder<InvestmentComponentCubit, InvestmentComponentState>(
                 builder: (context, state) {
@@ -294,18 +353,36 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                     final isReadOnly = plan.status == PlanStatus.executed; // Read-only when executed
                     final hasActualData = plan.allocations.any((a) => a.actualAmount != null);
                     
+                    // Sort components by priority
+                    final sortedComponents = List<InvestmentComponent>.from(components)
+                      ..sort((a, b) => a.priority.compareTo(b.priority));
+                    
+                    // Show bar chart for draft status
+                    if (plan.status == PlanStatus.draft) {
+                      return _buildBarChart(
+                        context,
+                        plan,
+                        sortedComponents,
+                        cs,
+                        textTheme,
+                      );
+                    }
+                    
+                    // For approved and executed status, show list view with cards
                     return Column(
-                      children: plan.allocations.map((allocation) {
-                        final component = components.firstWhere(
-                          (c) => c.id == allocation.componentId,
-                          orElse: () => InvestmentComponent(
-                            id: allocation.componentId,
-                            name: 'Unknown',
-                            percentage: 0,
-                            priority: 0,
+                      children: sortedComponents.map((component) {
+                        // Find allocation for this component, or create a default one with 0 allocated
+                        final allocation = plan.allocations.firstWhere(
+                          (a) => a.componentId == component.id,
+                          orElse: () => ComponentAllocation(
+                            componentId: component.id,
+                            allocatedAmount: 0.0,
+                            actualAmount: null,
+                            isCompleted: false,
                           ),
                         );
                         final hasActual = allocation.actualAmount != null;
+                        final hasAllocation = allocation.allocatedAmount > 0;
                         
                         return Card(
                           margin: const EdgeInsets.only(bottom: 12),
@@ -314,34 +391,13 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: [
-                                    if (canEditActual || isReadOnly)
-                                      Checkbox(
-                                        value: allocation.isCompleted,
-                                        onChanged: isReadOnly ? null : (value) async {
-                                          await context.read<InvestmentPlanCubit>().toggleAllocationCompletion(
-                                            plan.id,
-                                            allocation.componentId,
-                                            value ?? false,
-                                          );
-                                          // Reload plan to reflect changes
-                                          if (mounted) {
-                                            await _loadPlan(context);
-                                          }
-                                        },
-                                      ),
-                                    Expanded(
-                                      child: Text(
-                                        component.name,
-                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  ],
+                                Text(
+                                  component.name,
+                                  style: textTheme.bodyMedium,
                                 ),
-                                const SizedBox(height: 12),
-                                if (hasActualData || canEditActual || isReadOnly) ...[
-                                  // Table format when actual data exists or can be edited
+                                const SizedBox(height: 6),
+                                if (hasActualData || canEditActual || isReadOnly || hasAllocation) ...[
+                                  // Table format when actual data exists, can be edited, or has allocation
                                   Row(
                                     children: [
                                       Expanded(
@@ -351,16 +407,12 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                           children: [
                                             Text(
                                               'Planned',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey.shade600,
-                                              ),
+                                              style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                             ),
                                             Text(
                                               _formatAmount(allocation.allocatedAmount),
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
+                                              style: textTheme.bodyMedium?.copyWith(
+                                                color: hasAllocation ? cs.onSurface : Colors.grey.shade400,
                                               ),
                                             ),
                                           ],
@@ -374,56 +426,12 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                             children: [
                                               Text(
                                                 'Actual',
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  color: Colors.grey.shade600,
-                                                ),
+                                                style: textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                                               ),
-                                              if (canEditActual && !allocation.isCompleted)
-                                                SizedBox(
-                                                  width: double.infinity,
-                                                  child: TextFormField(
-                                                    initialValue: allocation.actualAmount?.toString() ?? '',
-                                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                                    decoration: InputDecoration(
-                                                      hintText: '0.00',
-                                                      isDense: true,
-                                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                                                      border: OutlineInputBorder(
-                                                        borderRadius: BorderRadius.circular(4),
-                                                      ),
-                                                    ),
-                                                    style: const TextStyle(fontSize: 16),
-                                                    onChanged: (value) async {
-                                                      final amount = double.tryParse(value);
-                                                      if (amount != null && amount >= 0) {
-                                                        await context.read<InvestmentPlanCubit>().updateAllocationActualAmount(
-                                                          plan.id,
-                                                          allocation.componentId,
-                                                          amount,
-                                                        );
-                                                      } else if (value.isEmpty) {
-                                                        await context.read<InvestmentPlanCubit>().updateAllocationActualAmount(
-                                                          plan.id,
-                                                          allocation.componentId,
-                                                          null,
-                                                        );
-                                                      }
-                                                      // Reload plan to reflect changes
-                                                      if (mounted) {
-                                                        await _loadPlan(context);
-                                                      }
-                                                    },
-                                                  ),
-                                                )
-                                              else
-                                                Text(
-                                                  hasActual ? _formatAmount(allocation.actualAmount!) : '-',
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
+                                              Text(
+                                                hasActual ? _formatAmount(allocation.actualAmount!) : '-',
+                                                style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                              ),
                                             ],
                                           ),
                                         ),
@@ -432,9 +440,19 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
                                   ),
                                 ] else ...[
                                   // Simple display when no actual data and can't edit
-                                  Text(
-                                    'Planned: ${_formatAmount(allocation.allocatedAmount)}',
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                                  RichText(
+                                    text: TextSpan(
+                                      style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                                      children: [
+                                        const TextSpan(text: 'Planned: '),
+                                        TextSpan(
+                                          text: _formatAmount(allocation.allocatedAmount),
+                                          style: textTheme.bodyMedium?.copyWith(
+                                            color: hasAllocation ? cs.onSurface : Colors.grey.shade400,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ],
@@ -450,12 +468,20 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
               if (plan.remainingUnallocated > 0) ...[
                 const SizedBox(height: 16),
                 Card(
-                  color: Colors.orange[100],
+                  //color: Colors.orange[100],
                   child: Padding(
                     padding: const EdgeInsets.all(16),
-                    child: Text(
-                      'Remaining Unallocated: ${_formatAmount(plan.remainingUnallocated)}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    child: RichText(
+                      text: TextSpan(
+                        style: textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+                        children: [
+                          const TextSpan(text: 'Remaining Unallocated: '),
+                          TextSpan(
+                            text: _formatAmount(plan.remainingUnallocated),
+                            style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -497,10 +523,8 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
       ),
       child: Text(
         status.displayName,
-        style: TextStyle(
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
           color: textColor,
-          fontWeight: FontWeight.w500,
-          fontSize: 14,
         ),
       ),
     );
@@ -584,6 +608,102 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
     return NumberFormat('#,##0.00', 'en_US').format(amount);
   }
 
+  Widget _buildBarChart(
+    BuildContext context,
+    InvestmentPlan plan,
+    List<InvestmentComponent> components,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    // Prepare data for bar chart
+    final chartData = components.map((component) {
+      final allocation = plan.allocations.firstWhere(
+        (a) => a.componentId == component.id,
+        orElse: () => ComponentAllocation(
+          componentId: component.id,
+          allocatedAmount: 0.0,
+          actualAmount: null,
+          isCompleted: false,
+        ),
+      );
+      return MapEntry(component, allocation.allocatedAmount);
+    }).toList();
+
+    // Find max value for scaling
+    final amounts = chartData.map((e) => e.value).toList();
+    final maxAmount = amounts.isEmpty
+        ? 1.0
+        : amounts.reduce((a, b) => a > b ? a : b);
+    final maxAmountScaled = maxAmount == 0.0 ? 1.0 : maxAmount;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Chart bars
+            ...chartData.map((entry) {
+              final component = entry.key;
+              final amount = entry.value;
+              final percentage = maxAmountScaled > 0 ? (amount / maxAmountScaled) : 0.0;
+              
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            component.name,
+                            style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurfaceVariant),
+                          ),
+                        ),
+                        Text(
+                          _formatAmount(amount),
+                          style: textTheme.bodyMedium?.copyWith(color: colorScheme.onSurface),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: Stack(
+                        children: [
+                          Container(
+                            height: 24,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          FractionallySizedBox(
+                            widthFactor: percentage,
+                            child: Container(
+                              height: 24,
+                              decoration: BoxDecoration(
+                                color: colorScheme.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _deletePlan(BuildContext context, String id, InvestmentPlanCubit cubit) {
     showDialog(
       context: context,
@@ -610,101 +730,25 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
 
   void _showIncomeBottomSheet(BuildContext context, InvestmentPlan plan) {
     final incomeCubit = context.read<IncomeCategoryCubit>();
+    final planCubit = context.read<InvestmentPlanCubit>();
+    final originalContext = context;
     incomeCubit.loadCategories();
+    
+    final canEdit = plan.status == PlanStatus.approved || plan.status == PlanStatus.executed;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => BlocProvider.value(
-        value: incomeCubit,
-        child: BlocBuilder<IncomeCategoryCubit, IncomeCategoryState>(
-          builder: (context, state) {
-            final categories = state is IncomeCategoriesLoaded ? state.categories : <IncomeCategory>[];
-            return DraggableScrollableSheet(
-              initialChildSize: 0.7,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              expand: false,
-              builder: (context, scrollController) {
-                return Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Income Entries',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: plan.incomeEntries.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text(
-                                  'No income entries',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: plan.incomeEntries.length,
-                              itemBuilder: (context, index) {
-                                final entry = plan.incomeEntries[index];
-                                final category = categories.firstWhere(
-                                  (c) => c.id == entry.categoryId,
-                                  orElse: () => IncomeCategory(
-                                    id: entry.categoryId,
-                                    name: 'Unknown Category',
-                                  ),
-                                );
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    title: Text(category.name),
-                                    trailing: Text(
-                                      _formatAmount(entry.amount),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
+      builder: (sheetContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: incomeCubit),
+          BlocProvider.value(value: planCubit),
+        ],
+        child: _IncomeBottomSheetContent(
+          plan: plan,
+          originalContext: originalContext,
+          onLoadPlan: _loadPlan,
+          canEdit: canEdit,
         ),
       ),
     );
@@ -712,104 +756,830 @@ class _PlanDetailPageState extends State<PlanDetailPage> {
 
   void _showExpenseBottomSheet(BuildContext context, InvestmentPlan plan) {
     final expenseCubit = context.read<ExpenseCategoryCubit>();
+    final planCubit = context.read<InvestmentPlanCubit>();
+    final originalContext = context;
     expenseCubit.loadCategories();
+    
+    final canEdit = plan.status == PlanStatus.approved || plan.status == PlanStatus.executed;
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (sheetContext) => BlocProvider.value(
-        value: expenseCubit,
-        child: BlocBuilder<ExpenseCategoryCubit, ExpenseCategoryState>(
-          builder: (context, state) {
-            final categories = state is ExpenseCategoriesLoaded ? state.categories : <ExpenseCategory>[];
-            return DraggableScrollableSheet(
-              initialChildSize: 0.7,
-              minChildSize: 0.5,
-              maxChildSize: 0.95,
-              expand: false,
-              builder: (context, scrollController) {
-                return Column(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade300,
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Expense Entries',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Expanded(
-                      child: plan.expenseEntries.isEmpty
-                          ? Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Text(
-                                  'No expense entries',
-                                  style: TextStyle(
-                                    color: Colors.grey.shade600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : ListView.builder(
-                              controller: scrollController,
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              itemCount: plan.expenseEntries.length,
-                              itemBuilder: (context, index) {
-                                final entry = plan.expenseEntries[index];
-                                final category = categories.firstWhere(
-                                  (c) => c.id == entry.categoryId,
-                                  orElse: () => ExpenseCategory(
-                                    id: entry.categoryId,
-                                    name: 'Unknown Category',
-                                  ),
-                                );
-                                return Card(
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  child: ListTile(
-                                    title: Text(category.name),
-                                    trailing: Text(
-                                      _formatAmount(entry.amount),
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                );
-              },
-            );
-          },
+      builder: (sheetContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: expenseCubit),
+          BlocProvider.value(value: planCubit),
+        ],
+        child: _ExpenseBottomSheetContent(
+          plan: plan,
+          originalContext: originalContext,
+          onLoadPlan: _loadPlan,
+          canEdit: canEdit,
         ),
       ),
     );
+  }
+
+  void _showActualAllocationBottomSheet(BuildContext context, InvestmentPlan plan) {
+    final componentCubit = context.read<InvestmentComponentCubit>();
+    final planCubit = context.read<InvestmentPlanCubit>();
+    final originalContext = context; // Capture original context for callbacks
+    componentCubit.loadComponents();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: componentCubit),
+          BlocProvider.value(value: planCubit),
+        ],
+        child: _ActualAllocationBottomSheetContent(
+          plan: plan,
+          originalContext: originalContext,
+          onLoadPlan: _loadPlan,
+        ),
+      ),
+    );
+  }
+}
+
+/// StatefulWidget to manage TextEditingController lifecycle for actual allocation bottom sheet
+class _ActualAllocationBottomSheetContent extends StatefulWidget {
+  final InvestmentPlan plan;
+  final BuildContext originalContext;
+  final Future<void> Function(BuildContext) onLoadPlan;
+
+  const _ActualAllocationBottomSheetContent({
+    required this.plan,
+    required this.originalContext,
+    required this.onLoadPlan,
+  });
+
+  @override
+  State<_ActualAllocationBottomSheetContent> createState() => _ActualAllocationBottomSheetContentState();
+}
+
+class _ActualAllocationBottomSheetContentState extends State<_ActualAllocationBottomSheetContent> {
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, double?> _initialValues = {};
+  bool _controllersInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
+    if (_controllersInitialized) return;
+    
+    // Initialize controllers with current actual amounts
+    for (final allocation in widget.plan.allocations) {
+      final controller = TextEditingController(
+        text: allocation.actualAmount?.toString() ?? '',
+      );
+      _controllers[allocation.componentId] = controller;
+      _initialValues[allocation.componentId] = allocation.actualAmount;
+    }
+    _controllersInitialized = true;
+  }
+
+  void _ensureControllersForComponents(List<InvestmentComponent> components) {
+    for (final component in components) {
+      if (!_controllers.containsKey(component.id)) {
+        _controllers[component.id] = TextEditingController(text: '');
+        _initialValues[component.id] = null;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    // Dispose all controllers when widget is disposed
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<InvestmentComponentCubit, InvestmentComponentState>(
+      builder: (context, state) {
+        if (state is! ComponentsLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final components = state.components;
+        // Sort components by priority
+        final sortedComponents = List<InvestmentComponent>.from(components)
+          ..sort((a, b) => a.priority.compareTo(b.priority));
+        
+        // Ensure controllers exist for all components
+        _ensureControllersForComponents(sortedComponents);
+        
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final cs = Theme.of(context).colorScheme;
+            final textTheme = Theme.of(context).textTheme;
+            final keyboardPadding = MediaQuery.of(context).viewInsets.bottom;
+            
+            return Padding(
+              padding: EdgeInsets.only(bottom: keyboardPadding),
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20),
+                        topRight: Radius.circular(20),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Actual Allocation',
+                          style: textTheme.titleLarge,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: sortedComponents.length,
+                      itemBuilder: (context, index) {
+                        final component = sortedComponents[index];
+                        final allocation = widget.plan.allocations.firstWhere(
+                          (a) => a.componentId == component.id,
+                          orElse: () => ComponentAllocation(
+                            componentId: component.id,
+                            allocatedAmount: 0.0,
+                            actualAmount: null,
+                            isCompleted: false,
+                          ),
+                        );
+                        final controller = _controllers[component.id]!;
+                        final plannedAmount = allocation.allocatedAmount;
+                        
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  component.name,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                RichText(
+                                  text: TextSpan(
+                                    style: textTheme.bodySmall?.copyWith(
+                                      color: cs.onSurfaceVariant,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'Planned: '),
+                                      TextSpan(
+                                        text: _formatAmount(plannedAmount),
+                                        style: textTheme.bodySmall?.copyWith(
+                                          color: cs.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                TextFormField(
+                                  controller: controller,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  textInputAction: TextInputAction.done,
+                                  decoration: InputDecoration(
+                                    labelText: 'Actual Amount',
+                                    hintText: '0.00',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                  onEditingComplete: () {
+                                    // Dismiss keyboard when done editing
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(
+                        top: BorderSide(color: cs.outline.withValues(alpha: 0.2)),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          // Dismiss keyboard before saving
+                          FocusScope.of(context).unfocus();
+                          
+                          final planCubit = context.read<InvestmentPlanCubit>();
+                          bool hasChanges = false;
+                          
+                          // Save all actual amounts
+                          for (final component in sortedComponents) {
+                            final controller = _controllers[component.id]!;
+                            final text = controller.text.trim();
+                            final amount = text.isEmpty 
+                                ? null 
+                                : double.tryParse(text);
+                            
+                            // Only update if value changed
+                            if (amount != _initialValues[component.id] ||
+                                (amount == null && _initialValues[component.id] != null)) {
+                              await planCubit.updateAllocationActualAmount(
+                                widget.plan.id,
+                                component.id,
+                                amount,
+                              );
+                              hasChanges = true;
+                            }
+                          }
+                          
+                          // Close bottom sheet
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                          
+                          // Reload plan to reflect changes using original context
+                          if (hasChanges && widget.originalContext.mounted) {
+                            await widget.onLoadPlan(widget.originalContext);
+                            if (widget.originalContext.mounted) {
+                              ScaffoldMessenger.of(widget.originalContext).showSnackBar(
+                                const SnackBar(content: Text('Actual allocations saved successfully')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatAmount(double amount) {
+    return NumberFormat('#,##0.00', 'en_US').format(amount);
+  }
+}
+
+/// StatefulWidget to manage TextEditingController lifecycle for income bottom sheet
+class _IncomeBottomSheetContent extends StatefulWidget {
+  final InvestmentPlan plan;
+  final BuildContext originalContext;
+  final Future<void> Function(BuildContext) onLoadPlan;
+  final bool canEdit;
+
+  const _IncomeBottomSheetContent({
+    required this.plan,
+    required this.originalContext,
+    required this.onLoadPlan,
+    required this.canEdit,
+  });
+
+  @override
+  State<_IncomeBottomSheetContent> createState() => _IncomeBottomSheetContentState();
+}
+
+class _IncomeBottomSheetContentState extends State<_IncomeBottomSheetContent> {
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, double> _initialValues = {};
+  bool _controllersInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
+    if (_controllersInitialized) return;
+    
+    // Initialize controllers with current amounts
+    for (final entry in widget.plan.incomeEntries) {
+      final controller = TextEditingController(
+        text: entry.amount.toString(),
+      );
+      _controllers[entry.categoryId] = controller;
+      _initialValues[entry.categoryId] = entry.amount;
+    }
+    _controllersInitialized = true;
+  }
+
+  void _ensureControllersForCategories(List<IncomeCategory> categories) {
+    for (final category in categories) {
+      if (!_controllers.containsKey(category.id)) {
+        // Find entry for this category or use 0.0
+        final entry = widget.plan.incomeEntries.firstWhere(
+          (e) => e.categoryId == category.id,
+          orElse: () => IncomeEntry(
+            id: '',
+            categoryId: category.id,
+            amount: 0.0,
+          ),
+        );
+        _controllers[category.id] = TextEditingController(text: entry.amount.toString());
+        _initialValues[category.id] = entry.amount;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<IncomeCategoryCubit, IncomeCategoryState>(
+      builder: (context, state) {
+        if (state is! IncomeCategoriesLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final categories = state.categories;
+        _ensureControllersForCategories(categories);
+        
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final cs = Theme.of(context).colorScheme;
+            final textTheme = Theme.of(context).textTheme;
+            
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Income Entries',
+                        style: textTheme.titleLarge,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final category = categories[index];
+                      final entry = widget.plan.incomeEntries.firstWhere(
+                        (e) => e.categoryId == category.id,
+                        orElse: () => IncomeEntry(
+                          id: '',
+                          categoryId: category.id,
+                          amount: 0.0,
+                        ),
+                      );
+                      final controller = _controllers[category.id]!;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                category.name,
+                                style: textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (widget.canEdit)
+                                TextFormField(
+                                  controller: controller,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: 'Amount',
+                                    hintText: '0.00',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                )
+                              else
+                                Text(
+                                  _formatAmount(entry.amount),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (widget.canEdit)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(
+                        top: BorderSide(color: cs.outline.withValues(alpha: 0.2)),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final planCubit = context.read<InvestmentPlanCubit>();
+                          bool hasChanges = false;
+                          
+                          // Save all amounts
+                          for (final category in categories) {
+                            final controller = _controllers[category.id]!;
+                            final text = controller.text.trim();
+                            final amount = double.tryParse(text) ?? 0.0;
+                            
+                            // Find entry for this category
+                            IncomeEntry? existingEntry;
+                            try {
+                              existingEntry = widget.plan.incomeEntries.firstWhere(
+                                (e) => e.categoryId == category.id,
+                              );
+                            } catch (e) {
+                              existingEntry = null;
+                            }
+                            
+                            // Only update if value changed
+                            if (amount != _initialValues[category.id]) {
+                              if (existingEntry != null) {
+                                // Entry exists, update it
+                                await planCubit.updateIncomeEntryAmount(
+                                  widget.plan.id,
+                                  existingEntry.id,
+                                  amount,
+                                );
+                                hasChanges = true;
+                              }
+                              // If entry doesn't exist, skip it (shouldn't happen since all categories are saved)
+                            }
+                          }
+                          
+                          // Close bottom sheet
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                          
+                          // Reload plan to reflect changes
+                          if (hasChanges && widget.originalContext.mounted) {
+                            await widget.onLoadPlan(widget.originalContext);
+                            if (widget.originalContext.mounted) {
+                              ScaffoldMessenger.of(widget.originalContext).showSnackBar(
+                                const SnackBar(content: Text('Income amounts saved successfully')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatAmount(double amount) {
+    return NumberFormat('#,##0.00', 'en_US').format(amount);
+  }
+}
+
+/// StatefulWidget to manage TextEditingController lifecycle for expense bottom sheet
+class _ExpenseBottomSheetContent extends StatefulWidget {
+  final InvestmentPlan plan;
+  final BuildContext originalContext;
+  final Future<void> Function(BuildContext) onLoadPlan;
+  final bool canEdit;
+
+  const _ExpenseBottomSheetContent({
+    required this.plan,
+    required this.originalContext,
+    required this.onLoadPlan,
+    required this.canEdit,
+  });
+
+  @override
+  State<_ExpenseBottomSheetContent> createState() => _ExpenseBottomSheetContentState();
+}
+
+class _ExpenseBottomSheetContentState extends State<_ExpenseBottomSheetContent> {
+  final Map<String, TextEditingController> _controllers = {};
+  final Map<String, double> _initialValues = {};
+  bool _controllersInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeControllers();
+  }
+
+  void _initializeControllers() {
+    if (_controllersInitialized) return;
+    
+    // Initialize controllers with current amounts
+    for (final entry in widget.plan.expenseEntries) {
+      final controller = TextEditingController(
+        text: entry.amount.toString(),
+      );
+      _controllers[entry.categoryId] = controller;
+      _initialValues[entry.categoryId] = entry.amount;
+    }
+    _controllersInitialized = true;
+  }
+
+  void _ensureControllersForCategories(List<ExpenseCategory> categories) {
+    for (final category in categories) {
+      if (!_controllers.containsKey(category.id)) {
+        // Find entry for this category or use 0.0
+        final entry = widget.plan.expenseEntries.firstWhere(
+          (e) => e.categoryId == category.id,
+          orElse: () => ExpenseEntry(
+            id: '',
+            categoryId: category.id,
+            amount: 0.0,
+          ),
+        );
+        _controllers[category.id] = TextEditingController(text: entry.amount.toString());
+        _initialValues[category.id] = entry.amount;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _controllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<ExpenseCategoryCubit, ExpenseCategoryState>(
+      builder: (context, state) {
+        if (state is! ExpenseCategoriesLoaded) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        final categories = state.categories;
+        _ensureControllersForCategories(categories);
+        
+        return DraggableScrollableSheet(
+          initialChildSize: 0.8,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final cs = Theme.of(context).colorScheme;
+            final textTheme = Theme.of(context).textTheme;
+            
+            return Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cs.surface,
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Expense Entries',
+                        style: textTheme.titleLarge,
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final category = categories[index];
+                      final entry = widget.plan.expenseEntries.firstWhere(
+                        (e) => e.categoryId == category.id,
+                        orElse: () => ExpenseEntry(
+                          id: '',
+                          categoryId: category.id,
+                          amount: 0.0,
+                        ),
+                      );
+                      final controller = _controllers[category.id]!;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                category.name,
+                                style: textTheme.bodyLarge?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              if (widget.canEdit)
+                                TextFormField(
+                                  controller: controller,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  decoration: InputDecoration(
+                                    labelText: 'Amount',
+                                    hintText: '0.00',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                )
+                              else
+                                Text(
+                                  _formatAmount(entry.amount),
+                                  style: textTheme.bodyMedium?.copyWith(color: cs.onSurface),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                if (widget.canEdit)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cs.surface,
+                      border: Border(
+                        top: BorderSide(color: cs.outline.withValues(alpha: 0.2)),
+                      ),
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () async {
+                          final planCubit = context.read<InvestmentPlanCubit>();
+                          bool hasChanges = false;
+                          
+                          // Save all amounts
+                          for (final category in categories) {
+                            final controller = _controllers[category.id]!;
+                            final text = controller.text.trim();
+                            final amount = double.tryParse(text) ?? 0.0;
+                            
+                            // Find entry for this category
+                            ExpenseEntry? existingEntry;
+                            try {
+                              existingEntry = widget.plan.expenseEntries.firstWhere(
+                                (e) => e.categoryId == category.id,
+                              );
+                            } catch (e) {
+                              existingEntry = null;
+                            }
+                            
+                            // Only update if value changed
+                            if (amount != _initialValues[category.id]) {
+                              if (existingEntry != null) {
+                                // Entry exists, update it
+                                await planCubit.updateExpenseEntryAmount(
+                                  widget.plan.id,
+                                  existingEntry.id,
+                                  amount,
+                                );
+                                hasChanges = true;
+                              }
+                              // If entry doesn't exist, skip it (shouldn't happen since all categories are saved)
+                            }
+                          }
+                          
+                          // Close bottom sheet
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                          }
+                          
+                          // Reload plan to reflect changes
+                          if (hasChanges && widget.originalContext.mounted) {
+                            await widget.onLoadPlan(widget.originalContext);
+                            if (widget.originalContext.mounted) {
+                              ScaffoldMessenger.of(widget.originalContext).showSnackBar(
+                                const SnackBar(content: Text('Expense amounts saved successfully')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save'),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatAmount(double amount) {
+    return NumberFormat('#,##0.00', 'en_US').format(amount);
   }
 }
 

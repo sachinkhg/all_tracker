@@ -4,6 +4,7 @@
 import 'package:hive_flutter/hive_flutter.dart';
 
 import '../data/datasources/book_local_data_source.dart';
+import '../data/datasources/google_books_data_source.dart';
 import '../data/repositories/book_repository_impl.dart';
 import '../data/models/book_model.dart';
 import '../domain/usecases/book/create_book.dart';
@@ -15,7 +16,9 @@ import '../domain/usecases/book/get_books_by_published_year.dart';
 import '../domain/usecases/book/get_books_by_read_year.dart';
 import '../domain/usecases/book/update_book.dart';
 import '../domain/usecases/book/delete_book.dart';
+import '../domain/usecases/book/search_books.dart';
 import '../presentation/bloc/book_cubit.dart';
+import '../../../features/drive_backup/core/injection.dart' as drive_backup;
 import 'constants.dart';
 
 /// Factory that constructs a fully-wired [BookCubit].
@@ -61,6 +64,9 @@ BookCubit createBookCubit() {
   // ---------------------------------------------------------------------------
   // Presentation
   // ---------------------------------------------------------------------------
+  // Get CRUD logger for Drive backup (optional, may be null if not configured)
+  final crudLogger = drive_backup.getDriveBackupCrudLogger();
+
   return BookCubit(
     getAll: getAll,
     getById: getById,
@@ -71,6 +77,15 @@ BookCubit createBookCubit() {
     create: create,
     update: update,
     delete: delete,
+    crudLogger: crudLogger,
   );
+}
+
+/// Factory that constructs a [SearchBooks] use case.
+///
+/// This is used by the book form to search for books via Open Library API.
+SearchBooks createSearchBooksUseCase() {
+  final googleBooksDataSource = GoogleBooksDataSource();
+  return SearchBooks(googleBooksDataSource);
 }
 

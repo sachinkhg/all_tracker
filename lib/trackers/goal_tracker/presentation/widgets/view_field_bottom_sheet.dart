@@ -70,12 +70,12 @@ class ViewFieldsBottomSheet extends StatefulWidget {
   final bool isStandalone;
 
   const ViewFieldsBottomSheet({
-    Key? key, 
+    super.key, 
     required this.entity, 
     this.initial,
     this.initialViewType,
     this.isStandalone = false,
-  }) : super(key: key);
+  });
 
   @override
   State<ViewFieldsBottomSheet> createState() => _ViewFieldsBottomSheetState();

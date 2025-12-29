@@ -134,7 +134,7 @@ class EntryFormBottomSheet {
                           ),
                         );
                       }
-                    }).toList(),
+                    }),
                     const SizedBox(height: 20),
 
                     // --- Action Button ---

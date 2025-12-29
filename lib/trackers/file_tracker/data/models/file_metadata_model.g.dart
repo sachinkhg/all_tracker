@@ -20,14 +20,16 @@ class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
       stableIdentifier: fields[0] as String,
       tags: (fields[1] as List).cast<String>(),
       notes: fields[2] as String?,
-      lastUpdated: fields[3] as DateTime,
+      cast: (fields[3] as List).cast<String>(),
+      viewMode: fields[4] as String?,
+      lastUpdated: fields[5] as DateTime,
     );
   }
 
   @override
   void write(BinaryWriter writer, FileMetadataModel obj) {
     writer
-      ..writeByte(4)
+      ..writeByte(6)
       ..writeByte(0)
       ..write(obj.stableIdentifier)
       ..writeByte(1)
@@ -35,6 +37,10 @@ class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
       ..writeByte(2)
       ..write(obj.notes)
       ..writeByte(3)
+      ..write(obj.cast)
+      ..writeByte(4)
+      ..write(obj.viewMode)
+      ..writeByte(5)
       ..write(obj.lastUpdated);
   }
 

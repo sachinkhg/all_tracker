@@ -396,7 +396,7 @@ Future<void> importExpensesFromXlsx(BuildContext context) async {
       // Parse group (required)
       ExpenseGroup? parsedGroup;
       if (groupIdx < row.length) {
-        final String? groupRaw = (row[groupIdx]?.value?.toString() ?? '').trim();
+        final String groupRaw = (row[groupIdx]?.value?.toString() ?? '').trim();
         parsedGroup = _normalizeAndValidateGroup(groupRaw);
       }
       

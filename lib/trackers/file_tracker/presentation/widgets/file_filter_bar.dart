@@ -69,7 +69,7 @@ class FileFilterBar extends StatelessWidget {
               // Type filter
               Expanded(
                 child: DropdownButtonFormField<FileType?>(
-                  value: selectedType,
+                  initialValue: selectedType,
                   decoration: InputDecoration(
                     labelText: 'Type',
                     border: OutlineInputBorder(
@@ -105,7 +105,7 @@ class FileFilterBar extends StatelessWidget {
               // Folder filter
               Expanded(
                 child: DropdownButtonFormField<String?>(
-                  value: selectedFolder,
+                  initialValue: selectedFolder,
                   decoration: InputDecoration(
                     labelText: 'Folder',
                     border: OutlineInputBorder(

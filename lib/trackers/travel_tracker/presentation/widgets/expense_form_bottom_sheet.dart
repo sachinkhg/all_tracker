@@ -55,7 +55,7 @@ class ExpenseFormBottomSheet {
 
     String formatDate(DateTime d) => DateFormat('MMM dd, yyyy').format(d);
 
-    IconData _getCategoryIcon(ExpenseCategory category) {
+    IconData getCategoryIcon(ExpenseCategory category) {
       switch (category) {
         case ExpenseCategory.food:
           return Icons.restaurant;
@@ -181,12 +181,12 @@ class ExpenseFormBottomSheet {
                                   ),
                                   ...ExpenseCategory.values.map((category) {
                                     return ListTile(
-                                      leading: Icon(_getCategoryIcon(category), color: cs.primary),
+                                      leading: Icon(getCategoryIcon(category), color: cs.primary),
                                       title: Text(expenseCategoryLabels[category]!),
                                       onTap: () => Navigator.pop(context, category),
                                       selected: selectedCategory == category,
                                     );
-                                  }).toList(),
+                                  }),
                                   const SizedBox(height: 8),
                                 ],
                               ),
@@ -207,7 +207,7 @@ class ExpenseFormBottomSheet {
                                 Row(
                                   children: [
                                     Icon(
-                                      _getCategoryIcon(selectedCategory!),
+                                      getCategoryIcon(selectedCategory!),
                                       color: cs.primary,
                                       size: 20,
                                     ),
@@ -307,7 +307,7 @@ class ExpenseFormBottomSheet {
                                         onTap: () => Navigator.pop(context, traveler.id),
                                         selected: selectedPaidBy == traveler.id,
                                       );
-                                    }).toList(),
+                                    }),
                                     const SizedBox(height: 8),
                                   ],
                                 ),

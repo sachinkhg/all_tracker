@@ -241,6 +241,7 @@ class BackupBuilderService {
           'percentage': ic.percentage,
           'minLimit': ic.minLimit,
           'maxLimit': ic.maxLimit,
+          'multipleOf': ic.multipleOf,
           'priority': ic.priority,
         }).toList();
 
@@ -260,6 +261,9 @@ class BackupBuilderService {
     snapshot['investment_plans'] = investmentPlansBox.values.map((ip) => {
           'id': ip.id,
           'name': ip.name,
+          'duration': ip.duration,
+          'period': ip.period,
+          'status': ip.status,
           'incomeEntries': ip.incomeEntries.map((ie) => {
                 'id': ie.id,
                 'categoryId': ie.categoryId,
@@ -273,6 +277,8 @@ class BackupBuilderService {
           'allocations': ip.allocations.map((a) => {
                 'componentId': a.componentId,
                 'allocatedAmount': a.allocatedAmount,
+                'actualAmount': a.actualAmount,
+                'isCompleted': a.isCompleted,
               }).toList(),
           'createdAt': ip.createdAt.toUtc().toIso8601String(),
           'updatedAt': ip.updatedAt.toUtc().toIso8601String(),
@@ -339,7 +345,7 @@ class BackupBuilderService {
         'title': b.title,
         'primaryAuthor': b.primaryAuthor,
         'pageCount': b.pageCount,
-        'avgRating': b.avgRating,
+        'selfRating': b.selfRating,
         'datePublished': _serializeDateOnly(b.datePublished),
         'dateStarted': _serializeDateOnly(b.dateStarted),
         'dateRead': _serializeDateOnly(b.dateRead),
@@ -423,25 +429,10 @@ class BackupBuilderService {
           'stableIdentifier': metadata.stableIdentifier,
           'tags': metadata.tags,
           'notes': metadata.notes,
+          'cast': metadata.cast,
+          'viewMode': metadata.viewMode,
           'lastUpdated': metadata.lastUpdated.toUtc().toIso8601String(),
         }).toList();
-
-    // Log summary of what was included in the backup
-    print('[BACKUP] Backup snapshot creation completed');
-    print('[BACKUP] Summary:');
-    print('[BACKUP]   - Goals: ${(snapshot['goals'] as List).length}');
-    print('[BACKUP]   - Milestones: ${(snapshot['milestones'] as List).length}');
-    print('[BACKUP]   - Tasks: ${(snapshot['tasks'] as List).length}');
-    print('[BACKUP]   - Habits: ${(snapshot['habits'] as List).length}');
-    print('[BACKUP]   - Trips: ${(snapshot['trips'] as List).length}');
-    print('[BACKUP]   - Passwords: ${(snapshot['passwords'] as List).length}');
-    print('[BACKUP]   - Secret Questions: ${(snapshot['secret_questions'] as List).length}');
-    print('[BACKUP]   - Expense Tracker Expenses: ${(snapshot['expense_tracker_expenses'] as List).length}');
-    print('[BACKUP]   - Book Tracker Books: ${(snapshot['book_tracker_books'] as List).length}');
-    print('[BACKUP]   - Investment Plans: ${(snapshot['investment_plans'] as List).length}');
-    print('[BACKUP]   - Retirement Plans: ${(snapshot['retirement_plans'] as List).length}');
-    print('[BACKUP]   - File Server Configs: ${(snapshot['file_server_configs'] as List).length}');
-    print('[BACKUP]   - File Metadata: ${(snapshot['file_metadata'] as List).length}');
 
     return snapshot;
   }

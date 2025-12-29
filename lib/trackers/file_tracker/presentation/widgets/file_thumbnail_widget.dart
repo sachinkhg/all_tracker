@@ -7,6 +7,7 @@ import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:video_player/video_player.dart';
 import '../../domain/entities/cloud_file.dart';
 import '../../domain/entities/file_server_config.dart';
+import '../../data/services/thumbnail_cache_service.dart';
 
 /// Widget for displaying a thumbnail of a cloud file (image or video).
 class FileThumbnailWidget extends StatefulWidget {
@@ -35,12 +36,13 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
   bool _thumbnailGenerationFailed = false;
   VideoPlayerController? _videoController;
   bool _useVideoPlayerFallback = false;
+  final _cacheService = ThumbnailCacheService.instance;
 
   @override
   void initState() {
     super.initState();
     if (widget.file.isVideo) {
-      _generateVideoThumbnail();
+      _loadOrGenerateVideoThumbnail();
     }
   }
 
@@ -48,6 +50,37 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
   void dispose() {
     _videoController?.dispose();
     super.dispose();
+  }
+
+  /// Loads thumbnail from cache or generates a new one if not cached.
+  Future<void> _loadOrGenerateVideoThumbnail() async {
+    // Initialize cache service
+    await _cacheService.initialize();
+
+    // Try to load from cache first
+    final stableId = widget.file.stableIdentifier;
+    final cachedBytes = await _cacheService.getCachedThumbnailBytes(stableId);
+    
+    if (cachedBytes != null && mounted) {
+      setState(() {
+        _videoThumbnailBytes = cachedBytes;
+        _thumbnailGenerationFailed = false;
+      });
+      return;
+    }
+
+    // If not in cache, check for cached file path
+    final cachedPath = await _cacheService.getCachedThumbnailPath(stableId);
+    if (cachedPath != null && mounted) {
+      setState(() {
+        _videoThumbnailPath = cachedPath;
+        _thumbnailGenerationFailed = false;
+      });
+      return;
+    }
+
+    // If not cached, generate new thumbnail
+    await _generateVideoThumbnail();
   }
 
   Future<void> _generateVideoThumbnail() async {
@@ -69,6 +102,10 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
         );
 
         if (mounted && thumbnailBytes != null) {
+          // Cache the thumbnail bytes
+          final stableId = widget.file.stableIdentifier;
+          await _cacheService.cacheThumbnail(stableId, thumbnailBytes);
+          
           setState(() {
             _videoThumbnailBytes = thumbnailBytes;
             _thumbnailGenerationFailed = false;
@@ -82,7 +119,7 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
       // Fallback to thumbnailFile method
       final thumbnailPath = await VideoThumbnail.thumbnailFile(
         video: widget.file.url,
-        thumbnailPath: (await Directory.systemTemp).path,
+        thumbnailPath: (Directory.systemTemp).path,
         imageFormat: ImageFormat.PNG,
         maxWidth: widget.width?.toInt() ?? 300,
         quality: 75,
@@ -95,6 +132,10 @@ class _FileThumbnailWidgetState extends State<FileThumbnailWidget> {
       );
 
       if (mounted && thumbnailPath != null) {
+        // Cache the thumbnail file
+        final stableId = widget.file.stableIdentifier;
+        await _cacheService.cacheThumbnailFromFile(stableId, thumbnailPath);
+        
         setState(() {
           _videoThumbnailPath = thumbnailPath;
           _thumbnailGenerationFailed = false;

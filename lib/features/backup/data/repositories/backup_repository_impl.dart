@@ -279,28 +279,6 @@ class BackupRepositoryImpl implements BackupRepository {
 
       // Parse snapshot - if this fails, don't clear boxes
       final snapshot = jsonDecode(utf8.decode(decryptedData)) as Map<String, dynamic>;
-      
-      print('[RESTORE] Snapshot parsed successfully');
-      print('[RESTORE] Snapshot version: ${snapshot['version']}');
-      print('[RESTORE] Snapshot dbSchemaVersion: ${snapshot['dbSchemaVersion']}');
-      print('[RESTORE] Snapshot createdAt: ${snapshot['createdAt']}');
-      print('[RESTORE] Snapshot contains keys: ${snapshot.keys.toList()}');
-      print('[RESTORE] Snapshot has passwords: ${snapshot.containsKey('passwords')}');
-      print('[RESTORE] Snapshot has secret_questions: ${snapshot.containsKey('secret_questions')}');
-      print('[RESTORE] Snapshot has expense_tracker_expenses: ${snapshot.containsKey('expense_tracker_expenses')}');
-      
-      if (snapshot.containsKey('passwords')) {
-        final passwords = snapshot['passwords'] as List<dynamic>?;
-        print('[RESTORE] Passwords array length in snapshot: ${passwords?.length ?? 0}');
-        if (passwords != null && passwords.isNotEmpty) {
-          print('[RESTORE] First password sample: ${passwords.first}');
-        }
-      }
-      
-      if (snapshot.containsKey('secret_questions')) {
-        final secretQuestions = snapshot['secret_questions'] as List<dynamic>?;
-        print('[RESTORE] Secret questions array length in snapshot: ${secretQuestions?.length ?? 0}');
-      }
 
       // Validate snapshot structure before clearing boxes
       // At minimum, should have goals (for backward compatibility with old backups)
@@ -388,15 +366,10 @@ class BackupRepositoryImpl implements BackupRepository {
     await Hive.box(retirement_constants.retirementPreferencesBoxName).clear();
     
     // Password Tracker boxes
-    print('[RESTORE] Clearing Password Tracker boxes...');
     final passwordBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
     final secretQuestionBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
-    print('[RESTORE] Password box length before clear: ${passwordBox.length}');
-    print('[RESTORE] Secret question box length before clear: ${secretQuestionBox.length}');
     await passwordBox.clear();
     await secretQuestionBox.clear();
-    print('[RESTORE] Password box length after clear: ${passwordBox.length}');
-    print('[RESTORE] Secret question box length after clear: ${secretQuestionBox.length}');
     
     // File Tracker boxes
     await Hive.box<FileServerConfigModel>(file_tracker_constants.fileTrackerConfigBoxName).clear();
@@ -720,6 +693,7 @@ class BackupRepositoryImpl implements BackupRepository {
           percentage: (m['percentage'] as num?)?.toDouble() ?? 0.0,
           minLimit: (m['minLimit'] as num?)?.toDouble(),
           maxLimit: (m['maxLimit'] as num?)?.toDouble(),
+          multipleOf: (m['multipleOf'] as num?)?.toDouble(),
           priority: (m['priority'] as num?)?.toInt() ?? 0,
         );
         if (model.id.isEmpty) continue; // Skip invalid entries
@@ -781,6 +755,8 @@ class BackupRepositoryImpl implements BackupRepository {
           return ComponentAllocationModel(
             componentId: _safeString(am, 'componentId', ''),
             allocatedAmount: (am['allocatedAmount'] as num?)?.toDouble() ?? 0.0,
+            actualAmount: (am['actualAmount'] as num?)?.toDouble(),
+            isCompleted: (am['isCompleted'] as bool?) ?? false,
           );
         }).toList();
         final model = InvestmentPlanModel(
@@ -788,6 +764,7 @@ class BackupRepositoryImpl implements BackupRepository {
           name: _safeString(m, 'name', 'Unnamed Plan'),
           duration: _safeString(m, 'duration', 'Monthly'),
           period: _safeString(m, 'period', DateTime.now().toString()),
+          status: _safeStringNullable(m, 'status'),
           incomeEntries: incomeEntries,
           expenseEntries: expenseEntries,
           allocations: allocations,
@@ -801,24 +778,13 @@ class BackupRepositoryImpl implements BackupRepository {
     // ========================================================================
     // Password Tracker Data (optional - only restore if present in backup)
     // ========================================================================
-    print('[RESTORE] Checking for Password Tracker data in snapshot...');
-    print('[RESTORE] Snapshot keys: ${snapshot.keys.toList()}');
-    print('[RESTORE] Has passwords key: ${snapshot.containsKey('passwords')}');
-    print('[RESTORE] Has secret_questions key: ${snapshot.containsKey('secret_questions')}');
-    
     if (snapshot.containsKey('passwords')) {
       final passwords = snapshot['passwords'] as List<dynamic>? ?? [];
-      print('[RESTORE] Found ${passwords.length} passwords in snapshot');
       final passwordBox = Hive.box<PasswordModel>(password_constants.passwordBoxName);
-      print('[RESTORE] Password box length before restore: ${passwordBox.length}');
-      
-      int restoredCount = 0;
-      int skippedCount = 0;
       
       for (final p in passwords) {
         try {
           final m = p as Map<String, dynamic>;
-          print('[RESTORE] Processing password: id=${m['id']}, siteName=${m['siteName']}');
           
           final model = PasswordModel(
             id: _safeString(m, 'id', ''),
@@ -834,40 +800,23 @@ class BackupRepositoryImpl implements BackupRepository {
           );
           
           if (model.id.isEmpty) {
-            print('[RESTORE] Skipping password with empty ID');
-            skippedCount++;
             continue; // Skip invalid entries
           }
           
           await passwordBox.put(model.id, model);
-          restoredCount++;
-          print('[RESTORE] Restored password: id=${model.id}, siteName=${model.siteName}');
-        } catch (e, stackTrace) {
-          print('[RESTORE] Error restoring password: $e');
-          print('[RESTORE] Stack trace: $stackTrace');
-          skippedCount++;
+        } catch (e) {
+          // Skip on error
         }
       }
-      
-      print('[RESTORE] Password restore completed: restored=$restoredCount, skipped=$skippedCount');
-      print('[RESTORE] Password box length after restore: ${passwordBox.length}');
-    } else {
-      print('[RESTORE] WARNING: No passwords key found in snapshot!');
     }
 
     if (snapshot.containsKey('secret_questions')) {
       final secretQuestions = snapshot['secret_questions'] as List<dynamic>? ?? [];
-      print('[RESTORE] Found ${secretQuestions.length} secret questions in snapshot');
       final secretQuestionBox = Hive.box<SecretQuestionModel>(password_constants.secretQuestionBoxName);
-      print('[RESTORE] Secret question box length before restore: ${secretQuestionBox.length}');
-      
-      int restoredCount = 0;
-      int skippedCount = 0;
       
       for (final sq in secretQuestions) {
         try {
           final m = sq as Map<String, dynamic>;
-          print('[RESTORE] Processing secret question: id=${m['id']}, passwordId=${m['passwordId']}');
           
           final model = SecretQuestionModel(
             id: _safeString(m, 'id', ''),
@@ -877,56 +826,32 @@ class BackupRepositoryImpl implements BackupRepository {
           );
           
           if (model.id.isEmpty) {
-            print('[RESTORE] Skipping secret question with empty ID');
-            skippedCount++;
             continue; // Skip invalid entries
           }
           
           await secretQuestionBox.put(model.id, model);
-          restoredCount++;
-          print('[RESTORE] Restored secret question: id=${model.id}, passwordId=${model.passwordId}');
-        } catch (e, stackTrace) {
-          print('[RESTORE] Error restoring secret question: $e');
-          print('[RESTORE] Stack trace: $stackTrace');
-          skippedCount++;
+        } catch (e) {
+          // Skip on error
         }
       }
-      
-      print('[RESTORE] Secret question restore completed: restored=$restoredCount, skipped=$skippedCount');
-      print('[RESTORE] Secret question box length after restore: ${secretQuestionBox.length}');
-    } else {
-      print('[RESTORE] WARNING: No secret_questions key found in snapshot!');
     }
-    
-    print('[RESTORE] Password Tracker restore process completed');
 
     // ========================================================================
     // Expense Tracker Data (optional - only restore if present in backup)
     // ========================================================================
-    print('[RESTORE] Checking for Expense Tracker data in snapshot...');
-    print('[RESTORE] Has expense_tracker_expenses key: ${snapshot.containsKey('expense_tracker_expenses')}');
-    
     if (snapshot.containsKey('expense_tracker_expenses')) {
       final expenses = snapshot['expense_tracker_expenses'] as List<dynamic>? ?? [];
-      print('[RESTORE] Found ${expenses.length} expense tracker expenses in snapshot');
       final expenseBox = Hive.box<expense_tracker_expense.ExpenseModel>(expense_tracker_constants.expenseTrackerBoxName);
-      print('[RESTORE] Expense tracker box length before restore: ${expenseBox.length}');
-      
-      int restoredCount = 0;
-      int skippedCount = 0;
       
       for (final e in expenses) {
         try {
           final m = e as Map<String, dynamic>;
-          print('[RESTORE] Processing expense: id=${m['id']}, description=${m['description']}');
           
           // Parse date using date-only deserialization to preserve the date correctly
           final dateStr = _safeStringNullable(m, 'date');
           final expenseDate = dateStr != null 
               ? _deserializeDateOnlyRequired(dateStr)
               : DateTime.now();
-          
-          print('[RESTORE] Parsed expense date: original=$dateStr, parsed=$expenseDate');
           
           final model = expense_tracker_expense.ExpenseModel(
             id: _safeString(m, 'id', ''),
@@ -939,48 +864,26 @@ class BackupRepositoryImpl implements BackupRepository {
           );
           
           if (model.id.isEmpty) {
-            print('[RESTORE] Skipping expense with empty ID');
-            skippedCount++;
             continue; // Skip invalid entries
           }
           
           await expenseBox.put(model.id, model);
-          restoredCount++;
-          print('[RESTORE] Restored expense: id=${model.id}, description=${model.description}');
-        } catch (e, stackTrace) {
-          print('[RESTORE] Error restoring expense: $e');
-          print('[RESTORE] Stack trace: $stackTrace');
-          skippedCount++;
+        } catch (e) {
+          // Skip on error
         }
       }
-      
-      print('[RESTORE] Expense tracker restore completed: restored=$restoredCount, skipped=$skippedCount');
-      print('[RESTORE] Expense tracker box length after restore: ${expenseBox.length}');
-    } else {
-      print('[RESTORE] WARNING: No expense_tracker_expenses key found in snapshot!');
     }
-    
-    print('[RESTORE] Expense Tracker restore process completed');
 
     // ========================================================================
     // Book Tracker Data (optional - only restore if present in backup)
     // ========================================================================
-    print('[RESTORE] Checking for Book Tracker data in snapshot...');
-    print('[RESTORE] Has book_tracker_books key: ${snapshot.containsKey('book_tracker_books')}');
-    
     if (snapshot.containsKey('book_tracker_books')) {
       final books = snapshot['book_tracker_books'] as List<dynamic>? ?? [];
-      print('[RESTORE] Found ${books.length} books in snapshot');
       final bookBox = Hive.box<BookModel>(book_tracker_constants.booksTrackerBoxName);
-      print('[RESTORE] Book tracker box length before restore: ${bookBox.length}');
-      
-      int restoredCount = 0;
-      int skippedCount = 0;
       
       for (final b in books) {
         try {
           final m = b as Map<String, dynamic>;
-          print('[RESTORE] Processing book: id=${m['id']}, title=${m['title']}');
           
           // Parse read history
           final readHistoryList = m['readHistory'] as List<dynamic>? ?? [];
@@ -1007,28 +910,15 @@ class BackupRepositoryImpl implements BackupRepository {
           );
           
           if (model.id.isEmpty) {
-            print('[RESTORE] Skipping book with empty ID');
-            skippedCount++;
             continue; // Skip invalid entries
           }
           
           await bookBox.put(model.id, model);
-          restoredCount++;
-          print('[RESTORE] Restored book: id=${model.id}, title=${model.title}');
-        } catch (e, stackTrace) {
-          print('[RESTORE] Error restoring book: $e');
-          print('[RESTORE] Stack trace: $stackTrace');
-          skippedCount++;
+        } catch (e) {
+          // Skip on error
         }
       }
-      
-      print('[RESTORE] Book tracker restore completed: restored=$restoredCount, skipped=$skippedCount');
-      print('[RESTORE] Book tracker box length after restore: ${bookBox.length}');
-    } else {
-      print('[RESTORE] WARNING: No book_tracker_books key found in snapshot!');
     }
-    
-    print('[RESTORE] Book Tracker restore process completed');
 
     // ========================================================================
     // Retirement Planner Data (optional - only restore if present in backup)
@@ -1096,7 +986,7 @@ class BackupRepositoryImpl implements BackupRepository {
             await configBox.put(serverName, model);
           }
         } catch (e) {
-          print('[RESTORE] Error restoring file server config: $e');
+          // Error restoring file server config - continue with next
         }
       }
     }
@@ -1124,6 +1014,13 @@ class BackupRepositoryImpl implements BackupRepository {
           
           final notes = _safeStringNullable(metadataData, 'notes');
           
+          // Read cast (backward compatible - default to empty list if not present)
+          final castList = metadataData['cast'] as List<dynamic>? ?? [];
+          final cast = castList.map((c) => c.toString()).toList();
+          
+          // Read viewMode (backward compatible - default to null if not present)
+          final viewMode = _safeStringNullable(metadataData, 'viewMode');
+          
           final lastUpdatedStr = _safeString(metadataData, 'lastUpdated', '');
           DateTime lastUpdated;
           try {
@@ -1136,11 +1033,13 @@ class BackupRepositoryImpl implements BackupRepository {
             stableIdentifier: stableIdentifier,
             tags: tags,
             notes: notes,
+            cast: cast,
+            viewMode: viewMode,
             lastUpdated: lastUpdated,
           );
           await metadataBox.put(stableIdentifier, model);
         } catch (e) {
-          print('[RESTORE] Error restoring file metadata: $e');
+          // Error restoring file metadata - continue with next
         }
       }
     }

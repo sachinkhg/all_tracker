@@ -17,8 +17,11 @@ import '../../repositories/investment_component_repository.dart';
 ///    - Calculate target allocation = available * (percentage / 100)
 ///    - Apply min limit if specified: target = max(target, minLimit)
 ///    - Apply max limit if specified: target = min(target, maxLimit)
-///    - If available funds < target, allocate what's available
-///    - Subtract allocated amount from available funds
+///    - If minLimit is specified and remaining funds < minLimit:
+///      * Allocate 0 to this component and move to next priority
+///    - Otherwise, if available funds < target, allocate what's available
+///    - Create allocation entry (saved even if zero or negative)
+///    - Subtract allocated amount from available funds (only if positive)
 /// 4. Return allocations and remaining unallocated amount
 class CalculateAllocations {
   final InvestmentComponentRepository componentRepository;
@@ -57,23 +60,33 @@ class CalculateAllocations {
         target = target < component.maxLimit! ? target : component.maxLimit!;
       }
 
-      // Allocate what's available (cannot exceed remaining funds)
-      double allocatedAmount = target > remaining ? remaining : target;
-      
-      // Round to nearest multiple if specified
-      if (component.multipleOf != null && component.multipleOf! > 0) {
-        allocatedAmount = (allocatedAmount / component.multipleOf!).round() * component.multipleOf!;
-        // Ensure rounded amount doesn't exceed remaining funds
-        if (allocatedAmount > remaining) {
-          allocatedAmount = (remaining / component.multipleOf!).floor() * component.multipleOf!;
+      // Check if minLimit cannot be met - if so, allocate 0 and move to next component
+      double allocatedAmount;
+      if (component.minLimit != null && remaining < component.minLimit!) {
+        // Cannot meet minLimit requirement - allocate 0 and continue to next priority
+        allocatedAmount = 0.0;
+      } else {
+        // Allocate what's available (cannot exceed remaining funds)
+        allocatedAmount = target > remaining ? remaining : target;
+        
+        // Round to nearest multiple if specified
+        if (component.multipleOf != null && component.multipleOf! > 0) {
+          allocatedAmount = (allocatedAmount / component.multipleOf!).round() * component.multipleOf!;
+          // Ensure rounded amount doesn't exceed remaining funds
+          if (allocatedAmount > remaining) {
+            allocatedAmount = (remaining / component.multipleOf!).floor() * component.multipleOf!;
+          }
         }
       }
       
+      // Always add allocation, even if amount is zero or negative
+      allocations.add(ComponentAllocation(
+        componentId: component.id,
+        allocatedAmount: allocatedAmount,
+      ));
+      
+      // Only subtract from remaining if amount is positive
       if (allocatedAmount > 0) {
-        allocations.add(ComponentAllocation(
-          componentId: component.id,
-          allocatedAmount: allocatedAmount,
-        ));
         remaining -= allocatedAmount;
       }
 

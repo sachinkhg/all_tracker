@@ -28,7 +28,7 @@ class FileCubit extends Cubit<FileState> {
   String? _currentFolderFilter;
   String? _currentSearchQuery;
   List<String> _navigationStack = []; // Track folder navigation path
-  Map<String, FileMetadata> _metadataCache = {}; // Cache metadata by stable identifier
+  final Map<String, FileMetadata> _metadataCache = {}; // Cache metadata by stable identifier
 
   FileCubit({
     required this.getFiles,
@@ -107,10 +107,16 @@ class FileCubit extends Cubit<FileState> {
     try {
       final stableIdentifiers = files.map((f) => f.stableIdentifier).toList();
       final metadataMap = await metadataRepository.getMetadataBatch(stableIdentifiers);
-      _metadataCache = metadataMap;
+      // Merge with existing cache instead of replacing to preserve recently saved data
+      _metadataCache.addAll(metadataMap);
+      // Also ensure we only keep cache entries for current files to avoid memory leaks
+      final currentIdentifiers = stableIdentifiers.toSet();
+      _metadataCache.removeWhere((key, value) => !currentIdentifiers.contains(key));
+      // Re-add the loaded metadata to ensure it's up to date
+      _metadataCache.addAll(metadataMap);
     } catch (e) {
       // If metadata loading fails, continue without metadata
-      _metadataCache = {};
+      // Don't clear cache, just don't update it
     }
   }
   
@@ -264,8 +270,18 @@ class FileCubit extends Cubit<FileState> {
 
   /// Saves or updates metadata for a file.
   Future<void> saveFileMetadata(FileMetadata metadata) async {
+    // Save to repository first
     await metadataRepository.saveMetadata(metadata);
+    
+    // Update cache with the saved metadata
     _metadataCache[metadata.stableIdentifier] = metadata;
+    
+    // Verify the save by reading back from repository
+    final savedMetadata = await metadataRepository.getMetadata(metadata.stableIdentifier);
+    if (savedMetadata != null) {
+      // Update cache with the verified saved data
+      _metadataCache[metadata.stableIdentifier] = savedMetadata;
+    }
     
     // Emit updated state to refresh UI
     if (state is FilesLoaded) {
@@ -289,6 +305,30 @@ class FileCubit extends Cubit<FileState> {
   /// Searches for files by tags.
   Future<List<String>> searchFilesByTags(List<String> tags) async {
     return await metadataRepository.searchByTags(tags);
+  }
+
+  /// Gets all available tags from all files.
+  ///
+  /// Returns a set of unique tag strings.
+  Future<Set<String>> getAllAvailableTags() async {
+    final allMetadata = await metadataRepository.getAllMetadata();
+    final allTags = <String>{};
+    for (final metadata in allMetadata) {
+      allTags.addAll(metadata.tags);
+    }
+    return allTags;
+  }
+
+  /// Gets all available cast members from all files.
+  ///
+  /// Returns a set of unique cast member names.
+  Future<Set<String>> getAllAvailableCast() async {
+    final allMetadata = await metadataRepository.getAllMetadata();
+    final allCast = <String>{};
+    for (final metadata in allMetadata) {
+      allCast.addAll(metadata.cast);
+    }
+    return allCast;
   }
 
   /// Resets the cubit to initial state (clears config and files).

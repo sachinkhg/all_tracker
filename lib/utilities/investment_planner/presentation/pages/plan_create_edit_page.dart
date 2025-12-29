@@ -140,10 +140,124 @@ class _PlanCreateEditPageState extends State<_PlanCreateEditPageView> {
   Future<void> _savePlan(BuildContext context) async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      
+      // Get all categories to ensure all are included in the plan
+      final incomeCategoryCubit = context.read<IncomeCategoryCubit>();
+      final expenseCategoryCubit = context.read<ExpenseCategoryCubit>();
+      
+      // Ensure categories are loaded
+      incomeCategoryCubit.loadCategories();
+      expenseCategoryCubit.loadCategories();
+      
+      // Wait for categories to load by checking state
+      List<IncomeCategory> allIncomeCategories = [];
+      List<ExpenseCategory> allExpenseCategories = [];
+      
+      // Wait for income categories to load (with timeout)
+      int attempts = 0;
+      while (attempts < 10) {
+        final state = incomeCategoryCubit.state;
+        if (state is IncomeCategoriesLoaded) {
+          allIncomeCategories = state.categories;
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 50));
+        attempts++;
+      }
+      
+      // Wait for expense categories to load (with timeout)
+      attempts = 0;
+      while (attempts < 10) {
+        final state = expenseCategoryCubit.state;
+        if (state is ExpenseCategoriesLoaded) {
+          allExpenseCategories = state.categories;
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 50));
+        attempts++;
+      }
+      
+      // Create a map of existing entries by categoryId for quick lookup
+      final existingIncomeEntriesMap = <String, IncomeEntry>{};
+      for (final entry in _incomeEntries) {
+        existingIncomeEntriesMap[entry.categoryId] = entry;
+      }
+      
+      final existingExpenseEntriesMap = <String, ExpenseEntry>{};
+      for (final entry in _expenseEntries) {
+        existingExpenseEntriesMap[entry.categoryId] = entry;
+      }
+      
+      // Build complete list of income entries - include all categories
+      // When editing, preserve existing entry IDs; when creating, generate new IDs
+      final completeIncomeEntries = <IncomeEntry>[];
+      for (final category in allIncomeCategories) {
+        if (existingIncomeEntriesMap.containsKey(category.id)) {
+          // Use existing entry (preserves ID)
+          completeIncomeEntries.add(existingIncomeEntriesMap[category.id]!);
+        } else {
+          // Create entry with 0.0 amount for categories without entries
+          // When editing, check if this category had an entry in the original plan to preserve ID
+          String entryId;
+          if (widget.plan != null) {
+            try {
+              final originalEntry = widget.plan!.incomeEntries.firstWhere(
+                (e) => e.categoryId == category.id,
+              );
+              entryId = originalEntry.id; // Preserve existing ID
+            } catch (e) {
+              // Category didn't exist in original plan, generate new ID
+              entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
+            }
+          } else {
+            // When creating, generate new ID
+            entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
+          }
+          completeIncomeEntries.add(IncomeEntry(
+            id: entryId,
+            categoryId: category.id,
+            amount: 0.0,
+          ));
+        }
+      }
+      
+      // Build complete list of expense entries - include all categories
+      // When editing, preserve existing entry IDs; when creating, generate new IDs
+      final completeExpenseEntries = <ExpenseEntry>[];
+      for (final category in allExpenseCategories) {
+        if (existingExpenseEntriesMap.containsKey(category.id)) {
+          // Use existing entry (preserves ID)
+          completeExpenseEntries.add(existingExpenseEntriesMap[category.id]!);
+        } else {
+          // Create entry with 0.0 amount for categories without entries
+          // When editing, check if this category had an entry in the original plan to preserve ID
+          String entryId;
+          if (widget.plan != null) {
+            try {
+              final originalEntry = widget.plan!.expenseEntries.firstWhere(
+                (e) => e.categoryId == category.id,
+              );
+              entryId = originalEntry.id; // Preserve existing ID
+            } catch (e) {
+              // Category didn't exist in original plan, generate new ID
+              entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
+            }
+          } else {
+            // When creating, generate new ID
+            entryId = '${DateTime.now().millisecondsSinceEpoch}_${category.id}';
+          }
+          completeExpenseEntries.add(ExpenseEntry(
+            id: entryId,
+            categoryId: category.id,
+            amount: 0.0,
+          ));
+        }
+      }
+      
       final savedPlan = await context.read<InvestmentPlanCubit>().savePlan(
             name: _name,
-            incomeEntries: _incomeEntries,
-            expenseEntries: _expenseEntries,
+            incomeEntries: completeIncomeEntries,
+            expenseEntries: completeExpenseEntries,
             planId: widget.plan?.id,
           );
       

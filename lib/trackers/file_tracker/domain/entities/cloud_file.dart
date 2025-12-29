@@ -67,6 +67,16 @@ class CloudFile extends Equatable {
   /// Returns true if this is a folder/directory.
   bool get isFolder => name.endsWith('/') || url.endsWith('/');
 
+  /// Returns the decoded file name (URL-encoded characters like %20 are decoded to spaces).
+  String get decodedName {
+    try {
+      return Uri.decodeComponent(name);
+    } catch (e) {
+      // If decoding fails, return original name
+      return name;
+    }
+  }
+
   /// Returns the file extension (lowercase).
   String get extension {
     final parts = name.split('.');

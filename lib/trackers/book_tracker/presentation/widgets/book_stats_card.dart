@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/usecases/book/get_book_stats.dart';
+import '../pages/book_analytics_page.dart';
 
 class BookStatsCard extends StatelessWidget {
   final BookStats stats;
@@ -17,9 +18,25 @@ class BookStatsCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Statistics',
-              style: Theme.of(context).textTheme.titleLarge,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Statistics',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.bar_chart),
+                  tooltip: 'View Analytics',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const BookAnalyticsPage(),
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
             const SizedBox(height: 16),
             _StatRow(

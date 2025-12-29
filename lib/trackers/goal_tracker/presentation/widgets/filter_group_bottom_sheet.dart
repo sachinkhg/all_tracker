@@ -295,7 +295,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedContext,
+                                    initialValue: _selectedContext,
                                     isExpanded: true,
                                     style: TextStyle(color: colorScheme.onSurface),
                                     decoration: InputDecoration(
@@ -353,7 +353,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                     Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedGoalId,
+                                    initialValue: _selectedGoalId,
                                     isExpanded: true,
                                     style: TextStyle(color: colorScheme.onSurface),
                                     decoration: InputDecoration(
@@ -416,7 +416,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   Text("Filter by Milestone", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedContext,
+                                    initialValue: _selectedContext,
                                     isExpanded: true,
                                     style: TextStyle(color: colorScheme.onSurface),
                                     decoration: InputDecoration(
@@ -492,7 +492,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   Text("Filter by Goal", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedGoalId,
+                                    initialValue: _selectedGoalId,
                                     isExpanded: true,
                                     style: TextStyle(color: colorScheme.onSurface),
                                     decoration: InputDecoration(
@@ -555,7 +555,7 @@ class _FilterGroupBottomSheetState extends State<FilterGroupBottomSheet> {
                                   Text("Filter by Milestone", style: textTheme.bodySmall),
                                   const SizedBox(height: 8),
                                   DropdownButtonFormField<String>(
-                                    value: _selectedContext,
+                                    initialValue: _selectedContext,
                                     isExpanded: true,
                                     style: TextStyle(color: colorScheme.onSurface),
                                     decoration: InputDecoration(

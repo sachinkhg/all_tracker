@@ -16,6 +16,12 @@ class FileMetadata extends Equatable {
   /// Optional notes/description for this file.
   final String? notes;
 
+  /// List of cast members/people in this file (for videos/images).
+  final List<String> cast;
+
+  /// View mode: "portrait" or "landscape" (null if unknown).
+  final String? viewMode;
+
   /// Timestamp when this metadata was last updated.
   final DateTime lastUpdated;
 
@@ -23,6 +29,8 @@ class FileMetadata extends Equatable {
     required this.stableIdentifier,
     this.tags = const [],
     this.notes,
+    this.cast = const [],
+    this.viewMode,
     required this.lastUpdated,
   });
 
@@ -31,12 +39,16 @@ class FileMetadata extends Equatable {
     String? stableIdentifier,
     List<String>? tags,
     String? notes,
+    List<String>? cast,
+    String? viewMode,
     DateTime? lastUpdated,
   }) {
     return FileMetadata(
       stableIdentifier: stableIdentifier ?? this.stableIdentifier,
       tags: tags ?? this.tags,
       notes: notes ?? this.notes,
+      cast: cast ?? this.cast,
+      viewMode: viewMode ?? this.viewMode,
       lastUpdated: lastUpdated ?? this.lastUpdated,
     );
   }
@@ -47,11 +59,16 @@ class FileMetadata extends Equatable {
   /// Returns true if this metadata has notes.
   bool get hasNotes => notes != null && notes!.isNotEmpty;
 
+  /// Returns true if this metadata has cast members.
+  bool get hasCast => cast.isNotEmpty;
+
   @override
   List<Object?> get props => [
         stableIdentifier,
         tags,
         notes,
+        cast,
+        viewMode,
         lastUpdated,
       ];
 }

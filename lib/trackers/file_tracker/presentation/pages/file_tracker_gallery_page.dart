@@ -19,22 +19,22 @@ import '../../../../widgets/loading_view.dart';
 import '../../../../widgets/error_view.dart';
 import '../../../../widgets/app_drawer.dart';
 import '../../../../widgets/bottom_sheet_helpers.dart';
-import '../../../../pages/app_home_page.dart';
 import 'package:provider/provider.dart';
+import 'file_tracker_main_page.dart';
 import '../../../../core/organization_notifier.dart';
 
-/// Main page for the File Tracker feature.
+/// Gallery page for the File Tracker feature.
 ///
 /// Displays files from a configured HTTPS file server in a gallery view
 /// with filtering capabilities.
-class FileTrackerHomePage extends StatefulWidget {
-  const FileTrackerHomePage({super.key});
+class FileTrackerGalleryPage extends StatefulWidget {
+  const FileTrackerGalleryPage({super.key});
 
   @override
-  State<FileTrackerHomePage> createState() => _FileTrackerHomePageState();
+  State<FileTrackerGalleryPage> createState() => _FileTrackerGalleryPageState();
 }
 
-class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
+class _FileTrackerGalleryPageState extends State<FileTrackerGalleryPage> {
   bool _isGridView = true;
   final _configService = FileServerConfigService();
   String? _currentServerName;
@@ -72,11 +72,11 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
                 // Only show home icon if default home page is app_home
                 if (orgNotifier.defaultHomePage == 'app_home') {
                   return IconButton(
-                    tooltip: 'Home Page',
+                    tooltip: 'File Tracker Home',
                     icon: const Icon(Icons.home),
                     onPressed: () {
                       Navigator.of(context).pushAndRemoveUntil(
-                        MaterialPageRoute(builder: (_) => const AppHomePage()),
+                        MaterialPageRoute(builder: (_) => const FileTrackerMainPage()),
                         (route) => false,
                       );
                     },
@@ -268,7 +268,7 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
                                 IconButton(
                                   icon: const Icon(Icons.label),
                                   onPressed: () => _showBulkTagEditor(context, cubit),
-                                  tooltip: 'Add tags to selected files',
+                                  tooltip: 'Edit metadata for selected files',
                                 ),
                             ],
                           )
@@ -791,7 +791,7 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
           try {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Server "${newServerName}" updated successfully'),
+                content: Text('Server "$newServerName" updated successfully'),
                 duration: const Duration(seconds: 2),
               ),
             );
@@ -1052,12 +1052,11 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
     if (!mounted) return;
     
     try {
-      await FileTagEditorDialog.show(context, file, cubit);
-      // Refresh the UI to show updated tags
-      if (mounted) {
-        setState(() {
-          // Trigger rebuild to show updated tags
-        });
+      final result = await FileTagEditorDialog.show(context, file, cubit);
+      // Refresh the UI to show updated tags and cast
+      if (mounted && result != null) {
+        // Force a refresh of files to reload metadata from repository
+        await cubit.refreshFiles();
       }
     } catch (e) {
       // Error showing tag editor - ignore
@@ -1074,13 +1073,13 @@ class _FileTrackerHomePageState extends State<FileTrackerHomePage> {
     );
     
     if (result == true && mounted) {
-      // Refresh UI to show updated tags
+      // Clear selection first
       setState(() {
         _isMultiSelectMode = false;
         _selectedFileIds.clear();
       });
-      // Trigger a refresh to show updated tags
-      cubit.refreshFiles();
+      // Force a refresh of files to reload metadata from repository
+      await cubit.refreshFiles();
     }
   }
 

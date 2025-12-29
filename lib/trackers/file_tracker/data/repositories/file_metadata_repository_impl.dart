@@ -18,7 +18,11 @@ class FileMetadataRepositoryImpl implements FileMetadataRepository {
   Future<FileMetadata?> getMetadata(String stableIdentifier) async {
     final box = await _getBox();
     final model = box.get(stableIdentifier);
-    return model?.toEntity();
+    if (model != null) {
+      final entity = model.toEntity();
+      return entity;
+    }
+    return null;
   }
 
   @override
@@ -41,7 +45,10 @@ class FileMetadataRepositoryImpl implements FileMetadataRepository {
   Future<void> saveMetadata(FileMetadata metadata) async {
     final box = await _getBox();
     final model = FileMetadataModel.fromEntity(metadata);
+    
     await box.put(metadata.stableIdentifier, model);
+    // Ensure data is persisted to disk
+    await box.flush();
   }
 
   @override

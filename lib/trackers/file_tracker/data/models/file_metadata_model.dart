@@ -18,21 +18,39 @@ class FileMetadataModel extends HiveObject {
   final String? notes;
 
   @HiveField(3)
+  final List<String> cast;
+
+  @HiveField(4)
+  final String? viewMode;
+
+  @HiveField(5)
   final DateTime lastUpdated;
 
   FileMetadataModel({
     required this.stableIdentifier,
     required this.tags,
     this.notes,
+    required this.cast,
+    this.viewMode,
     required this.lastUpdated,
   });
 
   /// Creates a model from a domain entity.
   factory FileMetadataModel.fromEntity(FileMetadata entity) {
+    // Ensure we create new list instances to avoid any reference issues
+    final tagsList = entity.tags.isNotEmpty 
+        ? List<String>.from(entity.tags)
+        : <String>[];
+    final castList = entity.cast.isNotEmpty
+        ? List<String>.from(entity.cast)
+        : <String>[];
+    
     return FileMetadataModel(
       stableIdentifier: entity.stableIdentifier,
-      tags: List<String>.from(entity.tags),
+      tags: tagsList,
       notes: entity.notes,
+      cast: castList,
+      viewMode: entity.viewMode,
       lastUpdated: entity.lastUpdated,
     );
   }
@@ -43,6 +61,8 @@ class FileMetadataModel extends HiveObject {
       stableIdentifier: stableIdentifier,
       tags: List<String>.from(tags),
       notes: notes,
+      cast: List<String>.from(cast),
+      viewMode: viewMode,
       lastUpdated: lastUpdated,
     );
   }
