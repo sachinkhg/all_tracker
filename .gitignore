@@ -47,4 +47,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 android/app/google-services.json
+# Keep local Android manifest untracked (prevent local edits from being committed)
+android/app/src/main/AndroidManifest.xml
 ios/Runner/Info.plist
