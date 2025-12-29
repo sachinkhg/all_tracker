@@ -53,25 +53,6 @@ class BookListItem extends StatelessWidget {
                     visualDensity: VisualDensity.compact,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                if (book.avgRating != null) ...[
-                  const SizedBox(width: 4),
-                  Chip(
-                    label: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star, size: 12, color: cs.primary),
-                        const SizedBox(width: 2),
-                        Text(
-                          book.avgRating!.toStringAsFixed(1),
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ],
-                    ),
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ],
                 const SizedBox(width: 4),
                 Chip(
                   label: Text(

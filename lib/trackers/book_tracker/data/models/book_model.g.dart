@@ -21,7 +21,7 @@ class BookModelAdapter extends TypeAdapter<BookModel> {
       title: fields[1] as String,
       primaryAuthor: fields[2] as String,
       pageCount: fields[3] as int,
-      avgRating: fields[4] as double?,
+      selfRating: fields[11] as double?,
       datePublished: fields[5] as DateTime?,
       dateStarted: fields[6] as DateTime?,
       dateRead: fields[7] as DateTime?,
@@ -43,8 +43,8 @@ class BookModelAdapter extends TypeAdapter<BookModel> {
       ..write(obj.primaryAuthor)
       ..writeByte(3)
       ..write(obj.pageCount)
-      ..writeByte(4)
-      ..write(obj.avgRating)
+      ..writeByte(11)
+      ..write(obj.selfRating)
       ..writeByte(5)
       ..write(obj.datePublished)
       ..writeByte(6)

@@ -12,7 +12,7 @@
  *   - `title` (String)      : non-nullable, title of the book.
  *   - `primaryAuthor` (String): non-nullable, primary author of the book.
  *   - `pageCount` (int)     : non-nullable, number of pages (must be > 0).
- *   - `avgRating` (double?) : nullable, average rating (0-5 if present).
+ *   - `selfRating` (double?) : nullable, self rating (0-5 if present).
  *   - `datePublished` (DateTime?): nullable, publication date.
  *   - `dateStarted` (DateTime?): nullable, date when current reading cycle started.
  *   - `dateRead` (DateTime?): nullable, date when current reading cycle completed.
@@ -68,11 +68,11 @@ class Book extends Equatable {
   /// Expected Hive field number (data layer): 3.
   final int pageCount;
 
-  /// Average rating for the book (0-5 if present).
+  /// Self rating for the book (0-5 if present).
   ///
-  /// Persistence hint: nullable in domain; optional rating value.
-  /// Expected Hive field number (data layer): 4.
-  final double? avgRating;
+  /// Persistence hint: nullable in domain; optional self rating value.
+  /// Expected Hive field number (data layer): 11.
+  final double? selfRating;
 
   /// Publication date of the book.
   ///
@@ -118,7 +118,7 @@ class Book extends Equatable {
     required this.title,
     required this.primaryAuthor,
     required this.pageCount,
-    this.avgRating,
+    this.selfRating,
     this.datePublished,
     this.dateStarted,
     this.dateRead,
@@ -133,7 +133,7 @@ class Book extends Equatable {
         title,
         primaryAuthor,
         pageCount,
-        avgRating,
+        selfRating,
         datePublished,
         dateStarted,
         dateRead,
@@ -150,7 +150,7 @@ class Book extends Equatable {
     String? title,
     String? primaryAuthor,
     int? pageCount,
-    double? avgRating,
+    double? selfRating,
     DateTime? datePublished,
     DateTime? dateStarted,
     DateTime? dateRead,
@@ -163,7 +163,7 @@ class Book extends Equatable {
       title: title ?? this.title,
       primaryAuthor: primaryAuthor ?? this.primaryAuthor,
       pageCount: pageCount ?? this.pageCount,
-      avgRating: avgRating ?? this.avgRating,
+      selfRating: selfRating ?? this.selfRating,
       datePublished: datePublished ?? this.datePublished,
       dateStarted: dateStarted ?? this.dateStarted,
       dateRead: dateRead ?? this.dateRead,

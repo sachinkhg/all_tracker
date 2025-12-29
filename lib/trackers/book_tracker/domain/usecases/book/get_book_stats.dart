@@ -62,10 +62,10 @@ class GetBookStats {
         totalReads += completedReads;
         totalPagesRead += book.pageCount * completedReads;
 
-        // Calculate average rating only for completed books
-        if (book.avgRating != null && book.dateRead != null) {
+        // Calculate average self rating only for completed books
+        if (book.selfRating != null && book.dateRead != null) {
           sumRatings ??= 0.0;
-          sumRatings += book.avgRating!;
+          sumRatings += book.selfRating!;
           completedBooksWithRating++;
         }
       }

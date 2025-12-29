@@ -47,11 +47,11 @@ class BookModel extends HiveObject {
   @HiveField(3)
   int pageCount;
 
-  /// Average rating for the book (0-5 if present).
+  /// Self rating for the book (0-5 if present).
   ///
-  /// Hive field number **4** — nullable.
-  @HiveField(4)
-  double? avgRating;
+  /// Hive field number **11** — nullable.
+  @HiveField(11)
+  double? selfRating;
 
   /// Publication date of the book.
   ///
@@ -94,7 +94,7 @@ class BookModel extends HiveObject {
     required this.title,
     required this.primaryAuthor,
     required this.pageCount,
-    this.avgRating,
+    this.selfRating,
     this.datePublished,
     this.dateStarted,
     this.dateRead,
@@ -109,7 +109,7 @@ class BookModel extends HiveObject {
         title: book.title,
         primaryAuthor: book.primaryAuthor,
         pageCount: book.pageCount,
-        avgRating: book.avgRating,
+        selfRating: book.selfRating,
         datePublished: book.datePublished,
         dateStarted: book.dateStarted,
         dateRead: book.dateRead,
@@ -132,7 +132,7 @@ class BookModel extends HiveObject {
       title: title,
       primaryAuthor: primaryAuthor,
       pageCount: pageCount,
-      avgRating: avgRating,
+      selfRating: selfRating,
       datePublished: datePublished,
       dateStarted: dateStarted,
       dateRead: dateRead,
@@ -148,7 +148,7 @@ class BookModel extends HiveObject {
     String? title,
     String? primaryAuthor,
     int? pageCount,
-    double? avgRating,
+    double? selfRating,
     DateTime? datePublished,
     DateTime? dateStarted,
     DateTime? dateRead,
@@ -161,7 +161,7 @@ class BookModel extends HiveObject {
       title: title ?? this.title,
       primaryAuthor: primaryAuthor ?? this.primaryAuthor,
       pageCount: pageCount ?? this.pageCount,
-      avgRating: avgRating ?? this.avgRating,
+      selfRating: selfRating ?? this.selfRating,
       datePublished: datePublished ?? this.datePublished,
       dateStarted: dateStarted ?? this.dateStarted,
       dateRead: dateRead ?? this.dateRead,

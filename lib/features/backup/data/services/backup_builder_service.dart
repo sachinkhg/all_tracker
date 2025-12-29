@@ -345,7 +345,7 @@ class BackupBuilderService {
         'title': b.title,
         'primaryAuthor': b.primaryAuthor,
         'pageCount': b.pageCount,
-        'avgRating': b.avgRating,
+        'selfRating': b.selfRating,
         'datePublished': _serializeDateOnly(b.datePublished),
         'dateStarted': _serializeDateOnly(b.dateStarted),
         'dateRead': _serializeDateOnly(b.dateRead),

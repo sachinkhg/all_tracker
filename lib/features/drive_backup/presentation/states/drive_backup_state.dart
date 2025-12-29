@@ -18,19 +18,54 @@ class DriveBackupIdle extends DriveBackupState {
 /// Configured state - backup is set up and ready.
 class DriveBackupConfigured extends DriveBackupState {
   final DriveBackupConfig config;
+  final List<OperationLogEntry>? recentLogs; // Recent logs from last operation
 
-  const DriveBackupConfigured(this.config);
+  const DriveBackupConfigured(this.config, {this.recentLogs});
+}
+
+/// Log entry for operation progress tracking.
+class OperationLogEntry {
+  final DateTime timestamp;
+  final String message;
+  final LogLevel level;
+
+  OperationLogEntry({
+    required this.timestamp,
+    required this.message,
+    this.level = LogLevel.info,
+  });
+}
+
+enum LogLevel {
+  info,
+  success,
+  warning,
+  error,
 }
 
 /// Loading state - operation in progress.
 class DriveBackupLoading extends DriveBackupState {
-  final String operation; // 'setup', 'backup', 'restore'
+  final String operation; // 'setup', 'backup', 'sync'
   final String message;
+  final List<OperationLogEntry> logs;
 
   const DriveBackupLoading({
     required this.operation,
     required this.message,
+    this.logs = const [],
   });
+
+  DriveBackupLoading copyWith({
+    String? operation,
+    String? message,
+    List<OperationLogEntry>? logs,
+  }) {
+    return DriveBackupLoading(
+      operation: operation ?? this.operation,
+      message: message ?? this.message,
+      logs: logs ?? this.logs,
+    );
+  }
 }
 
 /// Success state - operation completed successfully.

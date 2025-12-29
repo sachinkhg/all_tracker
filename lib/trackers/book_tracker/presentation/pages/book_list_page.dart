@@ -53,7 +53,7 @@ class _BookListPageViewState extends State<BookListPageView>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -81,12 +81,28 @@ class _BookListPageViewState extends State<BookListPageView>
     return false;
   }
 
-  List<Book> _applyFiltersAndSort(List<Book> books, {bool isCurrentlyReading = false}) {
+  /// Checks if a book is in TBR (To Be Read) list.
+  /// A book is TBR if:
+  /// 1. No dateStarted
+  /// 2. No dateRead
+  /// 3. Empty readHistory
+  bool _isTBR(Book book) {
+    return book.dateStarted == null &&
+        book.dateRead == null &&
+        book.readHistory.isEmpty;
+  }
+
+  List<Book> _applyFiltersAndSort(List<Book> books, {bool isCurrentlyReading = false, bool isTBR = false}) {
     var filtered = List<Book>.from(books);
 
     // For "Currently Reading" tab, filter to only books that are currently being read
     if (isCurrentlyReading) {
       filtered = filtered.where((book) => _isCurrentlyReading(book)).toList();
+    }
+
+    // For "TBR" tab, filter to only books with no read history
+    if (isTBR) {
+      filtered = filtered.where((book) => _isTBR(book)).toList();
     }
 
     // Apply filters
@@ -103,7 +119,7 @@ class _BookListPageViewState extends State<BookListPageView>
           book.datePublished?.year == _currentFilter.publishedYear).toList();
     }
     // Only apply readYear filter for "All books" tab
-    if (!isCurrentlyReading && _currentFilter.readYear != null) {
+    if (!isCurrentlyReading && !isTBR && _currentFilter.readYear != null) {
       filtered = filtered.where((book) {
         if (book.dateRead != null && book.dateRead!.year == _currentFilter.readYear) {
           return true;
@@ -125,14 +141,6 @@ class _BookListPageViewState extends State<BookListPageView>
           if (a.dateRead == null) return 1; // a goes to end
           if (b.dateRead == null) return -1; // b goes to end
           return b.dateRead!.compareTo(a.dateRead!); // Descending
-        });
-        break;
-      case 'avgRating':
-        filtered.sort((a, b) {
-          if (a.avgRating == null && b.avgRating == null) return 0;
-          if (a.avgRating == null) return 1;
-          if (b.avgRating == null) return -1;
-          return b.avgRating!.compareTo(a.avgRating!); // Descending
         });
         break;
       case 'pageCount':
@@ -195,8 +203,9 @@ class _BookListPageViewState extends State<BookListPageView>
 
             if (state is BooksLoaded) {
               final books = state.books;
-              final allBooksFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false);
-              final currentlyReadingFiltered = _applyFiltersAndSort(books, isCurrentlyReading: true);
+              final allBooksFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false, isTBR: false);
+              final currentlyReadingFiltered = _applyFiltersAndSort(books, isCurrentlyReading: true, isTBR: false);
+              final tbrFiltered = _applyFiltersAndSort(books, isCurrentlyReading: false, isTBR: true);
 
               return Column(
                 children: [
@@ -204,9 +213,20 @@ class _BookListPageViewState extends State<BookListPageView>
                   const SizedBox(height: 12),
                   TabBar(
                     controller: _tabController,
-                    tabs: const [
-                      Tab(text: 'All Books'),
-                      Tab(text: 'Currently Reading'),
+                    tabs: [
+                      const Tab(text: 'All Books'),
+                      Tab(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                          child: Text(
+                            'Currently\nReading',
+                            textAlign: TextAlign.center,
+                            softWrap: true,
+                            maxLines: 2,
+                          ),
+                        ),
+                      ),
+                      const Tab(text: 'TBR'),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -240,6 +260,23 @@ class _BookListPageViewState extends State<BookListPageView>
                                 itemCount: currentlyReadingFiltered.length,
                                 itemBuilder: (context, index) {
                                   final book = currentlyReadingFiltered[index];
+                                  return BookListItem(
+                                    book: book,
+                                    onTap: () {
+                                      _showBookForm(context, cubit, book: book);
+                                    },
+                                  );
+                                },
+                              ),
+                        // TBR tab
+                        tbrFiltered.isEmpty
+                            ? const Center(
+                                child: Text('No books in TBR list. Add books without read history.'),
+                              )
+                            : ListView.builder(
+                                itemCount: tbrFiltered.length,
+                                itemBuilder: (context, index) {
+                                  final book = tbrFiltered[index];
                                   return BookListItem(
                                     book: book,
                                     onTap: () {
@@ -295,16 +332,6 @@ class _BookListPageViewState extends State<BookListPageView>
                         Navigator.pop(context);
                       },
                       trailing: _sortBy == 'dateRead' ? const Icon(Icons.check) : null,
-                    ),
-                    ListTile(
-                      title: const Text('Average Rating'),
-                      onTap: () {
-                        setState(() {
-                          _sortBy = 'avgRating';
-                        });
-                        Navigator.pop(context);
-                      },
-                      trailing: _sortBy == 'avgRating' ? const Icon(Icons.check) : null,
                     ),
                     ListTile(
                       title: const Text('Page Count'),
@@ -380,22 +407,22 @@ class _BookListPageViewState extends State<BookListPageView>
         totalReads += bookReads;
         totalPagesRead += book.pageCount * bookReads;
 
-        // Calculate average rating only for completed books
+        // Calculate average self rating only for completed books
         // Only include if the current read matches the filter (or no filter)
         bool includeInRating = false;
         if (_currentFilter.readYear != null) {
           // Only include if current read matches the year filter
-          includeInRating = book.avgRating != null && 
+          includeInRating = book.selfRating != null && 
               book.dateRead != null && 
               book.dateRead!.year == _currentFilter.readYear;
         } else {
           // No filter: include if book has current read completed
-          includeInRating = book.avgRating != null && book.dateRead != null;
+          includeInRating = book.selfRating != null && book.dateRead != null;
         }
         
         if (includeInRating) {
           sumRatings ??= 0.0;
-          sumRatings += book.avgRating!;
+          sumRatings += book.selfRating!;
           completedBooksWithRating++;
         }
       }
@@ -426,7 +453,7 @@ class _BookListPageViewState extends State<BookListPageView>
         required String title,
         required String primaryAuthor,
         required int pageCount,
-        double? avgRating,
+        double? selfRating,
         DateTime? datePublished,
         DateTime? dateStarted,
         DateTime? dateRead,
@@ -439,7 +466,7 @@ class _BookListPageViewState extends State<BookListPageView>
               title: title,
               primaryAuthor: primaryAuthor,
               pageCount: pageCount,
-              avgRating: avgRating,
+              selfRating: selfRating,
               datePublished: datePublished,
               dateStarted: dateStarted,
               dateRead: dateRead,
@@ -453,7 +480,7 @@ class _BookListPageViewState extends State<BookListPageView>
               title: title,
               primaryAuthor: primaryAuthor,
               pageCount: pageCount,
-              avgRating: avgRating,
+              selfRating: selfRating,
               datePublished: datePublished,
               dateStarted: dateStarted,
               dateRead: dateRead,

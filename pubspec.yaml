@@ -49,6 +49,7 @@ dependencies:
   share_plus: ^12.0.1   # optional
   rrule: ^0.2.17    # recurrence rule parsing for habits
   table_calendar: ^3.1.2  # calendar widget for habit tracking
+  fl_chart: ^0.66.0  # charts for book analytics
   file_selector: ^1.0.4
   file_picker: ^10.3.7
   permission_handler: ^12.0.1

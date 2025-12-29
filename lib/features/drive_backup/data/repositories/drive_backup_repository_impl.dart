@@ -56,30 +56,23 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     try {
       // Extract folder ID if it's a URL
       final folderId = _folderDataSource.extractFolderId(rootFolderId);
-      print('[Drive Backup] Extracted folder ID: $folderId');
 
       // Create tracker-specific folder
       final trackerFolderName = trackerName;
-      print('[Drive Backup] Creating folder: $trackerFolderName in folder: $folderId');
       final trackerFolderId = await _folderDataSource.createFolder(
         trackerFolderName,
         parentFolderId: folderId,
       );
-      print('[Drive Backup] Created folder with ID: $trackerFolderId');
 
       // Create spreadsheet for book data directly in the tracker folder
       final spreadsheetTitle = '$trackerName - Data';
-      print('[Drive Backup] Creating spreadsheet: $spreadsheetTitle in folder: $trackerFolderId');
       final spreadsheetId = await _sheetsService.createSpreadsheet(
         spreadsheetTitle,
         parentFolderId: trackerFolderId,
       );
-      print('[Drive Backup] Created spreadsheet with ID: $spreadsheetId in folder');
 
       // Initialize sheet with headers
-      print('[Drive Backup] Initializing sheet with headers');
       await _sheetsCrudDataSource.initializeSheet(spreadsheetId);
-      print('[Drive Backup] Sheet initialized');
 
       // Save configuration
       final config = DriveBackupConfig(
@@ -87,12 +80,10 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
         spreadsheetId: spreadsheetId,
       );
       await saveConfig(config);
-      print('[Drive Backup] Configuration saved');
 
       return config;
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('[Drive Backup] Error in setupBackup: $e');
-      print('[Drive Backup] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -106,21 +97,15 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
 
     try {
       // Get all books from Hive
-      print('[Drive Backup] Getting all books from Hive');
       final booksBox = await _backupService.getAllBooks();
-      print('[Drive Backup] Found ${booksBox.length} books');
       
       // Write all books to Google Sheet (current state approach - Option A)
-      print('[Drive Backup] Writing ${booksBox.length} books to Google Sheet: ${config.spreadsheetId}');
       await _sheetsCrudDataSource.writeAllBooks(config.spreadsheetId, booksBox);
-      print('[Drive Backup] Successfully wrote books to Google Sheet');
 
       // Also create JSON backup as fallback
-      print('[Drive Backup] Creating JSON backup file');
       final jsonData = await _backupService.serializeBooksToJson();
       const fileName = 'books_backup.json';
       await _folderDataSource.uploadJsonFile(fileName, jsonData, config.folderId);
-      print('[Drive Backup] JSON backup file created');
 
       // Note: CRUD operations are logged but not synced to sheet in Option A approach
       // The sheet contains only the current state of all books
@@ -145,9 +130,8 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       );
       await saveConfig(updatedConfig);
       print('[Drive Backup] Backup completed successfully');
-    } catch (e, stackTrace) {
+    } catch (e) {
       print('[Drive Backup] Error in backupToDrive: $e');
-      print('[Drive Backup] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -186,15 +170,11 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       throw Exception('Drive backup not configured. Please setup backup first.');
     }
 
-    print('[Drive Backup] Reading actions from sheet...');
     final booksWithActions = await _sheetsCrudDataSource.readBooksWithActions(config.spreadsheetId);
     
     if (booksWithActions.isEmpty) {
-      print('[Drive Backup] No actions found in sheet');
       return;
     }
-
-    print('[Drive Backup] Found ${booksWithActions.length} rows with actions');
 
     // Process each action
     final rowsToClear = <int>[];
@@ -237,35 +217,193 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
           rowsToDelete.add(sheetRowNumber); // Delete this specific row
           // Don't add to rowsToClear since we're deleting the row
         }
-      } catch (e, stackTrace) {
+      } catch (e) {
         print('[Drive Backup] Error processing $action action for book ${book.id}: $e');
-        print('[Drive Backup] Stack trace: $stackTrace');
         // Continue processing other actions even if one fails
       }
     }
 
     // Update rows in sheet FIRST (before deleting to avoid row number shifts)
-    // Process in descending order to avoid row number shifts during updates
+    // Process in batches of 50 rows at once to avoid quota issues
     if (rowsToUpdate.isNotEmpty) {
-      print('[Drive Backup] Updating ${rowsToUpdate.length} rows in sheet');
       // Sort by row number descending
       rowsToUpdate.sort((a, b) => b.rowNumber.compareTo(a.rowNumber));
-      for (final updateInfo in rowsToUpdate) {
-        try {
-          print('[Drive Backup] Updating row ${updateInfo.rowNumber} for action ${updateInfo.action}');
-          await _updateRowInSheet(config.spreadsheetId, updateInfo.rowNumber, updateInfo.updatedBook, updateInfo.action);
-          print('[Drive Backup] Successfully updated row ${updateInfo.rowNumber}');
-        } catch (e, stackTrace) {
-          print('[Drive Backup] Error updating row ${updateInfo.rowNumber} in sheet: $e');
-          print('[Drive Backup] Stack trace: $stackTrace');
-          // Continue with other updates
+      
+      // Read all rows once at the beginning to avoid multiple reads
+      final allRows = await _sheetsService.readAllRows(config.spreadsheetId);
+      
+      // Process in batches of 50 rows with 2-second delay between batches
+      const batchSize = 50;
+      const delayBetweenBatches = Duration(seconds: 2);
+      const maxRetriesPerBatch = 5;
+      
+      // Track failed batches for retry
+      final failedBatches = <List<({int rowNumber, Book updatedBook, String action})>>[];
+      
+      for (int i = 0; i < rowsToUpdate.length; i += batchSize) {
+        final batch = rowsToUpdate.skip(i).take(batchSize).toList();
+        
+        bool batchSuccess = false;
+        int retryAttempt = 0;
+        
+        while (!batchSuccess && retryAttempt <= maxRetriesPerBatch) {
+          try {
+            // Prepare batch update data
+            final batchUpdates = <String, List<List<Object?>>>{};
+            
+            for (final updateInfo in batch) {
+              final rowNumber = updateInfo.rowNumber;
+              
+              // Validate row exists
+              if (allRows.length < rowNumber) {
+                continue;
+              }
+              
+              final existingRow = allRows[rowNumber - 1]; // Convert to 0-based index
+              if (existingRow.isEmpty || existingRow.length < 11) {
+                continue;
+              }
+              
+              if (updateInfo.action == 'CREATE BOOK') {
+                // CREATE BOOK: Update Book ID, Created At, Updated At (columns A, I, J)
+                final range = 'Sheet1!A$rowNumber:J$rowNumber';
+                batchUpdates[range] = [[
+                  updateInfo.updatedBook.id,
+                  existingRow[1], // Title (preserve)
+                  existingRow[2], // Author (preserve)
+                  existingRow[3], // Page Count (preserve)
+                  existingRow[4], // Self Rating (preserve)
+                  existingRow[5], // Published Date (preserve)
+                  existingRow[6], // Date Started (preserve)
+                  existingRow[7], // Date Read (preserve)
+                  updateInfo.updatedBook.createdAt.toIso8601String(), // Created At
+                  updateInfo.updatedBook.updatedAt.toIso8601String(), // Updated At
+                ]];
+              } else {
+                // UPDATE BOOK, CREATE REREAD, UPDATE REREAD: Update Updated At only (column J)
+                final range = 'Sheet1!J$rowNumber';
+                batchUpdates[range] = [[
+                  updateInfo.updatedBook.updatedAt.toIso8601String(),
+                ]];
+              }
+            }
+            
+            if (batchUpdates.isNotEmpty) {
+              await _sheetsService.batchUpdateCells(
+                config.spreadsheetId,
+                batchUpdates,
+                maxRetries: 3, // Service-level retries
+              );
+              batchSuccess = true;
+            } else {
+              // No valid updates in batch, mark as success
+              batchSuccess = true;
+            }
+          } catch (e) {
+            final errorStr = e.toString();
+            final isQuotaError = errorStr.contains('429') || 
+                                errorStr.contains('Quota exceeded') ||
+                                errorStr.contains('rateLimitExceeded');
+            
+            if (isQuotaError && retryAttempt < maxRetriesPerBatch) {
+              retryAttempt++;
+              // Fixed delays: 5, 10, 20, 30, 45 seconds
+              final delaySeconds = _getRetryDelay(retryAttempt);
+              await Future.delayed(Duration(seconds: delaySeconds));
+              continue;
+            }
+            
+            // Non-quota error or max retries reached
+            if (isQuotaError) {
+              // Add to failed batches for later retry
+              failedBatches.add(batch);
+            }
+            break; // Exit retry loop
+          }
+        }
+        
+        // Add delay between batches to avoid quota errors (except for last batch)
+        if (i + batchSize < rowsToUpdate.length && batchSuccess) {
+          await Future.delayed(delayBetweenBatches);
         }
       }
+      
+      // Retry failed batches with longer delays
+      if (failedBatches.isNotEmpty) {
+        await Future.delayed(const Duration(seconds: 5)); // Wait longer before retrying failed batches
+        
+        for (int retryIndex = 0; retryIndex < failedBatches.length; retryIndex++) {
+          final batch = failedBatches[retryIndex];
+          
+          bool retrySuccess = false;
+          int retryAttempt = 0;
+          const maxRetriesForFailed = 3;
+          
+          while (!retrySuccess && retryAttempt < maxRetriesForFailed) {
+            try {
+              final batchUpdates = <String, List<List<Object?>>>{};
+              
+              for (final updateInfo in batch) {
+                final rowNumber = updateInfo.rowNumber;
+                
+                if (allRows.length < rowNumber) continue;
+                final existingRow = allRows[rowNumber - 1];
+                if (existingRow.isEmpty || existingRow.length < 11) continue;
+                
+                if (updateInfo.action == 'CREATE BOOK') {
+                  final range = 'Sheet1!A$rowNumber:J$rowNumber';
+                  batchUpdates[range] = [[
+                    updateInfo.updatedBook.id,
+                    existingRow[1], existingRow[2], existingRow[3], existingRow[4],
+                    existingRow[5], existingRow[6], existingRow[7],
+                    updateInfo.updatedBook.createdAt.toIso8601String(),
+                    updateInfo.updatedBook.updatedAt.toIso8601String(),
+                  ]];
+                } else {
+                  final range = 'Sheet1!J$rowNumber';
+                  batchUpdates[range] = [[
+                    updateInfo.updatedBook.updatedAt.toIso8601String(),
+                  ]];
+                }
+              }
+              
+              if (batchUpdates.isNotEmpty) {
+                await _sheetsService.batchUpdateCells(
+                  config.spreadsheetId,
+                  batchUpdates,
+                  maxRetries: 3,
+                );
+                retrySuccess = true;
+              } else {
+                retrySuccess = true;
+              }
+            } catch (e) {
+              retryAttempt++;
+              final errorStr = e.toString();
+              final isQuotaError = errorStr.contains('429') || 
+                                  errorStr.contains('Quota exceeded') ||
+                                  errorStr.contains('rateLimitExceeded');
+              
+              if (isQuotaError && retryAttempt < maxRetriesForFailed) {
+                final delaySeconds = _getRetryDelay(retryAttempt);
+                await Future.delayed(Duration(seconds: delaySeconds));
+              } else {
+                break;
+              }
+            }
+          }
+          
+          // Delay between retrying failed batches
+          if (retryIndex < failedBatches.length - 1) {
+            await Future.delayed(const Duration(seconds: 3));
+          }
+        }
+      }
+      
     }
 
     // Delete rows from sheet (after updates to avoid row number shifts)
     if (rowsToDelete.isNotEmpty) {
-      print('[Drive Backup] Deleting ${rowsToDelete.length} rows from sheet');
       // Remove duplicates and sort descending
       final uniqueRowsToDelete = rowsToDelete.toSet().toList()..sort((a, b) => b.compareTo(a));
       await _sheetsService.deleteRows(config.spreadsheetId, uniqueRowsToDelete);
@@ -274,8 +412,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     // Clear action column for processed rows (only for non-delete actions)
     // Note: We update BEFORE deleting, so row numbers are still correct here
     if (rowsToClear.isNotEmpty) {
-      print('[Drive Backup] Clearing action column for ${rowsToClear.length} processed rows');
-      print('[Drive Backup] Row indices to clear: $rowsToClear');
       await _clearActionColumn(config.spreadsheetId, rowsToClear);
     }
 
@@ -285,7 +421,26 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     );
     await saveConfig(updatedConfig);
 
-    print('[Drive Backup] Successfully synced ${rowsToClear.length} actions from sheet');
+    print('[Drive Backup] Successfully synced actions from sheet');
+  }
+
+  /// Get retry delay in seconds based on retry attempt number.
+  /// Returns: 5, 10, 20, 30, 45 seconds for attempts 1-5 respectively.
+  int _getRetryDelay(int retryAttempt) {
+    switch (retryAttempt) {
+      case 1:
+        return 5;
+      case 2:
+        return 10;
+      case 3:
+        return 20;
+      case 4:
+        return 30;
+      case 5:
+        return 45;
+      default:
+        return 45; // Default to max delay for attempts beyond 5
+    }
   }
 
   /// Handle CREATE BOOK action: create a new book with its first read.
@@ -297,7 +452,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     final bookId = originalBookId.trim();
     final finalBookId = bookId.isEmpty ? _uuid.v4() : bookId;
     
-    print('[Drive Backup] CREATE BOOK: Creating new book with ID: $finalBookId');
     final newBook = book.copyWith(
       id: finalBookId,
       createdAt: DateTime.now(),
@@ -311,7 +465,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
   /// Handle UPDATE BOOK action: update existing book metadata.
   /// Returns the updated book.
   Future<Book> _handleUpdateBookAction(Book book) async {
-    print('[Drive Backup] UPDATE BOOK: Updating book: ${book.id}');
     final updatedBook = book.copyWith(
       updatedAt: DateTime.now(),
     );
@@ -326,7 +479,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
   /// [bookId]: The ID of the book to delete
   /// [spreadsheetId]: The spreadsheet ID (for sheet cleanup)
   Future<void> _handleDeleteBookAction(String bookId, String spreadsheetId) async {
-    print('[Drive Backup] DELETE BOOK: Deleting book: $bookId');
     await _bookRepository.deleteBook(bookId);
     _crudLogger.logDelete(bookId);
     // Note: Rows will be deleted in the caller after this completes
@@ -350,7 +502,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       }
     }
     
-    print('[Drive Backup] Found ${matchingRows.length} rows for book ID: $bookId');
     return matchingRows;
   }
 
@@ -370,7 +521,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       throw Exception('Book not found: $bookId');
     }
     
-    print('[Drive Backup] CREATE REREAD: Adding read history to book: $bookId');
     final newHistoryEntry = ReadHistoryEntry(
       dateStarted: book.dateStarted,
       dateRead: book.dateRead,
@@ -406,8 +556,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     if (existingBook == null) {
       throw Exception('Book not found: $bookId');
     }
-    
-    print('[Drive Backup] UPDATE REREAD: Updating read history for book: $bookId');
     
     final newDateStarted = book.dateStarted;
     final newDateRead = book.dateRead;
@@ -518,8 +666,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       throw Exception('Book not found: $bookId');
     }
     
-    print('[Drive Backup] DELETE REREAD: Deleting read history for book: $bookId');
-    
     final targetDateStarted = book.dateStarted;
     final targetDateRead = book.dateRead;
     
@@ -542,7 +688,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     
     if (matchesCurrentRead) {
       // Clear the current read (set dates to null)
-      print('[Drive Backup] DELETE REREAD: Clearing current read for book: $bookId');
       final updatedBook = existingBook.copyWith(
         dateStarted: null,
         dateRead: null,
@@ -554,10 +699,6 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     }
     
     // Remove from readHistory
-    print('[Drive Backup] DELETE REREAD: Searching readHistory for matching entry');
-    print('[Drive Backup] DELETE REREAD: Target - dateStarted: $targetDateStarted, dateRead: $targetDateRead');
-    print('[Drive Backup] DELETE REREAD: Current readHistory has ${existingBook.readHistory.length} entries');
-    
     final updatedHistory = existingBook.readHistory.where((entry) {
       // Match primarily by dateStarted (must match)
       final matchesDateStarted = datesMatchByDay(entry.dateStarted, targetDateStarted);
@@ -581,23 +722,11 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
       // Delete if dateStarted matches AND (dateRead matches or one is null)
       final shouldDelete = matchesDateStarted && matchesDateRead;
       
-      if (shouldDelete) {
-        print('[Drive Backup] DELETE REREAD: Found matching entry to delete - '
-            'dateStarted: ${entry.dateStarted}, dateRead: ${entry.dateRead}');
-      }
-      
       // Keep entries that should NOT be deleted
       return !shouldDelete;
     }).toList();
     
     if (updatedHistory.length == existingBook.readHistory.length) {
-      print('[Drive Backup] DELETE REREAD: No matching entry found. '
-          'Target dateStarted: $targetDateStarted, dateRead: $targetDateRead');
-      print('[Drive Backup] DELETE REREAD: Existing readHistory entries:');
-      for (int i = 0; i < existingBook.readHistory.length; i++) {
-        final entry = existingBook.readHistory[i];
-        print('[Drive Backup]   Entry $i: dateStarted=${entry.dateStarted}, dateRead=${entry.dateRead}');
-      }
       throw Exception('Read history entry not found for book: $bookId. '
           'Make sure the row\'s dateStarted and dateRead match an existing read entry.');
     }
@@ -610,99 +739,117 @@ class DriveBackupRepositoryImpl implements DriveBackupRepository {
     _crudLogger.logUpdate(updatedBook);
   }
 
-  /// Update a row in the sheet with book data.
+  /// Clear action column for specified rows using batch updates.
   /// 
-  /// For CREATE BOOK: Updates Book ID (column 0), Created At (column 8), Updated At (column 9)
-  /// For UPDATE BOOK, CREATE REREAD, UPDATE REREAD: Updates Updated At (column 9) only
-  Future<void> _updateRowInSheet(String spreadsheetId, int rowNumber, Book updatedBook, String action) async {
-    print('[Drive Backup] _updateRowInSheet: Starting update for row $rowNumber, action: $action');
-    
-    // Read the existing row to preserve dateStarted/dateRead (which might represent a read history entry)
-    final rows = await _sheetsService.readAllRows(spreadsheetId);
-    print('[Drive Backup] _updateRowInSheet: Sheet has ${rows.length} total rows');
-    
-    if (rows.length < rowNumber) {
-      print('[Drive Backup] ERROR: Row $rowNumber does not exist in sheet (sheet has ${rows.length} rows)');
-      throw Exception('Row $rowNumber does not exist in sheet');
-    }
-    
-    final existingRow = rows[rowNumber - 1]; // Convert to 0-based index
-    print('[Drive Backup] _updateRowInSheet: Existing row has ${existingRow.length} columns');
-    
-    if (existingRow.isEmpty || existingRow.length < 11) {
-      print('[Drive Backup] ERROR: Row $rowNumber has insufficient data (${existingRow.length} columns, need 11)');
-      throw Exception('Row $rowNumber has insufficient data');
-    }
-    
-    print('[Drive Backup] _updateRowInSheet: Row data - Book ID: ${existingRow[0]}, Title: ${existingRow[1]}');
-    
-    if (action == 'CREATE BOOK') {
-      // CREATE BOOK: Update Book ID, Created At, Updated At
-      // Read existing row and update the first row (current read) with new Book ID and timestamps
-      await _sheetsService.updateRowCells(
-        spreadsheetId,
-        rowNumber,
-        0, // Start at column A (Book ID)
-        [
-          updatedBook.id,
-          existingRow[1], // Title (preserve)
-          existingRow[2], // Author (preserve)
-          existingRow[3], // Page Count (preserve)
-          existingRow[4], // Rating (preserve)
-          existingRow[5], // Published Date (preserve)
-          existingRow[6], // Date Started (preserve)
-          existingRow[7], // Date Read (preserve)
-          updatedBook.createdAt.toIso8601String(), // Created At (keep timestamp)
-          updatedBook.updatedAt.toIso8601String(), // Updated At (keep timestamp)
-        ],
-      );
-      print('[Drive Backup] Updated row $rowNumber: Book ID, Created At, Updated At');
-    } else {
-      // UPDATE BOOK, CREATE REREAD, UPDATE REREAD: Update Updated At only (column J, index 9)
-      print('[Drive Backup] Updating row $rowNumber, column J (Updated At) for action: $action');
-      final updatedAtStr = updatedBook.updatedAt.toIso8601String(); // Keep timestamp
-      print('[Drive Backup] Updated At value: $updatedAtStr');
-      try {
-        await _sheetsService.updateRowCells(
-          spreadsheetId,
-          rowNumber,
-          9, // Start at column J (Updated At, 0-based index 9)
-          [updatedAtStr],
-        );
-        print('[Drive Backup] Successfully updated row $rowNumber: Updated At');
-      } catch (e, stackTrace) {
-        print('[Drive Backup] Error updating row $rowNumber: $e');
-        print('[Drive Backup] Stack trace: $stackTrace');
-        rethrow;
-      }
-    }
-  }
-
-  /// Clear action column for specified rows.
+  /// Uses batch updates to minimize API calls and handle quota errors with retry logic.
   Future<void> _clearActionColumn(String spreadsheetId, List<int> rowIndices) async {
     // Row indices are 0-based (first data row is 0, which is row 2 in the sheet)
     // Action column is column K (index 10), which is column 11 (1-based)
     // Sheet row numbers are 1-based, so row index 0 = sheet row 2
     
     if (rowIndices.isEmpty) {
-      print('[Drive Backup] No rows to clear action column');
       return;
     }
-
-    print('[Drive Backup] Clearing action column for ${rowIndices.length} rows');
-    // Clear actions one by one (Google Sheets API requires range in A1 notation)
-    // Column K is the 11th column (A=1, B=2, ..., K=11)
-    for (final rowIndex in rowIndices) {
-      final sheetRowNumber = rowIndex + 2; // +2 because row 1 is header, data starts at row 2
-      final range = 'Sheet1!K$sheetRowNumber';
-      print('[Drive Backup] Clearing action in row $sheetRowNumber (range: $range, rowIndex: $rowIndex)');
+    
+    // Group rows into batches for batch updates
+    // Google Sheets batch update can handle up to 100 ranges per request
+    const maxRangesPerBatch = 100;
+    
+    // Convert row indices to sheet row numbers and create ranges
+    final rowNumbers = rowIndices.map((idx) => idx + 2).toList()..sort();
+    
+    if (rowNumbers.isEmpty) {
+      return;
+    }
+    
+    // Group consecutive rows into ranges to minimize API calls
+    final ranges = <String, List<List<Object?>>>{};
+    
+    // Process rows in groups - if rows are consecutive, use a range like K2:K5
+    // Otherwise, use individual cell updates
+    int startRow = rowNumbers.first;
+    int endRow = rowNumbers.first;
+    
+    for (int i = 1; i < rowNumbers.length; i++) {
+      if (rowNumbers[i] == endRow + 1) {
+        // Consecutive row, extend range
+        endRow = rowNumbers[i];
+      } else {
+        // Gap found, create range for previous consecutive rows
+        if (startRow == endRow) {
+          ranges['Sheet1!K$startRow'] = [['']];
+        } else {
+          ranges['Sheet1!K$startRow:K$endRow'] = List.generate(
+            endRow - startRow + 1,
+            (_) => ['']
+          );
+        }
+        startRow = rowNumbers[i];
+        endRow = rowNumbers[i];
+      }
+    }
+    
+    // Add final range
+    if (startRow == endRow) {
+      ranges['Sheet1!K$startRow'] = [['']];
+    } else {
+      ranges['Sheet1!K$startRow:K$endRow'] = List.generate(
+        endRow - startRow + 1,
+        (_) => ['']
+      );
+    }
+    
+    // Process ranges in batches
+    final rangeEntries = ranges.entries.toList();
+    for (int i = 0; i < rangeEntries.length; i += maxRangesPerBatch) {
+      final batch = Map.fromEntries(rangeEntries.skip(i).take(maxRangesPerBatch));
+      
       try {
-        await _sheetsService.updateCells(spreadsheetId, range, [['']]);
-        print('[Drive Backup] Successfully cleared action in row $sheetRowNumber');
-      } catch (e, stackTrace) {
-        print('[Drive Backup] Error clearing action in row $sheetRowNumber: $e');
-        print('[Drive Backup] Stack trace: $stackTrace');
-        // Continue with other rows
+        await _sheetsService.batchUpdateCells(
+          spreadsheetId,
+          batch,
+          maxRetries: 5, // More retries for batch operations
+        );
+      } catch (e) {
+        // If batch fails, try individual updates as fallback
+        for (final entry in batch.entries) {
+          try {
+            // Extract row numbers from range
+            final range = entry.key;
+            if (range.contains(':')) {
+              // Range like K2:K5 - split and update individually
+              final match = RegExp(r'K(\d+):K(\d+)').firstMatch(range);
+              if (match != null) {
+                final start = int.parse(match.group(1)!);
+                final end = int.parse(match.group(2)!);
+                for (int row = start; row <= end; row++) {
+                  await _sheetsService.updateCells(
+                    spreadsheetId,
+                    'Sheet1!K$row',
+                    [['']],
+                    maxRetries: 3,
+                  );
+                }
+              }
+            } else {
+              // Single cell
+              await _sheetsService.updateCells(
+                spreadsheetId,
+                range,
+                [['']],
+                maxRetries: 3,
+              );
+            }
+          } catch (e2) {
+            // Continue with other ranges
+          }
+        }
+      }
+      
+      // Add delay between batches to avoid quota errors (except for last batch)
+      if (i + maxRangesPerBatch < rangeEntries.length) {
+        const delayBetweenBatches = Duration(seconds: 2);
+        await Future.delayed(delayBetweenBatches);
       }
     }
   }

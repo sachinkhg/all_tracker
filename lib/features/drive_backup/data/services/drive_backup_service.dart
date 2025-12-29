@@ -26,7 +26,7 @@ class DriveBackupService {
             'title': book.title,
             'primaryAuthor': book.primaryAuthor,
             'pageCount': book.pageCount,
-            'avgRating': book.avgRating,
+            'selfRating': book.selfRating,
             'datePublished': book.datePublished?.toUtc().toIso8601String(),
             'dateStarted': book.dateStarted?.toUtc().toIso8601String(),
             'dateRead': book.dateRead?.toUtc().toIso8601String(),
@@ -72,8 +72,8 @@ class DriveBackupService {
         return null;
       }
 
-      final rating = json['avgRating'] != null
-          ? (json['avgRating'] as num).toDouble()
+      final selfRating = json['selfRating'] != null
+          ? (json['selfRating'] as num).toDouble()
           : null;
 
       DateTime? datePublished;
@@ -147,7 +147,7 @@ class DriveBackupService {
         title: title,
         primaryAuthor: author,
         pageCount: pageCount,
-        avgRating: rating,
+        selfRating: selfRating,
         datePublished: datePublished,
         dateStarted: dateStarted,
         dateRead: dateRead,

@@ -225,7 +225,16 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
               const SizedBox(height: 16),
               const LinearProgressIndicator(),
               const SizedBox(height: 8),
-              Text(state.message),
+              Text(
+                state.message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (state.logs.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _buildLogViewer(context, state.logs),
+              ],
             ],
           ],
         ),
@@ -263,6 +272,17 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
                   'Last Sheet Sync',
                   _formatDateTime(state.config.lastSheetSyncTime!),
                 ),
+              if (state.recentLogs != null && state.recentLogs!.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Recent Operation Logs',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 8),
+                _buildLogViewer(context, state.recentLogs!),
+              ],
             ],
           ),
         ),
@@ -270,6 +290,97 @@ class _DriveBackupSettingsContentState extends State<_DriveBackupSettingsContent
     }
 
     return const SizedBox.shrink();
+  }
+
+  Widget _buildLogViewer(BuildContext context, List<OperationLogEntry> logs) {
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 300),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: logs.length,
+        itemBuilder: (context, index) {
+          final log = logs[index];
+          return _buildLogEntry(context, log);
+        },
+      ),
+    );
+  }
+
+  Widget _buildLogEntry(BuildContext context, OperationLogEntry log) {
+    Color getColorForLevel(LogLevel level) {
+      switch (level) {
+        case LogLevel.success:
+          return Colors.green;
+        case LogLevel.warning:
+          return Colors.orange;
+        case LogLevel.error:
+          return Colors.red;
+        case LogLevel.info:
+          return Theme.of(context).colorScheme.onSurface.withOpacity(0.7);
+      }
+    }
+
+    IconData getIconForLevel(LogLevel level) {
+      switch (level) {
+        case LogLevel.success:
+          return Icons.check_circle;
+        case LogLevel.warning:
+          return Icons.warning;
+        case LogLevel.error:
+          return Icons.error;
+        case LogLevel.info:
+          return Icons.info;
+      }
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            getIconForLevel(log.level),
+            size: 16,
+            color: getColorForLevel(log.level),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  log.message,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: getColorForLevel(log.level),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _formatTime(log.timestamp),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dateTime) {
+    return '${dateTime.hour.toString().padLeft(2, '0')}:'
+        '${dateTime.minute.toString().padLeft(2, '0')}:'
+        '${dateTime.second.toString().padLeft(2, '0')}';
   }
 
   Widget _buildStatusRow(String label, String value) {

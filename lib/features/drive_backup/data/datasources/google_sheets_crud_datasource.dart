@@ -8,7 +8,7 @@ class _BookRowData {
   final String title;
   final String primaryAuthor;
   final int pageCount;
-  final double? avgRating;
+  final double? selfRating;
   final DateTime? datePublished;
   final DateTime? dateStarted;
   final DateTime? dateRead;
@@ -20,7 +20,7 @@ class _BookRowData {
     required this.title,
     required this.primaryAuthor,
     required this.pageCount,
-    this.avgRating,
+    this.selfRating,
     this.datePublished,
     this.dateStarted,
     this.dateRead,
@@ -57,7 +57,7 @@ class GoogleSheetsCrudDataSource {
       'Title',
       'Author',
       'Page Count',
-      'Rating',
+      'Self Rating',
       'Published Date',
       'Date Started',
       'Date Read',
@@ -160,7 +160,7 @@ class GoogleSheetsCrudDataSource {
       book.title,
       book.primaryAuthor,
       book.pageCount,
-      book.avgRating?.toString() ?? '',
+      book.selfRating?.toString() ?? '',
       _formatDateOnly(book.datePublished) ?? '',
       _formatDateOnly(book.dateStarted) ?? '',
       _formatDateOnly(book.dateRead) ?? '',
@@ -177,7 +177,7 @@ class GoogleSheetsCrudDataSource {
       book.title,
       book.primaryAuthor,
       book.pageCount,
-      book.avgRating?.toString() ?? '',
+      book.selfRating?.toString() ?? '',
       _formatDateOnly(book.datePublished) ?? '',
       _formatDateOnly(historyEntry.dateStarted) ?? '',
       _formatDateOnly(historyEntry.dateRead) ?? '',
@@ -266,7 +266,7 @@ class GoogleSheetsCrudDataSource {
         title: mainRow.title,
         primaryAuthor: mainRow.primaryAuthor,
         pageCount: mainRow.pageCount,
-        avgRating: mainRow.avgRating,
+        selfRating: mainRow.selfRating,
         datePublished: mainRow.datePublished,
         dateStarted: mainRow.dateStarted,
         dateRead: mainRow.dateRead,
@@ -283,8 +283,8 @@ class GoogleSheetsCrudDataSource {
 
   /// Parse a book row and return row data (doesn't create Book entity yet).
   _BookRowData? _parseBookRowData(List<Object?> row) {
-    // Now we have 11 columns including Action, but for parsing we still need at least 10
-    if (row.length < 10) return null;
+    // Now we have 12 columns including Action, but for parsing we still need at least 11
+    if (row.length < 11) return null;
 
     try {
       final bookId = row[0]?.toString() ?? '';
@@ -297,7 +297,7 @@ class GoogleSheetsCrudDataSource {
         return null;
       }
 
-      final rating = row[4]?.toString().isNotEmpty == true
+      final selfRating = row[4]?.toString().isNotEmpty == true
           ? double.tryParse(row[4]!.toString())
           : null;
 
@@ -313,7 +313,7 @@ class GoogleSheetsCrudDataSource {
         title: title,
         primaryAuthor: author,
         pageCount: pageCount,
-        avgRating: rating,
+        selfRating: selfRating,
         datePublished: datePublished,
         dateStarted: dateStarted,
         dateRead: dateRead,
@@ -332,18 +332,32 @@ class GoogleSheetsCrudDataSource {
   /// originalBookId is the bookId from the sheet (may be empty for CREATE actions).
   Future<Map<int, ({Book book, String action, String originalBookId})>> readBooksWithActions(String spreadsheetId) async {
     final rows = await _sheetsService.readAllRows(spreadsheetId);
-    if (rows.isEmpty) return {};
+    if (rows.isEmpty) {
+      print('[Google Sheets] No rows found in sheet');
+      return {};
+    }
+
+    print('[Google Sheets] Found ${rows.length} total rows in sheet');
 
     // Skip header row (row index 0 is first data row)
     final dataRows = rows.skip(1).toList();
+    print('[Google Sheets] Processing ${dataRows.length} data rows');
     final result = <int, ({Book book, String action, String originalBookId})>{};
 
     for (int i = 0; i < dataRows.length; i++) {
       final row = dataRows[i];
-      if (row.isEmpty) continue;
+      if (row.isEmpty) {
+        print('[Google Sheets] Row $i is empty, skipping');
+        continue;
+      }
 
+      print('[Google Sheets] Row $i has ${row.length} columns');
+      
+      // Action column is at index 10 (0-based: Book ID=0, Title=1, ..., Action=10)
       // Check if action column exists (column index 10)
       final action = row.length > 10 ? (row[10]?.toString().trim().toUpperCase() ?? '') : '';
+      print('[Google Sheets] Row $i action: "$action" (from column ${row.length > 10 ? 10 : 'N/A'})');
+      
       final validActions = [
         'CREATE BOOK',
         'UPDATE BOOK',
@@ -353,30 +367,38 @@ class GoogleSheetsCrudDataSource {
         'DELETE REREAD',
       ];
       if (action.isEmpty || !validActions.contains(action)) {
+        print('[Google Sheets] Row $i skipped: action is empty or invalid');
         continue; // Skip rows without valid actions
       }
 
       // Get original bookId from the row (column index 0)
       final originalBookId = row.length > 0 ? (row[0]?.toString().trim() ?? '') : '';
+      print('[Google Sheets] Row $i has valid action "$action" for bookId: "$originalBookId"');
 
       try {
         final book = _parseBookRowToBook(row);
         if (book != null) {
           result[i] = (book: book, action: action, originalBookId: originalBookId);
+          print('[Google Sheets] Row $i parsed successfully');
+        } else {
+          print('[Google Sheets] Row $i failed to parse book data');
         }
-      } catch (e) {
+      } catch (e, stackTrace) {
+        print('[Google Sheets] Error parsing row $i: $e');
+        print('[Google Sheets] Stack trace: $stackTrace');
         // Skip invalid rows
         continue;
       }
     }
 
+    print('[Google Sheets] Found ${result.length} rows with valid actions');
     return result;
   }
 
   /// Parse a book data row to a Book entity.
   Book? _parseBookRowToBook(List<Object?> row) {
-    // Now we have 11 columns including Action, but for parsing we still need at least 10
-    if (row.length < 10) return null;
+    // Now we have 12 columns including Action, but for parsing we still need at least 11
+    if (row.length < 11) return null;
 
     try {
       final bookId = row[0]?.toString() ?? '';
@@ -390,7 +412,7 @@ class GoogleSheetsCrudDataSource {
         return null;
       }
 
-      final rating = row[4]?.toString().isNotEmpty == true
+      final selfRating = row[4]?.toString().isNotEmpty == true
           ? double.tryParse(row[4]!.toString())
           : null;
 
@@ -406,7 +428,7 @@ class GoogleSheetsCrudDataSource {
         title: title,
         primaryAuthor: author,
         pageCount: pageCount,
-        avgRating: rating,
+        selfRating: selfRating,
         datePublished: datePublished,
         dateStarted: dateStarted,
         dateRead: dateRead,
@@ -429,7 +451,7 @@ class GoogleSheetsCrudDataSource {
       book?.title ?? '',
       book?.primaryAuthor ?? '',
       book?.pageCount ?? '',
-      book?.avgRating?.toString() ?? '',
+      book?.selfRating?.toString() ?? '',
       _formatDateOnly(book?.datePublished) ?? '',
       _formatDateOnly(book?.dateStarted) ?? '',
       _formatDateOnly(book?.dateRead) ?? '',

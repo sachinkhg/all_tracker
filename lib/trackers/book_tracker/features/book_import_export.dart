@@ -12,7 +12,7 @@
     - title: required for import rows. Empty/blank titles will cause the row to be skipped.
     - primaryAuthor: required for import rows.
     - pageCount: required for import rows. Must be > 0.
-    - avgRating: optional in import. Must be 0-5 if present.
+    - selfRating: optional in import. Must be 0-5 if present.
     - datePublished: optional in import. Accepts various date formats.
     - dateStarted: optional in import. Accepts various date formats.
     - dateRead: optional in import. Accepts various date formats.
@@ -25,7 +25,7 @@
     - Spreadsheet column order is flexible: headers are mapped case-insensitively and normalized (underscores/spaces removed).
     - Do NOT reuse or rename existing header tokens without updating any documentation and migration notes.
     - If you add new exported/imported columns, update migration_notes.md and README/ARCHITECTURE where import/export is referenced.
-    - Keep column canonical names stable: id, title, primaryAuthor, pageCount, avgRating, datePublished, dateStarted, dateRead, created_at, updated_at, delete.
+    - Keep column canonical names stable: id, title, primaryAuthor, pageCount, selfRating, datePublished, dateStarted, dateRead, created_at, updated_at, delete.
     - Changing the date serialization format requires communicating the change to users and updating parsing helpers (_parseExcelDate).
 */
 
@@ -159,7 +159,7 @@ class _ReadRowData {
   final String title;
   final String author;
   final int pageCount;
-  final double? rating;
+  final double? selfRating;
   final DateTime? datePublished;
   final int? readNumber;
   final DateTime? dateStarted;
@@ -173,7 +173,7 @@ class _ReadRowData {
     required this.title,
     required this.author,
     required this.pageCount,
-    this.rating,
+    this.selfRating,
     this.datePublished,
     this.readNumber,
     this.dateStarted,
@@ -186,7 +186,7 @@ class _ReadRowData {
 
 /// Export books to an XLSX file.
 ///
-/// Creates a file with columns: id, title, primaryAuthor, pageCount, avgRating,
+/// Creates a file with columns: id, title, primaryAuthor, pageCount, selfRating,
 /// datePublished, readNumber, dateStarted, dateRead, created_at, updated_at, delete.
 ///
 /// Each read (current read and all read history entries) is exported as a separate row.
@@ -206,7 +206,7 @@ Future<String?> exportBooksToXlsx(BuildContext context, List<Book> books) async 
     TextCellValue('title'),
     TextCellValue('primaryAuthor'),
     TextCellValue('pageCount'),
-    TextCellValue('avgRating'),
+    TextCellValue('selfRating'),
     TextCellValue('datePublished'),
     TextCellValue('readNumber'),
     TextCellValue('dateStarted'),
@@ -227,8 +227,8 @@ Future<String?> exportBooksToXlsx(BuildContext context, List<Book> books) async 
         TextCellValue(book.title),
         TextCellValue(book.primaryAuthor),
         TextCellValue(book.pageCount.toString()),
-        book.avgRating != null
-            ? TextCellValue(book.avgRating!.toString())
+        book.selfRating != null
+            ? TextCellValue(book.selfRating!.toString())
             : null,
         book.datePublished != null
             ? TextCellValue(_formatDateDdMmYyyy(book.datePublished!))
@@ -264,8 +264,8 @@ Future<String?> exportBooksToXlsx(BuildContext context, List<Book> books) async 
         TextCellValue(book.title),
         TextCellValue(book.primaryAuthor),
         TextCellValue(book.pageCount.toString()),
-        book.avgRating != null
-            ? TextCellValue(book.avgRating!.toString())
+        book.selfRating != null
+            ? TextCellValue(book.selfRating!.toString())
             : null,
         book.datePublished != null
             ? TextCellValue(_formatDateDdMmYyyy(book.datePublished!))
@@ -292,8 +292,8 @@ Future<String?> exportBooksToXlsx(BuildContext context, List<Book> books) async 
         TextCellValue(book.title),
         TextCellValue(book.primaryAuthor),
         TextCellValue(book.pageCount.toString()),
-        book.avgRating != null
-            ? TextCellValue(book.avgRating!.toString())
+        book.selfRating != null
+            ? TextCellValue(book.selfRating!.toString())
             : null,
         book.datePublished != null
             ? TextCellValue(_formatDateDdMmYyyy(book.datePublished!))
@@ -355,7 +355,7 @@ Future<String?> exportBooksToXlsx(BuildContext context, List<Book> books) async 
 /// Behaviour summary:
 ///  - Reads the first sheet.
 ///  - First row is treated as header and is normalized (lowercased, spaces/underscores removed).
-///  - Required columns: 'title', 'primaryAuthor', 'pageCount'. Optional: id, avgRating, datePublished, readNumber, dateStarted, dateRead, created_at, updated_at.
+  ///  - Required columns: 'title', 'primaryAuthor', 'pageCount'. Optional: id, selfRating, datePublished, readNumber, dateStarted, dateRead, created_at, updated_at.
 ///  - When 'id' is present and non-empty, attempts to edit existing book; on failure falls back to create.
 ///  - When 'id' is absent, creates a new book.
 ///  - If multiple reads exist for the same book (multiple rows with same id), they are grouped together:
@@ -422,7 +422,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
     final titleIdx = headerNormalized.indexOf('title');
     final authorIdx = headerNormalized.indexOf('primaryauthor');
     final pageCountIdx = headerNormalized.indexOf('pagecount');
-    final ratingIdx = headerNormalized.indexOf('avgrating');
+    final selfRatingIdx = headerNormalized.indexOf('selfrating');
     final datePublishedIdx = headerNormalized.indexOf('datepublished');
     final readNumberIdx = headerNormalized.indexOf('readnumber');
     final dateStartedIdx = headerNormalized.indexOf('datestarted');
@@ -521,10 +521,10 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
       }
 
       // Parse optional fields
-      double? rating;
-      if (ratingIdx != -1 && ratingIdx < row.length) {
-        final dynamic raw = row[ratingIdx]?.value;
-        rating = _parseRating(raw);
+      double? selfRating;
+      if (selfRatingIdx != -1 && selfRatingIdx < row.length) {
+        final dynamic raw = row[selfRatingIdx]?.value;
+        selfRating = _parseRating(raw);
       }
 
       DateTime? datePublished;
@@ -585,7 +585,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
             title: title,
             author: author,
             pageCount: pageCount,
-            rating: rating,
+            selfRating: selfRating,
             datePublished: datePublished,
             readNumber: readNumber,
             dateStarted: dateStarted,
@@ -620,7 +620,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
       final title = firstRow.title;
       final author = firstRow.author;
       final pageCount = firstRow.pageCount;
-      final rating = firstRow.rating;
+      final selfRating = firstRow.selfRating;
       final datePublished = firstRow.datePublished;
       // Use the most recent updatedAt from all rows
       final updatedAt = readRows
@@ -697,7 +697,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
               title: title,
               primaryAuthor: author,
               pageCount: pageCount,
-              avgRating: rating,
+              selfRating: selfRating,
               datePublished: datePublished,
               dateStarted: currentDateStarted,
               dateRead: currentDateRead,
@@ -712,7 +712,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
               title: title,
               primaryAuthor: author,
               pageCount: pageCount,
-              avgRating: rating,
+              selfRating: selfRating,
               datePublished: datePublished,
               dateStarted: currentDateStarted,
               dateRead: currentDateRead,
@@ -739,7 +739,7 @@ Future<void> importBooksFromXlsx(BuildContext context) async {
             title: title,
             primaryAuthor: author,
             pageCount: pageCount,
-            avgRating: rating,
+            selfRating: selfRating,
             datePublished: datePublished,
             dateStarted: currentDateStarted,
             dateRead: currentDateRead,
@@ -794,7 +794,7 @@ Future<String?> downloadBooksTemplate(BuildContext context) async {
     TextCellValue('title'),
     TextCellValue('primaryAuthor'),
     TextCellValue('pageCount'),
-    TextCellValue('avgRating'),
+    TextCellValue('selfRating'),
     TextCellValue('datePublished'),
     TextCellValue('dateStarted'),
     TextCellValue('dateRead'),

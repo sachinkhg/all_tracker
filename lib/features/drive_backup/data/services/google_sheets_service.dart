@@ -150,40 +150,128 @@ class GoogleSheetsService {
     return null;
   }
 
-  /// Update specific cells in a spreadsheet.
+  /// Update specific cells in a spreadsheet with retry logic for quota errors.
   /// 
   /// [spreadsheetId]: The ID of the spreadsheet
   /// [range]: The A1 notation range (e.g., 'Sheet1!K2:K10' for column K, rows 2-10)
   /// [values]: List of rows, where each row is a list of values
   /// [sheetName]: The name of the sheet/tab (default: 'Sheet1')
+  /// [maxRetries]: Maximum number of retries for quota errors (default: 3)
   Future<void> updateCells(
     String spreadsheetId,
     String range,
     List<List<Object?>> values, {
     String sheetName = 'Sheet1',
+    int maxRetries = 3,
   }) async {
     print('[Google Sheets] Updating cells in range: $range');
-    final client = await _getAuthenticatedClient();
-    try {
-      final sheetsApi = sheets.SheetsApi(client);
+    
+    int attempt = 0;
+    while (attempt <= maxRetries) {
+      final client = await _getAuthenticatedClient();
+      try {
+        final sheetsApi = sheets.SheetsApi(client);
 
-      final valueRange = sheets.ValueRange()
-        ..values = values;
+        final valueRange = sheets.ValueRange()
+          ..values = values;
 
-      final response = await sheetsApi.spreadsheets.values.update(
-        valueRange,
-        spreadsheetId,
-        range,
-        valueInputOption: 'USER_ENTERED',
-      );
-      
-      print('[Google Sheets] Updated ${response.updatedCells ?? 0} cells');
-    } catch (e, stackTrace) {
-      print('[Google Sheets] Error updating cells: $e');
-      print('[Google Sheets] Stack trace: $stackTrace');
-      rethrow;
-    } finally {
-      client.close();
+        final response = await sheetsApi.spreadsheets.values.update(
+          valueRange,
+          spreadsheetId,
+          range,
+          valueInputOption: 'USER_ENTERED',
+        );
+        
+        print('[Google Sheets] Updated ${response.updatedCells ?? 0} cells');
+        return;
+      } catch (e, stackTrace) {
+        final errorStr = e.toString();
+        final isQuotaError = errorStr.contains('429') || 
+                            errorStr.contains('Quota exceeded') ||
+                            errorStr.contains('rateLimitExceeded');
+        
+        if (isQuotaError && attempt < maxRetries) {
+          attempt++;
+          // Exponential backoff: 2^attempt seconds, max 60 seconds
+          final delaySeconds = (1 << attempt).clamp(1, 60);
+          print('[Google Sheets] Quota error (attempt $attempt/$maxRetries), retrying in ${delaySeconds}s...');
+          await Future.delayed(Duration(seconds: delaySeconds));
+          continue;
+        }
+        
+        print('[Google Sheets] Error updating cells: $e');
+        print('[Google Sheets] Stack trace: $stackTrace');
+        rethrow;
+      } finally {
+        client.close();
+      }
+    }
+  }
+
+  /// Batch update multiple cell ranges in a single API call.
+  /// 
+  /// [spreadsheetId]: The ID of the spreadsheet
+  /// [updates]: Map of range (A1 notation) to values (list of rows)
+  /// [sheetName]: The name of the sheet/tab (default: 'Sheet1')
+  /// [maxRetries]: Maximum number of retries for quota errors (default: 3)
+  Future<void> batchUpdateCells(
+    String spreadsheetId,
+    Map<String, List<List<Object?>>> updates, {
+    String sheetName = 'Sheet1',
+    int maxRetries = 3,
+  }) async {
+    if (updates.isEmpty) {
+      print('[Google Sheets] No updates to batch');
+      return;
+    }
+
+    print('[Google Sheets] Batch updating ${updates.length} ranges');
+    
+    int attempt = 0;
+    while (attempt <= maxRetries) {
+      final client = await _getAuthenticatedClient();
+      try {
+        final sheetsApi = sheets.SheetsApi(client);
+
+        final data = updates.entries.map((entry) {
+          final valueRange = sheets.ValueRange()
+            ..range = entry.key
+            ..values = entry.value;
+          return valueRange;
+        }).toList();
+
+        final batchUpdateRequest = sheets.BatchUpdateValuesRequest()
+          ..valueInputOption = 'USER_ENTERED'
+          ..data = data;
+
+        final response = await sheetsApi.spreadsheets.values.batchUpdate(
+          batchUpdateRequest,
+          spreadsheetId,
+        );
+        
+        print('[Google Sheets] Batch updated ${response.totalUpdatedCells ?? 0} cells across ${response.totalUpdatedRows ?? 0} rows');
+        return;
+      } catch (e, stackTrace) {
+        final errorStr = e.toString();
+        final isQuotaError = errorStr.contains('429') || 
+                            errorStr.contains('Quota exceeded') ||
+                            errorStr.contains('rateLimitExceeded');
+        
+        if (isQuotaError && attempt < maxRetries) {
+          attempt++;
+          // Exponential backoff: 2^attempt seconds, max 60 seconds
+          final delaySeconds = (1 << attempt).clamp(1, 60);
+          print('[Google Sheets] Quota error in batch update (attempt $attempt/$maxRetries), retrying in ${delaySeconds}s...');
+          await Future.delayed(Duration(seconds: delaySeconds));
+          continue;
+        }
+        
+        print('[Google Sheets] Error in batch update: $e');
+        print('[Google Sheets] Stack trace: $stackTrace');
+        rethrow;
+      } finally {
+        client.close();
+      }
     }
   }
 
@@ -211,12 +299,14 @@ class GoogleSheetsService {
   /// [columnIndex]: The starting column index (0-based, where 0 is column A)
   /// [values]: List of values to update (will update consecutive columns)
   /// [sheetName]: The name of the sheet/tab (default: 'Sheet1')
+  /// [maxRetries]: Maximum number of retries for quota errors (default: 3)
   Future<void> updateRowCells(
     String spreadsheetId,
     int rowNumber,
     int columnIndex,
     List<Object?> values, {
     String sheetName = 'Sheet1',
+    int maxRetries = 3,
   }) async {
     if (values.isEmpty) return;
     
@@ -239,7 +329,7 @@ class GoogleSheetsService {
     
     final range = '$sheetName!$startColumn$rowNumber:$endColumn$rowNumber';
     print('[Google Sheets] Updating cells in row $rowNumber, columns $startColumn-$endColumn');
-    await updateCells(spreadsheetId, range, [values], sheetName: sheetName);
+    await updateCells(spreadsheetId, range, [values], sheetName: sheetName, maxRetries: maxRetries);
   }
 
   /// Delete specific rows from a spreadsheet.

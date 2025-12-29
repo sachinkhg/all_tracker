@@ -16,29 +16,14 @@ class FileMetadataModelAdapter extends TypeAdapter<FileMetadataModel> {
     final fields = <int, dynamic>{
       for (int i = 0; i < numOfFields; i++) reader.readByte(): reader.read(),
     };
-    
-    // Handle migration from old format (4 fields) to new format (6 fields)
-    if (numOfFields == 4) {
-      // Old format: stableIdentifier, tags, notes, lastUpdated
-      return FileMetadataModel(
-        stableIdentifier: fields[0] as String,
-        tags: (fields[1] as List).cast<String>(),
-        notes: fields[2] as String?,
-        cast: const [], // Default to empty list for old data
-        viewMode: null, // Default to null for old data
-        lastUpdated: fields[3] as DateTime,
-      );
-    } else {
-      // New format: stableIdentifier, tags, notes, cast, viewMode, lastUpdated
-      return FileMetadataModel(
-        stableIdentifier: fields[0] as String,
-        tags: (fields[1] as List).cast<String>(),
-        notes: fields[2] as String?,
-        cast: (fields[3] as List).cast<String>(),
-        viewMode: fields[4] as String?,
-        lastUpdated: fields[5] as DateTime,
-      );
-    }
+    return FileMetadataModel(
+      stableIdentifier: fields[0] as String,
+      tags: (fields[1] as List).cast<String>(),
+      notes: fields[2] as String?,
+      cast: (fields[3] as List).cast<String>(),
+      viewMode: fields[4] as String?,
+      lastUpdated: fields[5] as DateTime,
+    );
   }
 
   @override
