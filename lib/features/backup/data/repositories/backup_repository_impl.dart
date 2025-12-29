@@ -900,7 +900,7 @@ class BackupRepositoryImpl implements BackupRepository {
             title: _safeString(m, 'title', 'Untitled Book'),
             primaryAuthor: _safeString(m, 'primaryAuthor', 'Unknown Author'),
             pageCount: (m['pageCount'] as num?)?.toInt() ?? 0,
-            avgRating: (m['avgRating'] as num?)?.toDouble(),
+            selfRating: (m['selfRating'] as num?)?.toDouble(),
             datePublished: _deserializeDateOnly(m['datePublished'] as String?),
             dateStarted: _deserializeDateOnly(m['dateStarted'] as String?),
             dateRead: _deserializeDateOnly(m['dateRead'] as String?),

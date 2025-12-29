@@ -50,3 +50,4 @@ android/app/google-services.json
 # Keep local Android manifest untracked (prevent local edits from being committed)
 android/app/src/main/AndroidManifest.xml
 ios/Runner/Info.plist
+android/app/src/main/AndroidManifest.xml
